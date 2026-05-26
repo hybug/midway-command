@@ -86,7 +86,7 @@ class TestScoutLaunch:
         assert scout.direction == "southwest"
         assert scout.status == "in_flight"
         assert scout.eta_minutes == 60
-        assert "PBY" in result
+        assert "SBD" in result
 
     def test_scout_sector_covers_enemy(self):
         """Southwest search (210°-240°) should cover enemy at bearing ~233°."""

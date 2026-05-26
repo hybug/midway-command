@@ -2,14 +2,19 @@
 import logging
 import sys
 import streamlit as st
+import streamlit.components.v1 as components
 from src.llm import ChatResult
 from src.config import DEV_MODE
 from src.initial_state import build_initial_state
 from src.agents.browning import BrowningNPC
+from src.agents.murray import MurrayNPC
+from src.agents.mitscher import MitscherNPC
+from src.agents.radio_officer import RadioOfficerNPC
+from src.agents.intel_officer import IntelOfficerNPC
+from src.npc_config import NPC_REGISTRY
 from src.tools import set_course
 from src.events import create_midway_events
 from src.ap import consume_ap, has_ap, reset_ap, get_ap_status
-from src.render.hex_grid import HexGrid
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[logging.StreamHandler(sys.stdout),
@@ -94,8 +99,16 @@ st.markdown("""
 # ═══════════════════════════════════════════════════════════
 if "game_state" not in st.session_state:
     st.session_state.game_state = build_initial_state()
-if "browning" not in st.session_state:
-    st.session_state.browning = BrowningNPC()
+if "npcs" not in st.session_state:
+    st.session_state.npcs = {
+        "browning": BrowningNPC(),
+        "murray": MurrayNPC(),
+        "mitscher": MitscherNPC(),
+        "radio_officer": RadioOfficerNPC(),
+        "intel_officer": IntelOfficerNPC(),
+    }
+if "active_npc" not in st.session_state:
+    st.session_state.active_npc = "browning"
 if "last_result" not in st.session_state:
     st.session_state.last_result = None
 if "state_snapshot" not in st.session_state:
@@ -108,10 +121,21 @@ if "msg_counter" not in st.session_state:
     st.session_state.msg_counter = 0
 
 state = st.session_state.game_state
-browning = st.session_state.browning
+npcs = st.session_state.npcs
+active_npc_id = st.session_state.active_npc
+active_npc = npcs[active_npc_id]
 scheduler = st.session_state.event_scheduler
 tf = state.task_forces[0]
 ap = get_ap_status(state)
+
+# NPC display config: id -> (label, sender_label)
+NPC_DISPLAY = {
+    "browning": ("参谋长", "布朗宁（BROWNING）· 参谋长"),
+    "murray": ("企业号舰长", "默里（MURRAY）· 企业号舰长"),
+    "mitscher": ("大黄蜂舰长", "米切尔（MITSCHER）· 大黄蜂舰长"),
+    "radio_officer": ("通信官", "通信官 · TBS"),
+    "intel_officer": ("情报官", "情报官 · 情报参谋"),
+}
 
 
 def get_state_digest(s):
@@ -145,8 +169,18 @@ def render_telegram_msg(msg_id, time_str, sender, sender_role, text, priority="�
 
 
 # ═══════════════════════════════════════════════════════════
+# 会话状态（补充）
+# ═══════════════════════════════════════════════════════════
+if "drawer_open" not in st.session_state:
+    st.session_state.drawer_open = True
+
+drawer_open = st.session_state.drawer_open
+
+
+# ═══════════════════════════════════════════════════════════
 # 顶部 — 电报头部
 # ═══════════════════════════════════════════════════════════
+drawer_btn_label = "✖ 收起通信" if drawer_open else "📡 通信"
 st.markdown(f"""
 <div style="
     background: #2a2520;
@@ -179,112 +213,195 @@ st.markdown(f"""
 
 
 # ═══════════════════════════════════════════════════════════
-# 主布局：左栏海图桌 + 右栏电报机
+# 主布局：海图为主 + 可收起通信抽屉
 # ═══════════════════════════════════════════════════════════
-col_left, col_right = st.columns([1, 2])
+if drawer_open:
+    col_main, col_drawer = st.columns([2, 1])
+else:
+    col_main = st.container()
 
 # ─────────────────────────────────────────────────────────
-# 左栏：海图桌
+# 主区域：海图 + 战术面板
 # ─────────────────────────────────────────────────────────
-with col_left:
-    # 航向航速
-    st.markdown(f"""
-    <div style="background:#22201a; border:1px solid #3a3530; padding:8px 12px; margin-bottom:4px;">
-        <div style="color:#8a7e6a; font-size:10px; letter-spacing:2px; margin-bottom:4px;">航向与航速</div>
-        <div style="display:flex; justify-content:space-between; align-items:baseline;">
-            <div>
-                <span style="color:#8a7e6a;">HDG</span>
-                <span style="color:#c4a265; font-size:22px; margin-left:6px;">{tf.course:03d}°</span>
-            </div>
-            <div>
-                <span style="color:#8a7e6a;">SPD</span>
-                <span style="color:#c4a265; font-size:22px; margin-left:6px;">{tf.speed}</span>
-                <span style="color:#8a7e6a; font-size:12px;">节</span>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+with col_main:
+    # 通信按钮
+    if st.button(drawer_btn_label, key="toggle_drawer"):
+        st.session_state.drawer_open = not drawer_open
+        st.rerun()
+    # ═══════════════════════════════════════════════════════
+    # 战术仪表盘（4 条紧凑信息条 + 弹窗详情）
+    # ═══════════════════════════════════════════════════════
+    c1, c2 = tf.carriers[0], tf.carriers[1]
+    dmg_map = {0: "无损", 1: "轻伤", 2: "中伤", 3: "重伤"}
+    dmg_color = {0: "#7ab648", 1: "#c4a265", 2: "#e08040", 3: "#c45040"}
 
-    # 航空队状态
-    for carrier in tf.carriers:
-        short = carrier.name.split("(")[0].strip()
-        lines = []
-        for ag in carrier.air_groups:
-            dot = "●" if ag.status.value == "ready" else "○"
-            t = {"fighter": "VF", "dive": "VB", "torpedo": "VT"}.get(ag.type.value, "?")
-            lines.append(f'<span style="color:#8a7e6a;">{dot}</span> <span style="color:#8a7e6a;">{t}</span> <span style="color:#d4c5a9;">{ag.count}</span> <span style="color:#8a7e6a;">F{ag.fuel_pct}% A{ag.ammo_pct}%</span>')
+    # ── Dialog 函数 ──
+    @st.dialog("舰队详情")
+    def _dlg_fleet():
+        for carrier in tf.carriers:
+            short = carrier.name.split("(")[0].strip()
+            st.markdown(f"**{short}** — {carrier.position.lat:.1f}°N {abs(carrier.position.lon):.1f}°W · "
+                        f"航向 {carrier.course}° · 航速 {carrier.speed} kn · "
+                        f"损伤: {dmg_map.get(carrier.damage_level, '?')}")
 
+    @st.dialog("机库·甲板详情")
+    def _dlg_deck():
+        for carrier in tf.carriers:
+            short = carrier.name.split("(")[0].strip()
+            st.markdown(f"**{short}**")
+            for ag in carrier.air_groups:
+                t = {"fighter": "VF", "dive": "VB", "torpedo": "VT"}.get(ag.type.value, "?")
+                status_cn = {"ready": "就绪", "loading": "装弹中", "launched": "已起飞",
+                             "in_flight": "飞行中", "returning": "返航中", "landing": "着舰中"
+                            }.get(ag.status.value, ag.status.value)
+                st.markdown(f"  {t} {ag.squadron_name or ''} × {ag.count} · {status_cn}")
+
+    @st.dialog("舰载机详情")
+    def _dlg_aircraft():
+        for carrier in tf.carriers:
+            short = carrier.name.split("(")[0].strip()
+            st.markdown(f"**{short}**")
+            for ag in carrier.air_groups:
+                t = {"fighter": "VF", "dive": "VB", "torpedo": "VT"}.get(ag.type.value, "?")
+                st.markdown(f"  {t} {ag.squadron_name or ''} × {ag.count} · "
+                            f"燃油 {ag.fuel_pct}% · 弹药 {ag.ammo_pct}% · {ag.status.value}")
+
+    @st.dialog("飞行任务详情")
+    def _dlg_missions():
+        cap_total = sum(c.cap_strength for c in tf.carriers)
+        st.markdown(f"**CAP**: 共 {cap_total} 架")
+        for carrier in tf.carriers:
+            short = "ENT" if "Enterprise" in carrier.name else "HOR"
+            st.markdown(f"  {short}: {carrier.cap_strength} 架")
+        active_scouts = [s for s in state.active_scouts if s.status == "in_flight"]
+        if active_scouts:
+            st.markdown("**在途侦察:**")
+            for s in active_scouts:
+                elapsed = (state.clock.game_time - s.launched_at).total_seconds() / 60
+                remaining = max(0, s.eta_minutes - elapsed)
+                st.markdown(f"  {s.id}: {s.aircraft_count} 架 · {s.direction} · ETA {int(remaining)} 分钟")
+        else:
+            st.markdown("**在途侦察:** 无")
+        if state.pending_reports:
+            st.markdown("**在途报告:**")
+            for pr in state.pending_reports:
+                elapsed = (state.clock.game_time - pr.detected_at).total_seconds() / 60
+                total_delay = (pr.arrive_at - pr.detected_at).total_seconds() / 60
+                remaining = max(0, total_delay - elapsed)
+                st.markdown(f"  {pr.scout_id}: {int(remaining)} 分钟后到达")
+        if state.known_enemy:
+            st.markdown("**已知敌情:**")
+            for e in state.known_enemy:
+                st.markdown(f"  {e.description}（置信度: {e.confidence}, 来源: {e.source}）")
+
+    # ── 仪表盘条 1: 舰队 ──
+    d1c1, d1c2 = st.columns([5, 1])
+    with d1c1:
         st.markdown(f"""
-        <div style="background:#22201a; border:1px solid #3a3530; padding:8px 12px; margin-bottom:4px;">
-            <div style="color:#8a7e6a; font-size:10px; letter-spacing:2px; margin-bottom:4px;">{short} · CAP:{carrier.cap_strength}</div>
-            <div style="font-size:13px; line-height:1.6;">
-                {'<br>'.join(lines)}
-            </div>
-            <div style="color:#8a7e6a; font-size:11px; margin-top:4px; padding-top:4px; border-top:1px dashed #3a3530;">
-                位置 {carrier.position.lat:.1f}°N {abs(carrier.position.lon):.1f}°W
-            </div>
+        <div style="background:#22201a; border:1px solid #3a3530; padding:5px 12px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#8a7e6a; font-size:10px; letter-spacing:2px;">舰队</span>
+            <span style="color:#8a7e6a; font-size:12px;">HDG <span style="color:#c4a265;">{tf.course:03d}°</span></span>
+            <span style="color:#8a7e6a; font-size:12px;">SPD <span style="color:#c4a265;">{tf.speed}</span>kn</span>
+            <span style="color:#8a7e6a; font-size:12px;">{c1.position.lat:.1f}°N {abs(c1.position.lon):.1f}°W</span>
+            <span style="color:{dmg_color.get(c1.damage_level,'#7ab648')}; font-size:12px;">ENT:{dmg_map.get(c1.damage_level,'?')}</span>
+            <span style="color:{dmg_color.get(c2.damage_level,'#7ab648')}; font-size:12px;">HOR:{dmg_map.get(c2.damage_level,'?')}</span>
         </div>
         """, unsafe_allow_html=True)
+    with d1c2:
+        if st.button("详", key="btn_fleet", use_container_width=True):
+            _dlg_fleet()
 
-    # 敌情
-    enemy_text = "暂无确认接触"
-    if state.known_enemy:
-        enemy_text = state.known_enemy[0].description
+    # ── 仪表盘条 2: 机库·甲板 ──
+    deck_parts = []
+    for carrier in tf.carriers:
+        short = "ENT" if "Enterprise" in carrier.name else "HOR"
+        total = sum(ag.count for ag in carrier.air_groups)
+        ready = sum(ag.count for ag in carrier.air_groups if ag.status.value == "ready")
+        airborne = sum(ag.count for ag in carrier.air_groups if ag.status.value in ("launched", "in_flight", "returning"))
+        deck_parts.append(f'{short} <span style="color:#d4c5a9;">{total}</span>架 <span style="color:#7ab648;">{ready}就绪</span> <span style="color:#c4a265;">{airborne}升空</span>')
+    d2c1, d2c2 = st.columns([5, 1])
+    with d2c1:
+        st.markdown(f"""
+        <div style="background:#22201a; border:1px solid #3a3530; padding:5px 12px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#8a7e6a; font-size:10px; letter-spacing:2px;">机库</span>
+            {''.join(f'<span style="margin-left:12px; font-size:12px;">{p}</span>' for p in deck_parts)}
+        </div>
+        """, unsafe_allow_html=True)
+    with d2c2:
+        if st.button("详", key="btn_deck", use_container_width=True):
+            _dlg_deck()
 
-    st.markdown(f"""
-    <div style="background:#22201a; border:1px solid #3a3530; padding:8px 12px; margin-bottom:4px;">
-        <div style="color:#8a7e6a; font-size:10px; letter-spacing:2px; margin-bottom:4px;">已知敌情</div>
-        <div style="color:#d4c5a9; font-size:13px;">{enemy_text}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    # ── 仪表盘条 3: 舰载机 ──
+    fuel_parts = []
+    for carrier in tf.carriers:
+        short = "ENT" if "Enterprise" in carrier.name else "HOR"
+        for ag in carrier.air_groups:
+            if ag.count == 0:
+                continue
+            t = {"fighter": "VF", "dive": "VB", "torpedo": "VT"}.get(ag.type.value, "?")
+            fc = "#7ab648" if ag.fuel_pct > 50 else "#c4a265" if ag.fuel_pct > 20 else "#c45040"
+            ac = "#7ab648" if ag.ammo_pct > 50 else "#c4a265" if ag.ammo_pct > 20 else "#c45040"
+            fuel_parts.append(f'{short} {t}×{ag.count} <span style="color:{fc}">F{ag.fuel_pct}%</span> <span style="color:{ac}">A{ag.ammo_pct}%</span>')
+    d3c1, d3c2 = st.columns([5, 1])
+    with d3c1:
+        st.markdown(f"""
+        <div style="background:#22201a; border:1px solid #3a3530; padding:5px 12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:2px;">
+            <span style="color:#8a7e6a; font-size:10px; letter-spacing:2px;">载机</span>
+            {''.join(f'<span style="font-size:12px; margin-left:8px;">{p}</span>' for p in fuel_parts)}
+        </div>
+        """, unsafe_allow_html=True)
+    with d3c2:
+        if st.button("详", key="btn_aircraft", use_container_width=True):
+            _dlg_aircraft()
 
-    # 六边形地图
-    grid = HexGrid()
-    # Center on fleet position
-    from src.render.coordinate import world_to_hex
-    fleet_lat = state.task_forces[0].carriers[0].position.lat
-    fleet_lon = state.task_forces[0].carriers[0].position.lon
-    fleet_q, fleet_r = world_to_hex(fleet_lat, fleet_lon)
-    map_ascii = grid.render_for_player(state, center_q=fleet_q, center_r=fleet_r, radius=8)
-    st.markdown(f"""
-    <div style="background:#22201a; border:1px solid #3a3530; padding:8px 12px; margin-bottom:4px;">
-        <div style="color:#8a7e6a; font-size:10px; letter-spacing:2px; margin-bottom:4px;">海图</div>
-        <pre style="color:#d4c5a9; font-size:11px; line-height:1.2; margin:0; white-space:pre;">{map_ascii}</pre>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # 侦察
-    scout_text = "无在途侦察"
+    # ── 仪表盘条 4: 飞行任务 ──
+    cap_total = sum(c.cap_strength for c in tf.carriers)
     active_scouts = [s for s in state.active_scouts if s.status == "in_flight"]
+    scout_count = len(active_scouts)
+    scout_txt = ""
     if active_scouts:
         s = active_scouts[0]
         elapsed = (state.clock.game_time - s.launched_at).total_seconds() / 60
         remaining = max(0, s.eta_minutes - elapsed)
         d_cn = {"northwest":"西北","north":"正北","northeast":"东北","east":"正东",
-                "southeast":"东南","south":"正南","southwest":"西南","west":"正西"}.get(s.direction, s.direction)
-        scout_text = f"{s.id} PBY×{s.aircraft_count} {d_cn}扇面 ETA:{int(remaining)}分"
-
-    st.markdown(f"""
-    <div style="background:#22201a; border:1px solid #3a3530; padding:8px 12px; margin-bottom:4px;">
-        <div style="color:#8a7e6a; font-size:10px; letter-spacing:2px; margin-bottom:4px;">侦察状态</div>
-        <div style="color:#d4c5a9; font-size:13px;">{scout_text}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # 报告传输中
+                "southeast":"东南","south":"正南","southwest":"西南","west":"正西"
+               }.get(s.direction, s.direction)
+        scout_txt = f'{d_cn} ETA:{int(remaining)}分'
+    pr_count = len(state.pending_reports)
+    pr_txt = ""
     if state.pending_reports:
-        pending_text = ""
-        for pr in state.pending_reports:
-            elapsed = (state.clock.game_time - pr.detected_at).total_seconds() / 60
-            total_delay = (pr.arrive_at - pr.detected_at).total_seconds() / 60
-            remaining = max(0, total_delay - elapsed)
-            pending_text += f"{pr.scout_id}: {int(remaining)}分后到达<br>"
+        pr = state.pending_reports[0]
+        elapsed = (state.clock.game_time - pr.detected_at).total_seconds() / 60
+        total_delay = (pr.arrive_at - pr.detected_at).total_seconds() / 60
+        remaining = max(0, total_delay - elapsed)
+        pr_txt = f'{int(remaining)}分后到达'
+    enemy_text = "暂无" if not state.known_enemy else state.known_enemy[0].description
+    d4c1, d4c2 = st.columns([5, 1])
+    with d4c1:
         st.markdown(f"""
-        <div style="background:#2a2520; border:1px solid #c4a265; padding:8px 12px; margin-bottom:4px;">
-            <div style="color:#c4a265; font-size:10px; letter-spacing:2px; margin-bottom:4px;">📡 报告传输中</div>
-            <div style="color:#d4c5a9; font-size:13px;">{pending_text}</div>
+        <div style="background:#22201a; border:1px solid #3a3530; padding:5px 12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:2px;">
+            <span style="color:#8a7e6a; font-size:10px; letter-spacing:2px;">任务</span>
+            <span style="color:#8a7e6a; font-size:12px;">CAP <span style="color:#c4a265;">{cap_total}</span></span>
+            <span style="color:#8a7e6a; font-size:12px;">侦察 <span style="color:#c4a265;">{scout_count}</span> {scout_txt}</span>
+            <span style="color:#8a7e6a; font-size:12px;">报告 <span style="color:#c4a265;">{pr_count}</span> {pr_txt}</span>
+            <span style="color:#8a7e6a; font-size:12px;">敌情 <span style="color:#d4c5a9;">{enemy_text}</span></span>
         </div>
         """, unsafe_allow_html=True)
+    with d4c2:
+        if st.button("详", key="btn_missions", use_container_width=True):
+            _dlg_missions()
+
+    # 六边形地图（Canvas 渲染）
+    from src.render.html_map import render_html_map
+    from src.render.coordinate import world_to_hex
+    fleet_lat = state.task_forces[0].carriers[0].position.lat
+    fleet_lon = state.task_forces[0].carriers[0].position.lon
+    fleet_q, fleet_r = world_to_hex(fleet_lat, fleet_lon)
+    map_html = render_html_map(state, center_q=fleet_q, center_r=fleet_r, radius=8, course=tf.course)
+    st.markdown('<div style="color:#8a7e6a; font-size:10px; letter-spacing:2px; margin-bottom:4px;">海图</div>',
+                unsafe_allow_html=True)
+    components.html(map_html, height=520)
+
 
     # 操作按钮
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
@@ -300,9 +417,10 @@ with col_left:
 
 
 # ─────────────────────────────────────────────────────────
-# 右栏：电报机
+# 通信抽屉（仅在 drawer_open 时显示）
 # ─────────────────────────────────────────────────────────
-with col_right:
+if drawer_open:
+  with col_drawer:
     # 通知
     if st.session_state.event_notifications:
         for n in st.session_state.event_notifications:
@@ -317,27 +435,39 @@ with col_right:
     if st.session_state.state_snapshot is not None:
         changes = detect_changes(st.session_state.state_snapshot, state)
         if changes:
+            npc_name = NPC_DISPLAY[active_npc_id][0]
             st.markdown(f"""
             <div style="background:#2a2520; border:2px solid #7ab648; border-left:4px solid #7ab648;
                         padding:6px 12px; margin-bottom:4px;">
-                <span style="color:#7ab648; font-size:14px;">⚡ 布朗宁已执行：{', '.join(changes)}</span>
+                <span style="color:#7ab648; font-size:14px;">⚡ {npc_name}已执行：{', '.join(changes)}</span>
             </div>
             """, unsafe_allow_html=True)
             st.session_state.state_snapshot = None
 
-    # 通信记录
+    # NPC 频道选择
+    npc_tabs = st.columns(len(NPC_DISPLAY))
+    for col, (npc_id, (label, _)) in zip(npc_tabs, NPC_DISPLAY.items()):
+        with col:
+            is_active = npc_id == active_npc_id
+            btn_label = f"▶ {label}" if is_active else label
+            if st.button(btn_label, key=f"npc_{npc_id}", use_container_width=True,
+                         type="primary" if is_active else "secondary"):
+                st.session_state.active_npc = npc_id
+                st.rerun()
+
+    # 通信记录（当前 NPC 的对话）
     chat_html = ""
-    for i, msg in enumerate(browning.messages[-12:]):
+    for i, msg in enumerate(active_npc.messages[-12:]):
         role = msg["role"]
         msg_id = i + 1
         time_str = state.clock.game_time.strftime('%H:%M')
         if role == "user":
             chat_html += render_telegram_msg(msg_id, time_str, "指挥官（SPRUANCE）", "指挥官", msg['content'])
         elif role == "assistant":
-            # 检测是否紧急
             text_lower = msg['content'].lower()
             priority = "紧急" if any(w in text_lower for w in ["立即", "马上", "快", "紧急", "刻不容缓"]) else "普通"
-            chat_html += render_telegram_msg(msg_id, time_str, "布朗宁（BROWNING）· 参谋长", "参谋长", msg['content'], priority)
+            _, sender_label = NPC_DISPLAY[active_npc_id]
+            chat_html += render_telegram_msg(msg_id, time_str, sender_label, active_npc.role, msg['content'], priority)
 
     st.markdown(f"""
     <div style="
@@ -346,7 +476,7 @@ with col_right:
         padding: 8px 12px;
     ">
         <div style="color:#8a7e6a; font-size:10px; letter-spacing:3px; margin-bottom:6px; border-bottom:1px dashed #3a3530; padding-bottom:4px;">
-            ◆ 通信记录
+            ◆ 通信记录 · {NPC_DISPLAY[active_npc_id][0]}
         </div>
         <div style="height:360px; overflow-y:auto; padding-right:4px;">
             {chat_html if chat_html else '<div style="color:#8a7e6a; font-style:italic; text-align:center; padding:60px;">等待指令...</div>'}
@@ -354,39 +484,168 @@ with col_right:
     </div>
     """, unsafe_allow_html=True)
 
-    # 待确认方案显示
+    # 待确认方案显示 — 纸质文档风格
     if state.pending_suggestions:
         for i, sug in enumerate(state.pending_suggestions):
             details = sug.details
             action_type = sug.action_type
 
             if action_type == "launch_scout":
-                direction_cn = {
-                    "northwest": "西北", "north": "正北", "northeast": "东北",
-                    "east": "正东", "southeast": "东南", "south": "正南",
-                    "southwest": "西南", "west": "正西"
-                }.get(details.get("direction", ""), details.get("direction", ""))
+                from src.recon_plan import ReconPlan
+                plan = ReconPlan(
+                    aircraft_count=details.get("aircraft_count", 4),
+                    source_carrier=details.get("source_carrier", "Enterprise"),
+                    sector_start=details.get("sector_start", 280),
+                    sector_end=details.get("sector_end", 340),
+                    range_nm=details.get("range_nm", 200),
+                    altitude_ft=details.get("altitude_ft", 1500),
+                )
+                plan.calculate_timeline(state.clock.game_time)
+                dir_cn = {"northwest":"西北","north":"正北","northeast":"东北","east":"正东",
+                          "southeast":"东南","south":"正南","southwest":"西南","west":"正西"
+                         }.get(details.get("direction",""), details.get("direction",""))
+                time_str = state.clock.game_time.strftime('%H:%M')
+                st.markdown(f"""
+<div style="background:linear-gradient(135deg,#f5f0e1,#ede5d0); border:1px solid #b8a88a; box-shadow:4px 4px 12px rgba(0,0,0,0.4); padding:0; margin:10px 0 6px; position:relative;">
+  <!-- 顶部印章 -->
+  <div style="background:#2c2418; padding:6px 16px; display:flex; justify-content:space-between; align-items:center;">
+    <span style="color:#c4a265; font-size:11px; letter-spacing:3px; font-weight:bold;">美 国 海 军 · 作 战 命 令</span>
+    <span style="color:#8a7e6a; font-size:11px;">机密 · TOP SECRET</span>
+  </div>
+  <!-- 命令编号栏 -->
+  <div style="padding:8px 20px 4px; display:flex; justify-content:space-between; border-bottom:1px dashed #c4b89a;">
+    <span style="color:#4a3f2f; font-size:12px;">编号: TF16-RECON-{time_str.replace(':','')}</span>
+    <span style="color:#4a3f2f; font-size:12px;">1942年6月4日 · {time_str} (Z+12)</span>
+  </div>
+  <!-- 正文 -->
+  <div style="padding:14px 20px;">
+    <!-- 签发信息 -->
+    <div style="display:flex; gap:40px; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #d4c8a8;">
+      <div><span style="color:#7a6e5a; font-size:11px;">签发</span><br><span style="color:#2c2418; font-size:14px; font-weight:bold;">参谋长 M.R. Browning</span></div>
+      <div><span style="color:#7a6e5a; font-size:11px;">呈报</span><br><span style="color:#2c2418; font-size:14px;">指挥官 R.A. Spruance</span></div>
+    </div>
+    <!-- 任务 -->
+    <div style="margin-bottom:12px;">
+      <div style="color:#7a6e5a; font-size:10px; letter-spacing:2px; margin-bottom:4px;">1. 任务 MISSION</div>
+      <div style="color:#2c2418; font-size:15px; line-height:1.6;">派出 {plan.aircraft_type} 侦察机搜索<strong>{dir_cn}</strong>方向，定位日军机动部队。</div>
+    </div>
+    <!-- 执行 -->
+    <div style="margin-bottom:12px;">
+      <div style="color:#7a6e5a; font-size:10px; letter-spacing:2px; margin-bottom:6px;">2. 执行 EXECUTION</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div style="background:rgba(255,255,255,0.5); padding:8px 10px; border-left:3px solid #8a7e5a;">
+          <div style="color:#7a6e5a; font-size:10px; letter-spacing:1px;">2.a 侦察编队</div>
+          <div style="color:#2c2418; font-size:14px; line-height:1.6;">
+            {plan.aircraft_type} Dauntless × <strong>{plan.aircraft_count}</strong><br>
+            来源: {plan.source_carrier}
+          </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.5); padding:8px 10px; border-left:3px solid #8a7e5a;">
+          <div style="color:#7a6e5a; font-size:10px; letter-spacing:1px;">2.b 搜索参数</div>
+          <div style="color:#2c2418; font-size:14px; line-height:1.6;">
+            扇面: <strong>{plan.sector_start}° – {plan.sector_end}°</strong><br>
+            航程: {plan.range_nm} 海里 · 高度: {plan.altitude_ft} ft
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- 时间表 -->
+    <div style="margin-bottom:14px;">
+      <div style="color:#7a6e5a; font-size:10px; letter-spacing:2px; margin-bottom:6px;">2.c 时间表 TIMELINE</div>
+      <div style="display:flex; gap:0; background:rgba(255,255,255,0.4); border:1px solid #d4c8a8;">
+        <div style="flex:1; padding:6px 10px; border-right:1px solid #d4c8a8; text-align:center;">
+          <div style="color:#7a6e5a; font-size:9px;">起飞</div>
+          <div style="color:#2c2418; font-size:15px; font-weight:bold;">{plan.launch_time}</div>
+        </div>
+        <div style="flex:1; padding:6px 10px; border-right:1px solid #d4c8a8; text-align:center;">
+          <div style="color:#7a6e5a; font-size:9px;">进入扇面</div>
+          <div style="color:#2c2418; font-size:15px; font-weight:bold;">{plan.arrive_sector}</div>
+        </div>
+        <div style="flex:1; padding:6px 10px; border-right:1px solid #d4c8a8; text-align:center;">
+          <div style="color:#7a6e5a; font-size:9px;">搜索完成</div>
+          <div style="color:#2c2418; font-size:15px; font-weight:bold;">{plan.search_complete}</div>
+        </div>
+        <div style="flex:1; padding:6px 10px; text-align:center;">
+          <div style="color:#7a6e5a; font-size:9px;">预计回收</div>
+          <div style="color:#2c2418; font-size:15px; font-weight:bold;">{plan.recovery_time}</div>
+        </div>
+      </div>
+    </div>
+    <!-- 行政后勤 -->
+    <div style="margin-bottom:12px;">
+      <div style="color:#7a6e5a; font-size:10px; letter-spacing:2px; margin-bottom:4px;">3. 行政后勤 LOGISTICS</div>
+      <div style="color:#4a3f2f; font-size:13px; line-height:1.5;">燃油: 满载 · 弹药: 无（侦察任务）· 通信: TBS 无线电报告</div>
+    </div>
+    <!-- 签名栏 -->
+    <div style="border-top:2px solid #2c2418; padding-top:10px; margin-top:6px; display:flex; justify-content:space-between; align-items:flex-end;">
+      <div>
+        <div style="color:#7a6e5a; font-size:10px;">指挥官签署</div>
+        <div style="width:180px; border-bottom:1px solid #2c2418; height:30px;"></div>
+        <div style="color:#7a6e5a; font-size:10px; margin-top:2px;">R.A. Spruance, 少将</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="color:#7a6e5a; font-size:10px;">签发</div>
+        <div style="color:#2c2418; font-size:13px; font-style:italic;">M.R. Browning</div>
+      </div>
+    </div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
-                st.markdown(f"""
-                <div style="background:#1a2332; border:2px solid #c4a265; padding:12px; margin:8px 0; border-radius:4px;">
-                    <div style="color:#c4a265; font-size:12px; letter-spacing:2px; margin-bottom:8px;">◆ 侦察方案</div>
-                    <div style="color:#d4c5a9; font-size:13px; line-height:1.8;">
-                        <b>飞机</b>: PBY × {details.get('aircraft_count', 4)}<br>
-                        <b>搜索扇面</b>: {details.get('sector_start', 0)}° - {details.get('sector_end', 0)}°（{direction_cn}）<br>
-                        <b>航程</b>: {details.get('range_nm', 200)} 海里<br>
-                        <b>预计回报</b>: 1 小时后
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
             elif action_type == "set_course":
+                from src.order_renderer import create_course_order
+                order = create_course_order(
+                    current_course=tf.course,
+                    new_course=details.get("course", tf.course),
+                    current_speed=tf.speed,
+                    new_speed=details.get("speed", tf.speed),
+                    reason=f"按{sug.npc}建议调整航向",
+                )
+                time_str = state.clock.game_time.strftime('%H:%M')
                 st.markdown(f"""
-                <div style="background:#1a2332; border:2px solid #c4a265; padding:12px; margin:8px 0; border-radius:4px;">
-                    <div style="color:#c4a265; font-size:12px; letter-spacing:2px; margin-bottom:8px;">◆ 航向调整方案</div>
-                    <div style="color:#d4c5a9; font-size:13px; line-height:1.8;">
-                        <b>新航向</b>: {details.get('course', '?')}°
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+<div style="background:linear-gradient(135deg,#f5f0e1,#ede5d0); border:1px solid #b8a88a; box-shadow:4px 4px 12px rgba(0,0,0,0.4); padding:0; margin:10px 0 6px;">
+  <div style="background:#2c2418; padding:6px 16px; display:flex; justify-content:space-between; align-items:center;">
+    <span style="color:#c4a265; font-size:11px; letter-spacing:3px; font-weight:bold;">美 国 海 军 · 航 向 命 令</span>
+    <span style="color:#8a7e6a; font-size:11px;">机密</span>
+  </div>
+  <div style="padding:8px 20px 4px; display:flex; justify-content:space-between; border-bottom:1px dashed #c4b89a;">
+    <span style="color:#4a3f2f; font-size:12px;">编号: TF16-COURSE-{time_str.replace(':','')}</span>
+    <span style="color:#4a3f2f; font-size:12px;">1942年6月4日 · {time_str}</span>
+  </div>
+  <div style="padding:14px 20px;">
+    <div style="display:flex; gap:40px; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #d4c8a8;">
+      <div><span style="color:#7a6e5a; font-size:11px;">签发</span><br><span style="color:#2c2418; font-size:14px; font-weight:bold;">参谋长 M.R. Browning</span></div>
+      <div><span style="color:#7a6e5a; font-size:11px;">呈报</span><br><span style="color:#2c2418; font-size:14px;">指挥官 R.A. Spruance</span></div>
+    </div>
+    <div style="margin-bottom:10px;">
+      <div style="color:#7a6e5a; font-size:10px; letter-spacing:2px; margin-bottom:4px;">1. 任务</div>
+      <div style="color:#2c2418; font-size:15px;">{order.mission}</div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px;">
+      <div style="background:rgba(255,255,255,0.5); padding:8px 10px; border-left:3px solid #8a7e5a;">
+        <div style="color:#7a6e5a; font-size:10px;">航向调整</div>
+        <div style="color:#2c2418; font-size:15px;">{tf.course}° → <strong>{details.get('course','?')}°</strong></div>
+      </div>
+      <div style="background:rgba(255,255,255,0.5); padding:8px 10px; border-left:3px solid #8a7e5a;">
+        <div style="color:#7a6e5a; font-size:10px;">航速</div>
+        <div style="color:#2c2418; font-size:15px;">{tf.speed} 节 → <strong>{details.get('speed', tf.speed)} 节</strong></div>
+      </div>
+    </div>
+    <div style="border-top:2px solid #2c2418; padding-top:10px; display:flex; justify-content:space-between; align-items:flex-end;">
+      <div>
+        <div style="color:#7a6e5a; font-size:10px;">指挥官签署</div>
+        <div style="width:180px; border-bottom:1px solid #2c2418; height:30px;"></div>
+        <div style="color:#7a6e5a; font-size:10px; margin-top:2px;">R.A. Spruance, 少将</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="color:#7a6e5a; font-size:10px;">签发</div>
+        <div style="color:#2c2418; font-size:13px; font-style:italic;">M.R. Browning</div>
+      </div>
+    </div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
             else:
                 detail_str = ", ".join(f"{k}={v}" for k, v in details.items())
                 st.markdown(f"""
@@ -401,7 +660,7 @@ with col_right:
 
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("✅ 确认执行", key=f"confirm_{i}", use_container_width=True):
+                if st.button("批准执行", key=f"confirm_{i}", use_container_width=True):
                     if action_type == "launch_scout":
                         from src.tools import handle_execute_action
                         result = handle_execute_action(state, "launch_scout", details)
@@ -415,9 +674,9 @@ with col_right:
                         st.success(f"✅ {result}")
                         st.rerun()
             with col2:
-                if st.button("❌ 拒绝", key=f"reject_{i}", use_container_width=True):
+                if st.button("驳回修改", key=f"reject_{i}", use_container_width=True):
                     state.pending_suggestions.remove(sug)
-                    st.info("方案已拒绝")
+                    st.info("方案已驳回")
                     st.rerun()
 
     # 输入框
@@ -435,9 +694,10 @@ with col_right:
 
         consume_ap(state, "message")
         st.session_state.msg_counter += 1
-        logger.info(f"[PLAYER_INPUT] {user_input}")
+        logger.info(f"[PLAYER_INPUT:{active_npc_id}] {user_input}")
 
-        with st.spinner("布朗宁回复中..."):
+        npc_label = NPC_DISPLAY[active_npc_id][0]
+        with st.spinner(f"{npc_label}回复中..."):
             try:
                 pre_digest = get_state_digest(state)
                 st.session_state.state_snapshot = pre_digest
@@ -447,10 +707,10 @@ with col_right:
                         return handler(state, **kwargs)
                     return wrapped
 
-                response = browning.chat(
+                response = active_npc.chat(
                     player_input=user_input, state=state,
-                    tools=browning.tools,
-                    tool_handlers={n: wrap_handler(h) for n, h in browning.tool_handlers.items()},
+                    tools=active_npc.tools,
+                    tool_handlers={n: wrap_handler(h) for n, h in active_npc.tool_handlers.items()},
                 )
                 st.session_state.last_result = response
                 st.rerun()

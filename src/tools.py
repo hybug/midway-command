@@ -50,7 +50,7 @@ TOOLS_SCHEMA = [
                     },
                     "aircraft_count": {
                         "type": "integer",
-                        "description": "Number of PBY aircraft to deploy (default: 4)",
+                        "description": "Number of SBD scout aircraft to deploy (default: 4)",
                     },
                     "range_nm": {
                         "type": "integer",
@@ -177,7 +177,7 @@ def handle_execute_action(state: GameState, action_type: str, details: dict) -> 
         bearing_min = (heading - half) % 360
         bearing_max = (heading + half) % 360
 
-        mission_id = f"PBY-{len(state.active_scouts) + 1}"
+        mission_id = f"SBD-{len(state.active_scouts) + 1}"
         mission = ScoutMission(
             id=mission_id,
             direction=direction.lower(),
@@ -192,7 +192,7 @@ def handle_execute_action(state: GameState, action_type: str, details: dict) -> 
         )
         state.active_scouts.append(mission)
         return (
-            f"PBY {count} 架已起飞，搜索扇面 {bearing_min}°-{bearing_max}°，"
+            f"SBD {count} 架已起飞，搜索扇面 {bearing_min}°-{bearing_max}°，"
             f"约 200 海里。预计 1 小时后有报告。"
         )
 
@@ -240,6 +240,8 @@ def handle_propose_recon(state: GameState, direction: str, aircraft_count: int =
             "range_nm": plan.range_nm,
             "sector_start": plan.sector_start,
             "sector_end": plan.sector_end,
+            "altitude_ft": plan.altitude_ft,
+            "source_carrier": plan.source_carrier,
         },
         proposed_at=datetime.utcnow(),
     )

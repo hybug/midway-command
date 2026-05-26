@@ -173,7 +173,7 @@ def check_pending_reports(state: GameState) -> list[str]:
             enemy = EnemyKnown(
                 position=Position(lat=0, lon=0),  # Position not used for display
                 description=(
-                    f"PBY {report.scout_id}: 敌航母约 {report.reported_carrier_count} 艘"
+                    f"SBD {report.scout_id}: 敌航母约 {report.reported_carrier_count} 艘"
                     f" - 方位 {report.reported_bearing}°"
                     f" - 距离约 {report.reported_distance_nm} 海里"
                 ),

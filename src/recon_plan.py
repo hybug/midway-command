@@ -14,7 +14,7 @@ logger = logging.getLogger("midway.recon")
 class ReconPlan:
     """A detailed reconnaissance mission plan."""
     # Aircraft info
-    aircraft_type: str = "PBY"  # PBY Catalina
+    aircraft_type: str = "SBD"  # SBD Dauntless (侦察型)
     aircraft_count: int = 4
     source_carrier: str = "Enterprise"
 
@@ -60,24 +60,26 @@ class ReconPlan:
         self.expected_report = f"{report_dt.strftime('%H:%M')} - {search_dt.strftime('%H:%M')}"
 
     def to_display_string(self) -> str:
-        """Format plan for display to player."""
-        return f"""侦察作业方案
-━━━━━━━━━━━━━━━━━━━━━━
-飞机: {self.aircraft_type} × {self.aircraft_count}
-来源: {self.source_carrier}
-搜索扇面: {self.sector_start}° - {self.sector_end}°
-航程: {self.range_nm} 海里
-高度: {self.altitude_ft} 英尺
+        """Format plan for display to player using military order format."""
+        from src.order_renderer import create_recon_order, OrderRenderer
 
-时间线:
-  {self.launch_time} 起飞
-  {self.arrive_sector} 到达搜索区域
-  {self.search_complete} 完成搜索，返航
-  {self.recovery_time} 回收
-
-预计报告: {self.expected_report}
-
-备注: {self.notes}"""
+        order = create_recon_order(
+            aircraft_type=self.aircraft_type,
+            aircraft_count=self.aircraft_count,
+            carrier=self.source_carrier,
+            sector_start=self.sector_start,
+            sector_end=self.sector_end,
+            range_nm=self.range_nm,
+            altitude_ft=self.altitude_ft,
+            launch_time=self.launch_time,
+            arrive_sector=self.arrive_sector,
+            search_complete=self.search_complete,
+            recovery_time=self.recovery_time,
+            expected_report=self.expected_report,
+            notes=self.notes,
+        )
+        renderer = OrderRenderer()
+        return renderer.render(order)
 
 
 def create_recon_plan(
