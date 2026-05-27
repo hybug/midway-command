@@ -288,7 +288,7 @@ drawer_open = st.session_state.drawer_open
 # ═══════════════════════════════════════════════════════════
 # 顶部 — 电报头部
 # ═══════════════════════════════════════════════════════════
-drawer_btn_label = "■ 收起通信" if drawer_open else "□ 通信"
+drawer_btn_label = "■ 收起通信（COMM OFF）" if drawer_open else "□ 通信（COMM ON）"
 st.markdown(f"""
 <div style="
     background: #0d1a2d;
@@ -344,7 +344,7 @@ with col_main:
     dmg_color = {0: "#4ae04a", 1: "#88cc44", 2: "#ff8800", 3: "#ff4444"}
 
     # ── Dialog 函数 ──
-    @st.dialog("舰队详情")
+    @st.dialog("态势详情（SITUATION）")
     def _dlg_fleet():
         for carrier in tf.carriers:
             short = carrier.name.split("(")[0].strip()
@@ -411,10 +411,10 @@ with col_main:
         s = active_scouts[0]
         elapsed = (state.clock.game_time - s.launched_at).total_seconds() / 60
         remaining = max(0, s.eta_minutes - elapsed)
-        d_cn = {"northwest":"NW","north":"N","northeast":"NE","east":"E",
-                "southeast":"SE","south":"S","southwest":"SW","west":"W"
+        d_cn = {"northwest":"西北","north":"正北","northeast":"东北","east":"正东",
+                "southeast":"东南","south":"正南","southwest":"西南","west":"正西"
                }.get(s.direction, s.direction)
-        scout_txt = f'{d_cn}ETA:{int(remaining)}M'
+        scout_txt = f'{d_cn} ETA:{int(remaining)}分'
     pr_count = len(state.pending_reports)
     pr_txt = ""
     if state.pending_reports:
@@ -422,42 +422,39 @@ with col_main:
         elapsed = (state.clock.game_time - pr.detected_at).total_seconds() / 60
         total_delay = (pr.arrive_at - pr.detected_at).total_seconds() / 60
         remaining = max(0, total_delay - elapsed)
-        pr_txt = f'{int(remaining)}M'
-    enemy_text = "NONE" if not state.known_enemy else state.known_enemy[0].description[:15]
+        pr_txt = f'{int(remaining)}分'
+    enemy_text = "暂无" if not state.known_enemy else state.known_enemy[0].description[:10]
     deck_parts = []
     for carrier in tf.carriers:
-        short = "E" if "Enterprise" in carrier.name else "H"
+        short = "企业" if "Enterprise" in carrier.name else "大黄蜂"
         total = sum(ag.count for ag in carrier.air_groups)
         ready = sum(ag.count for ag in carrier.air_groups if ag.status.value == "ready")
         airborne = sum(ag.count for ag in carrier.air_groups if ag.status.value in ("launched", "in_flight", "returning"))
-        deck_parts.append(f'{short}:{total}/{ready}R/{airborne}A')
+        deck_parts.append(f'{short} <span style="color:#4ae04a;">{total}</span>/{ready}备/{airborne}飞')
 
-    dbc1, dbc2 = st.columns([20, 1])
-    with dbc1:
-        st.markdown(f"""
-        <div style="background:#0a1628; border:1px solid #1a3a5c; border-top:2px solid #1a3a5c; padding:3px 14px; display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:nowrap; overflow:hidden;">
-            <span style="color:#2a7a3a; font-size:10px; letter-spacing:2px;">HDG<span style="color:#4ae04a; text-shadow:0 0 6px rgba(74,224,74,0.3); font-size:14px; margin-left:3px;">{tf.course:03d}°</span></span>
-            <span style="color:#1a3a5c;">│</span>
-            <span style="color:#2a7a3a; font-size:10px; letter-spacing:2px;">SPD<span style="color:#4ae04a; text-shadow:0 0 6px rgba(74,224,74,0.3); font-size:14px; margin-left:3px;">{tf.speed}</span>KN</span>
-            <span style="color:#1a3a5c;">│</span>
-            <span style="color:#2a7a3a; font-size:10px; letter-spacing:2px;">POS<span style="color:#4ae04a; font-size:12px; margin-left:3px;">{c1.position.lat:.1f}N {abs(c1.position.lon):.1f}W</span></span>
-            <span style="color:#1a3a5c;">│</span>
-            <span style="color:#2a7a3a; font-size:10px; letter-spacing:2px;">DMG<span style="color:{dmg_color.get(c1.damage_level,'#4ae04a')}; font-size:12px; margin-left:3px;">E:{dmg_map.get(c1.damage_level,'?')}</span> <span style="color:{dmg_color.get(c2.damage_level,'#4ae04a')};">H:{dmg_map.get(c2.damage_level,'?')}</span></span>
-            <span style="color:#1a3a5c;">│</span>
-            <span style="color:#2a7a3a; font-size:10px; letter-spacing:2px;">DECK <span style="color:#4ae04a; font-size:11px;">{' '.join(deck_parts)}</span></span>
-            <span style="color:#1a3a5c;">│</span>
-            <span style="color:#2a7a3a; font-size:10px; letter-spacing:2px;">CAP<span style="color:#4ae04a; font-size:12px; margin-left:3px;">{cap_total}</span></span>
-            <span style="color:#1a3a5c;">│</span>
-            <span style="color:#2a7a3a; font-size:10px; letter-spacing:2px;">SCOUT<span style="color:#4ae04a; font-size:11px; margin-left:3px;">{scout_count}</span> <span style="color:#2a7a3a; font-size:10px;">{scout_txt}</span></span>
-            <span style="color:#1a3a5c;">│</span>
-            <span style="color:#2a7a3a; font-size:10px; letter-spacing:2px;">RPT<span style="color:#4ae04a; font-size:11px; margin-left:3px;">{pr_count}</span> <span style="color:#2a7a3a; font-size:10px;">{pr_txt}</span></span>
-            <span style="color:#1a3a5c;">│</span>
-            <span style="color:#2a7a3a; font-size:10px; letter-spacing:2px;">ENEMY<span style="color:#ff8800; font-size:11px; margin-left:3px;">{enemy_text}</span></span>
-        </div>
-        """, unsafe_allow_html=True)
-    with dbc2:
-        if st.button("INFO", key="btn_info", use_container_width=True):
-            _dlg_fleet()
+    st.markdown(f"""
+    <div style="background:#0a1628; border:1px solid #1a3a5c; border-top:2px solid #1a3a5c; padding:4px 14px; display:flex; justify-content:space-between; align-items:center; gap:4px; flex-wrap:nowrap; overflow:hidden;">
+        <span style="color:#2a7a3a; font-size:11px;">航向<span style="color:#4ae04a; text-shadow:0 0 6px rgba(74,224,74,0.3); font-size:13px; margin-left:2px;">{tf.course:03d}°</span></span>
+        <span style="color:#1a3a5c;">│</span>
+        <span style="color:#2a7a3a; font-size:11px;">航速<span style="color:#4ae04a; text-shadow:0 0 6px rgba(74,224,74,0.3); font-size:13px; margin-left:2px;">{tf.speed}</span>节</span>
+        <span style="color:#1a3a5c;">│</span>
+        <span style="color:#2a7a3a; font-size:11px;">位置<span style="color:#4ae04a; font-size:11px; margin-left:2px;">{c1.position.lat:.1f}°N {abs(c1.position.lon):.1f}°W</span></span>
+        <span style="color:#1a3a5c;">│</span>
+        <span style="color:#2a7a3a; font-size:11px;">损伤<span style="color:{dmg_color.get(c1.damage_level,'#4ae04a')}; font-size:11px; margin-left:2px;">企业:{dmg_map.get(c1.damage_level,'?')}</span> <span style="color:{dmg_color.get(c2.damage_level,'#4ae04a')};">大黄蜂:{dmg_map.get(c2.damage_level,'?')}</span></span>
+        <span style="color:#1a3a5c;">│</span>
+        <span style="color:#2a7a3a; font-size:11px;">甲板 <span style="font-size:11px;">{' '.join(deck_parts)}</span></span>
+        <span style="color:#1a3a5c;">│</span>
+        <span style="color:#2a7a3a; font-size:11px;">巡逻<span style="color:#4ae04a; font-size:12px; margin-left:2px;">{cap_total}</span>架</span>
+        <span style="color:#1a3a5c;">│</span>
+        <span style="color:#2a7a3a; font-size:11px;">侦察<span style="color:#4ae04a; font-size:11px; margin-left:2px;">{scout_count}</span> <span style="color:#2a7a3a; font-size:10px;">{scout_txt}</span></span>
+        <span style="color:#1a3a5c;">│</span>
+        <span style="color:#2a7a3a; font-size:11px;">报告<span style="color:#4ae04a; font-size:11px; margin-left:2px;">{pr_count}</span> <span style="color:#2a7a3a; font-size:10px;">{pr_txt}</span></span>
+        <span style="color:#1a3a5c;">│</span>
+        <span style="color:#2a7a3a; font-size:11px;">敌情<span style="color:#ff8800; font-size:11px; margin-left:2px;">{enemy_text}</span></span>
+    </div>
+    """, unsafe_allow_html=True)
+    if st.button("详细态势", key="btn_info", use_container_width=False):
+        _dlg_fleet()
 
     # 六边形地图（Canvas 渲染）
     from src.render.html_map import render_html_map
@@ -466,7 +463,7 @@ with col_main:
     fleet_lon = state.task_forces[0].carriers[0].position.lon
     fleet_q, fleet_r = world_to_hex(fleet_lat, fleet_lon)
     map_html = render_html_map(state, center_q=fleet_q, center_r=fleet_r, radius=8, course=tf.course)
-    st.markdown('<div style="color:#2a7a3a; font-size:10px; letter-spacing:3px; margin-bottom:4px; text-transform:uppercase;">海图</div>',
+    st.markdown('<div style="color:#2a7a3a; font-size:10px; letter-spacing:3px; margin-bottom:4px;">海图（CHART）</div>',
                 unsafe_allow_html=True)
     components.html(map_html, height=600)
 
@@ -474,13 +471,13 @@ with col_main:
     # 操作按钮（一行）
     bc1, bc2 = st.columns(2)
     with bc1:
-        if st.button("ADVANCE +15MIN", use_container_width=True):
+        if st.button("推进 15 分钟（ADVANCE）", use_container_width=True):
             notifications = scheduler.tick(state, 15)
             reset_ap(state)
             st.session_state.event_notifications = notifications
             st.rerun()
     with bc2:
-        if st.button("SITUATION REPORT", use_container_width=True):
+        if st.button("态势简报（REPORT）", use_container_width=True):
             st.session_state._briefing_requested = True
             st.rerun()
 
@@ -508,7 +505,7 @@ if drawer_open:
             st.markdown(f"""
             <div style="background:#0d1a2d; border:1px solid #4ae04a; border-left:3px solid #4ae04a;
                         padding:5px 10px; margin-bottom:3px; box-shadow:0 0 8px rgba(74,224,74,0.1);">
-                <span style="color:#4ae04a; font-size:13px; text-shadow:0 0 4px rgba(74,224,74,0.2);">EXEC {npc_name}: {', '.join(changes)}</span>
+                <span style="color:#4ae04a; font-size:13px; text-shadow:0 0 4px rgba(74,224,74,0.2);">已执行（EXEC）{npc_name}: {', '.join(changes)}</span>
             </div>
             """, unsafe_allow_html=True)
             st.session_state.state_snapshot = None
@@ -545,10 +542,10 @@ if drawer_open:
         padding: 6px 10px;
     ">
         <div style="color:#2a7a3a; font-size:10px; letter-spacing:3px; margin-bottom:4px; border-bottom:1px dashed #152a40; padding-bottom:3px; text-transform:uppercase;">
-            COMM · {NPC_DISPLAY[active_npc_id][0]}
+            通信记录（COMM）· {NPC_DISPLAY[active_npc_id][0]}
         </div>
         <div style="height:360px; overflow-y:auto; padding-right:4px;">
-            {chat_html if chat_html else '<div style="color:#1a5a2a; font-style:italic; text-align:center; padding:60px; text-transform:uppercase; letter-spacing:2px;">AWAITING ORDERS...</div>'}
+            {chat_html if chat_html else '<div style="color:#1a5a2a; font-style:italic; text-align:center; padding:60px; letter-spacing:2px;">等待指令（AWAITING ORDERS）...</div>'}
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -766,7 +763,7 @@ if drawer_open:
         logger.info(f"[PLAYER_INPUT:{active_npc_id}] {user_input}")
 
         npc_label = NPC_DISPLAY[active_npc_id][0]
-        with st.spinner(f"CONNECTING {npc_label}..."):
+        with st.spinner(f"接通中（CONNECTING）{npc_label}..."):
             try:
                 pre_digest = get_state_digest(state)
                 st.session_state.state_snapshot = pre_digest
