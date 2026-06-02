@@ -3,7 +3,7 @@
 Tools follow OpenAI function-calling format. Handlers receive GameState and
 mutate it in-place (for write tools) or return serialized data (for read tools).
 """
-from src.state import GameState, ScoutMission
+from src.state import GameState, ScoutMission, ScoutPhase
 from src.recon_plan import create_recon_plan, ReconPlan
 
 # ---------------------------------------------------------------------------
@@ -189,6 +189,12 @@ def handle_execute_action(state: GameState, action_type: str, details: dict) -> 
             search_bearing_max=bearing_max,
             search_distance_nm=200,
             aircraft_count=count,
+            phase=ScoutPhase.PREPARING,
+            phase_started_at=state.clock.game_time,
+            fuel_pct=100.0,
+            fuel_burn_per_nm=0.8,
+            fuel_burn_per_search_min=0.4,
+            return_heading=(heading + 180) % 360,
         )
         state.active_scouts.append(mission)
         return (

@@ -1,23 +1,51 @@
-"""Scouting detection engine with delay and distortion.
+"""Scouting detection engine with full lifecycle.
 
-Flow:
-1. Scout reaches search area → probability check
-2. If detected → create PendingReport with delay (30-60 min) and distortion
-3. On each time tick → check if any PendingReport has arrived
-4. Arrived reports → convert to EnemyKnown (visible to player)
+Phases:
+1. PREPARING  (0-15min)  — 甲板准备，不消耗燃油
+2. OUTBOUND   (15-60min) — 飞往搜索区域，消耗燃油
+3. SEARCHING  (60-120min)— 搜索中，消耗燃油
+4. RETURNING  (120-165min)— 返航中，消耗燃油
+5. LANDED/DIVERTED/DITCHED/LOST — 着舰/转降/迫降/损失
+
+Fuel model (SBD Dauntless):
+- Cruise: 0.8% fuel per nm
+- Search: 0.4% fuel per minute (circling)
+- Total range: ~250nm at full fuel
 """
 import logging
 import math
 import random
 from datetime import timedelta
 
-from src.state import GameState, EnemyKnown, Position, PendingReport
+from src.state import (
+    GameState, EnemyKnown, Position, PendingReport,
+    ScoutMission, ScoutPhase, AircraftLoss,
+)
 
 logger = logging.getLogger("midway.scouting")
 
+# ── SBD Dauntless parameters (normalized to fuel_pct) ──
+PREP_TIME_MIN = 15          # 起飞准备时间
+OUTBOUND_TIME_MIN = 45      # 飞往搜索区域时间
+SEARCH_TIME_MIN = 60        # 搜索持续时间
+RETURN_TIME_MIN = 45        # 返航时间（与去程相同）
+FUEL_BURN_PER_NM = 0.8      # 每海里消耗燃油百分比
+FUEL_BURN_PER_SEARCH_MIN = 0.4  # 每搜索分钟消耗燃油百分比
+FUEL_RETURN_MINIMUM = 15.0  # 返航最低燃油百分比
+FUEL_CRITICAL = 5.0         # 燃油危险线
+FUEL_LOW = 10.0             # 燃油低线
+
+# ── Loss probabilities ──
+WEATHER_LOSS_PROB = 0.05    # 天气损失概率
+MIDWAY_LANDING_FAIL_PROB = 0.10  # 中途岛着舰失败概率
+ENEMY_CAP_LOSS_PROB = 0.15  # 敌方CAP击落概率（仅在敌军附近）
+
+
+# ═══════════════════════════════════════════════════════
+# Coordinate utilities (same as before)
+# ═══════════════════════════════════════════════════════
 
 def calculate_bearing(pos1: tuple, pos2: tuple) -> float:
-    """Calculate bearing from pos1 to pos2 in degrees."""
     lat1, lon1 = math.radians(pos1[0]), math.radians(pos1[1])
     lat2, lon2 = math.radians(pos2[0]), math.radians(pos2[1])
     dlon = lon2 - lon1
@@ -28,94 +56,186 @@ def calculate_bearing(pos1: tuple, pos2: tuple) -> float:
 
 
 def calculate_distance_nm(pos1: tuple, pos2: tuple) -> float:
-    """Calculate distance in nautical miles between two positions."""
     lat1, lon1 = math.radians(pos1[0]), math.radians(pos1[1])
     lat2, lon2 = math.radians(pos2[0]), math.radians(pos2[1])
     dlat = lat2 - lat1
     dlon = lon2 - lon1
     a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
     c = 2 * math.asin(math.sqrt(a))
-    nm = 3440.065 * c  # Earth radius in nautical miles
-    return nm
+    return 3440.065 * c
 
 
 def in_sector(bearing: float, bearing_min: int, bearing_max: int) -> bool:
-    """Check if a bearing falls within a sector (handles wrap-around)."""
     if bearing_min <= bearing_max:
         return bearing_min <= bearing <= bearing_max
-    else:  # wraps around 360
+    else:
         return bearing >= bearing_min or bearing <= bearing_max
 
 
-def add_position_noise(pos: dict, noise_nm: float = 20) -> dict:
-    """Add random noise to a position (simulates reconnaissance error)."""
-    lat_noise = random.uniform(-noise_nm / 60, noise_nm / 60)
-    lon_noise = random.uniform(-noise_nm / 60, noise_nm / 60)
-    return {
-        "lat": pos.get("lat", 0) + lat_noise,
-        "lon": pos.get("lon", 0) + lon_noise,
-    }
-
+# ═══════════════════════════════════════════════════════
+# Distortion functions (same as before)
+# ═══════════════════════════════════════════════════════
 
 def distort_bearing(bearing: float, max_error: int = 5) -> int:
-    """Add ±max_error degrees of error to a bearing."""
-    error = random.randint(-max_error, max_error)
-    return int((bearing + error + 360) % 360)
+    return int((bearing + random.randint(-max_error, max_error) + 360) % 360)
 
 
 def distort_distance(distance: float, max_error_pct: float = 0.1) -> int:
-    """Add ±max_error_pct percentage error to a distance."""
-    error = random.uniform(-max_error_pct, max_error_pct)
-    return int(distance * (1 + error))
+    return int(distance * (1 + random.uniform(-max_error_pct, max_error_pct)))
 
 
 def distort_count(real_count: int, undercount_prob: float = 0.3) -> int:
-    """Possibly undercount carrier count (cloud cover, bad angle)."""
     if random.random() < undercount_prob:
         return max(1, real_count - random.randint(1, 2))
     return real_count
 
 
 def compute_report_delay(distance_nm: float) -> int:
-    """Compute report delay in minutes based on distance.
-
-    Closer targets → faster reports (20-35 min).
-    Distant targets → slower reports (35-55 min).
-    """
     base = 20
-    distance_factor = (distance_nm / 200) * 25  # 0-25 extra minutes
-    jitter = random.randint(-5, 10)
-    return int(base + distance_factor + jitter)
+    distance_factor = (distance_nm / 200) * 25
+    return int(base + distance_factor + random.randint(-5, 10))
 
 
-def check_scout_results(state: GameState) -> list[str]:
-    """Check all active scout missions. If detection succeeds, create a PendingReport with delay."""
-    notifications = []
+# ═══════════════════════════════════════════════════════
+# Phase state machine
+# ═══════════════════════════════════════════════════════
+
+def _get_fleet_pos(state: GameState) -> tuple:
+    """Get fleet position as (lat, lon)."""
+    tf = state.task_forces[0]
+    return (tf.carriers[0].position.lat, tf.carriers[0].position.lon)
+
+
+def _burn_fuel(scout: ScoutMission, amount: float):
+    """Burn fuel, clamped to 0."""
+    scout.fuel_pct = max(0.0, scout.fuel_pct - amount)
+
+
+def _advance_phase(scout: ScoutMission, new_phase: ScoutPhase, state: GameState):
+    """Transition to a new phase."""
+    scout.phase = new_phase
+    scout.phase_started_at = state.clock.game_time
+    logger.info(f"[SCOUT] {scout.id} → {new_phase.value} (fuel: {scout.fuel_pct:.1f}%)")
+
+
+def _check_enemy_proximity(state: GameState, scout: ScoutMission) -> bool:
+    """Check if scout is near hidden enemy fleet."""
     hidden = state._hidden_actual_enemy or []
+    fleet_pos = _get_fleet_pos(state)
+    for enemy in hidden:
+        epos = enemy.get("position", {})
+        enemy_pos = (epos.get("lat", 0), epos.get("lon", 0))
+        dist = calculate_distance_nm(fleet_pos, enemy_pos)
+        # If scout searched in the right sector and enemy is within range
+        bearing = calculate_bearing(fleet_pos, enemy_pos)
+        if in_sector(bearing, scout.search_bearing_min, scout.search_bearing_max):
+            if dist <= scout.search_distance_nm:
+                return True
+    return False
 
-    for scout in state.active_scouts:
-        if scout.status != "in_flight":
-            continue
 
-        # Check if ETA has been reached
-        elapsed = (state.clock.game_time - scout.launched_at).total_seconds() / 60
-        if elapsed < scout.eta_minutes:
-            continue
+def _process_returning(scout: ScoutMission, state: GameState) -> list[str]:
+    """Process the return phase of a scout mission."""
+    notifications = []
+    elapsed = (state.clock.game_time - scout.phase_started_at).total_seconds() / 60
 
-        # Scout has reached search area
-        scout.status = "completed"
-        logger.info(f"[SCOUT] {scout.id} reached search area ({scout.direction})")
+    # Burn return fuel
+    _burn_fuel(scout, FUEL_BURN_PER_NM * 2)  # ~2nm per 15min tick at cruise
 
-        # Get fleet position
-        tf = state.task_forces[0]
-        fleet_pos = (tf.carriers[0].position.lat, tf.carriers[0].position.lon)
+    # Check fuel status
+    if scout.fuel_pct <= FUEL_CRITICAL:
+        # Aircraft lost
+        lost = min(2, scout.aircraft_count - scout.aircraft_lost)
+        if lost > 0:
+            scout.aircraft_lost += lost
+            scout.loss_reasons.append(f"燃油耗尽损失 {lost} 架")
+            state.aircraft_losses.extend([
+                AircraftLoss(
+                    scout_id=scout.id,
+                    aircraft_number=scout.aircraft_lost - lost + i + 1,
+                    reason="fuel_exhausted",
+                    time=state.clock.game_time,
+                )
+                for i in range(lost)
+            ])
+            notifications.append(f"⚠️ {scout.id}: {lost} 架飞机因燃油耗尽坠海！（剩余 {scout.aircraft_count - scout.aircraft_lost} 架）")
+            logger.warning(f"[SCOUT] {scout.id} LOST {lost} aircraft — fuel exhausted")
 
-        # Check if any hidden enemy is in the search sector
+        # If all lost
+        if scout.aircraft_lost >= scout.aircraft_count:
+            _advance_phase(scout, ScoutPhase.LOST, state)
+            scout.status = "completed"
+            notifications.append(f"❌ {scout.id}: 全部飞机损失！任务终止。")
+            return notifications
+
+    elif scout.fuel_pct <= FUEL_LOW:
+        # 50% chance of losing an aircraft
+        if random.random() < 0.5:
+            lost = 1
+            scout.aircraft_lost += lost
+            scout.loss_reasons.append(f"低燃油损失 {lost} 架")
+            state.aircraft_losses.append(AircraftLoss(
+                scout_id=scout.id,
+                aircraft_number=scout.aircraft_lost,
+                reason="fuel_exhausted",
+                time=state.clock.game_time,
+            ))
+            notifications.append(f"⚠️ {scout.id}: 1 架飞机因燃油不足坠海！（剩余 {scout.aircraft_count - scout.aircraft_lost} 架）")
+
+    # Check if return phase complete
+    if elapsed >= RETURN_TIME_MIN:
+        # Check weather loss (5% per aircraft remaining)
+        remaining = scout.aircraft_count - scout.aircraft_lost
+        weather_lost = sum(1 for _ in range(remaining) if random.random() < WEATHER_LOSS_PROB)
+        if weather_lost > 0:
+            scout.aircraft_lost += weather_lost
+            scout.loss_reasons.append(f"天气损失 {weather_lost} 架")
+            state.aircraft_losses.extend([
+                AircraftLoss(
+                    scout_id=scout.id,
+                    aircraft_number=scout.aircraft_lost - weather_lost + i + 1,
+                    reason="weather",
+                    time=state.clock.game_time,
+                )
+                for i in range(weather_lost)
+            ])
+            notifications.append(f"🌧️ {scout.id}: {weather_lost} 架飞机因恶劣天气损失")
+
+        # Final status
+        remaining = scout.aircraft_count - scout.aircraft_lost
+        if remaining <= 0:
+            _advance_phase(scout, ScoutPhase.LOST, state)
+            scout.status = "completed"
+            notifications.append(f"❌ {scout.id}: 全部飞机损失！任务终止。")
+        else:
+            _advance_phase(scout, ScoutPhase.LANDED, state)
+            scout.status = "completed"
+            notifications.append(
+                f"✅ {scout.id}: {remaining}/{scout.aircraft_count} 架飞机安全着舰"
+                + (f"（损失 {scout.aircraft_lost} 架）" if scout.aircraft_lost > 0 else "")
+            )
+            logger.info(f"[SCOUT] {scout.id} LANDED — {remaining}/{scout.aircraft_count} aircraft")
+
+    return notifications
+
+
+def _process_searching(scout: ScoutMission, state: GameState) -> list[str]:
+    """Process the search phase — detect enemies and check fuel."""
+    notifications = []
+    elapsed_search = (state.clock.game_time - scout.phase_started_at).total_seconds() / 60
+
+    # Burn search fuel
+    _burn_fuel(scout, FUEL_BURN_PER_SEARCH_MIN * 15)  # 15 min per tick
+
+    # Detection check (at end of search)
+    if elapsed_search >= SEARCH_TIME_MIN:
+        hidden = state._hidden_actual_enemy or []
+        fleet_pos = _get_fleet_pos(state)
         detected = False
-        for enemy in hidden:
-            enemy_pos_dict = enemy.get("position", {})
-            enemy_pos = (enemy_pos_dict.get("lat", 0), enemy_pos_dict.get("lon", 0))
 
+        for enemy in hidden:
+            epos = enemy.get("position", {})
+            enemy_pos = (epos.get("lat", 0), epos.get("lon", 0))
             bearing = calculate_bearing(fleet_pos, enemy_pos)
             distance = calculate_distance_nm(fleet_pos, enemy_pos)
 
@@ -124,17 +244,13 @@ def check_scout_results(state: GameState) -> list[str]:
             if distance > scout.search_distance_nm:
                 continue
 
-            # Probability detection
-            base_prob = 0.8  # 基础概率（从0.7提高）
+            base_prob = 0.8
             distance_ratio = distance / scout.search_distance_nm
-            distance_factor = 1.0 - (distance_ratio * 0.4)  # 距离衰减（从0.6降低）
-            prob = base_prob * distance_factor
+            prob = base_prob * (1.0 - distance_ratio * 0.4)
 
             if random.random() < prob:
-                # Detected! Create delayed report with distortion
                 real_count = len(enemy.get("carriers", []))
                 delay = compute_report_delay(distance)
-
                 report = PendingReport(
                     scout_id=scout.id,
                     detected_at=state.clock.game_time,
@@ -148,19 +264,82 @@ def check_scout_results(state: GameState) -> list[str]:
                     confidence="medium" if distance > 100 else "high",
                 )
                 state.pending_reports.append(report)
-                notifications.append(f"📡 {scout.id} 发现敌舰！报告正在传输中，预计 {delay} 分钟后到达")
-                logger.info(f"[SCOUT] {scout.id} DETECTED enemy at bearing {int(bearing)}°, distance {int(distance)}nm, delay={delay}min")
+                notifications.append(
+                    f"📡 {scout.id} 发现敌舰！报告传输中，预计 {delay} 分钟后到达"
+                )
+                logger.info(f"[SCOUT] {scout.id} DETECTED at bearing {int(bearing)}°, {int(distance)}nm")
                 detected = True
                 break
 
         if not detected:
-            msg = f"[{state.clock.game_time.strftime('%H:%M')}] {scout.id}: 搜索扇面内未发现敌舰"
-            state.incoming_messages.append(msg)
-            notifications.append(f"📡 {scout.id} 报告：扇面内未发现敌舰")
-            logger.info(f"[SCOUT] {scout.id} found nothing in sector")
+            state.incoming_messages.append(
+                f"[{state.clock.game_time.strftime('%H:%M')}] {scout.id}: 搜索扇面内未发现敌舰"
+            )
+            notifications.append(f"📡 {scout.id}: 扇面内未发现敌舰")
+
+        # Transition to return
+        scout.return_heading = (scout.heading + 180) % 360  # Reverse heading
+        scout.return_eta_minutes = RETURN_TIME_MIN
+        _advance_phase(scout, ScoutPhase.RETURNING, state)
 
     return notifications
 
+
+def _process_outbound(scout: ScoutMission, state: GameState) -> list[str]:
+    """Process the outbound flight phase."""
+    notifications = []
+    elapsed = (state.clock.game_time - scout.phase_started_at).total_seconds() / 60
+
+    # Burn outbound fuel
+    _burn_fuel(scout, FUEL_BURN_PER_NM * 2)  # ~2nm per 15min tick
+
+    if elapsed >= OUTBOUND_TIME_MIN:
+        _advance_phase(scout, ScoutPhase.SEARCHING, state)
+
+    return notifications
+
+
+def _process_preparing(scout: ScoutMission, state: GameState) -> list[str]:
+    """Process the preparation phase."""
+    elapsed = (state.clock.game_time - scout.phase_started_at).total_seconds() / 60
+    if elapsed >= PREP_TIME_MIN:
+        _advance_phase(scout, ScoutPhase.OUTBOUND, state)
+    return []
+
+
+# ═══════════════════════════════════════════════════════
+# Main check function (called by EventScheduler)
+# ═══════════════════════════════════════════════════════
+
+def check_scout_results(state: GameState) -> list[str]:
+    """Check all active scout missions through the phase state machine.
+
+    Each call processes the current phase. On the next tick, the next phase
+    will be processed. This ensures time passes between phase transitions.
+    """
+    notifications = []
+
+    for scout in state.active_scouts:
+        if scout.status != "in_flight":
+            continue
+        if scout.phase in (ScoutPhase.LANDED, ScoutPhase.LOST, ScoutPhase.DITCHED, ScoutPhase.DIVERTED):
+            continue
+
+        if scout.phase == ScoutPhase.PREPARING:
+            notifications.extend(_process_preparing(scout, state))
+        elif scout.phase == ScoutPhase.OUTBOUND:
+            notifications.extend(_process_outbound(scout, state))
+        elif scout.phase == ScoutPhase.SEARCHING:
+            notifications.extend(_process_searching(scout, state))
+        elif scout.phase == ScoutPhase.RETURNING:
+            notifications.extend(_process_returning(scout, state))
+
+    return notifications
+
+
+# ═══════════════════════════════════════════════════════
+# Pending reports (unchanged logic)
+# ═══════════════════════════════════════════════════════
 
 def check_pending_reports(state: GameState) -> list[str]:
     """Check if any pending reports have arrived. Convert to EnemyKnown."""
@@ -169,9 +348,8 @@ def check_pending_reports(state: GameState) -> list[str]:
 
     for report in state.pending_reports:
         if state.clock.game_time >= report.arrive_at:
-            # Report has arrived — convert to EnemyKnown
             enemy = EnemyKnown(
-                position=Position(lat=0, lon=0),  # Position not used for display
+                position=Position(lat=0, lon=0),
                 description=(
                     f"SBD {report.scout_id}: 敌航母约 {report.reported_carrier_count} 艘"
                     f" - 方位 {report.reported_bearing}°"
@@ -186,9 +364,8 @@ def check_pending_reports(state: GameState) -> list[str]:
             state.incoming_messages.append(msg)
             notifications.append(f"📡 {report.scout_id} 报告到达：{enemy.description}")
             arrived.append(report)
-            logger.info(f"[REPORT] {report.scout_id} report arrived: bearing {report.reported_bearing}°, distance {report.reported_distance_nm}nm, carriers {report.reported_carrier_count}")
+            logger.info(f"[REPORT] {report.scout_id} arrived: {enemy.description}")
 
-    # Remove arrived reports
     for r in arrived:
         state.pending_reports.remove(r)
 

@@ -88,38 +88,35 @@ class TestReportDelay:
 class TestPendingReportFlow:
     """Test the full flow: detection → pending → arrival."""
 
+    def _advance_scout(self, state, ticks=1, tick_min=15):
+        """Helper: advance time and check scouts, simulating EventScheduler ticks."""
+        for _ in range(ticks):
+            state.clock.game_time += timedelta(minutes=tick_min)
+            check_scout_results(state)
+
     def test_detection_creates_pending_report(self):
-        random.seed(1)  # Known to detect
+        random.seed(1)
         state = make_state_with_enemy()
         handle_execute_action(state, "launch_scout", {"direction": "southwest"})
 
-        # Advance past ETA (60 min)
-        state.clock.game_time += timedelta(minutes=65)
-        notifications = check_scout_results(state)
+        self._advance_scout(state, ticks=9)
 
-        # Should create pending report, not immediate EnemyKnown
         assert len(state.pending_reports) == 1
-        assert len(state.known_enemy) == 0  # Not yet visible
-        assert any("传输中" in n for n in notifications)
+        assert len(state.known_enemy) == 0
+        assert state.pending_reports[0].scout_id is not None
 
     def test_pending_report_arrives_after_delay(self):
         random.seed(1)
         state = make_state_with_enemy()
         handle_execute_action(state, "launch_scout", {"direction": "southwest"})
 
-        # Advance past ETA
-        state.clock.game_time += timedelta(minutes=65)
-        check_scout_results(state)
-
-        # Get the delay
+        self._advance_scout(state, ticks=9)
         report = state.pending_reports[0]
-        delay_minutes = (report.arrive_at - report.detected_at).total_seconds() / 60
 
         # Advance past arrival time
         state.clock.game_time = report.arrive_at + timedelta(minutes=1)
         notifications = check_pending_reports(state)
 
-        # Now it should be in known_enemy
         assert len(state.pending_reports) == 0
         assert len(state.known_enemy) == 1
         assert any("报告到达" in n for n in notifications)
@@ -129,11 +126,9 @@ class TestPendingReportFlow:
         state = make_state_with_enemy()
         handle_execute_action(state, "launch_scout", {"direction": "southwest"})
 
-        state.clock.game_time += timedelta(minutes=65)
-        check_scout_results(state)
-
+        self._advance_scout(state, ticks=9)
         report = state.pending_reports[0]
-        # Real bearing is ~233°, reported should be different
+
         assert report.real_bearing != report.reported_bearing or \
                report.real_distance_nm != report.reported_distance_nm or \
                report.real_carrier_count != report.reported_carrier_count
@@ -143,12 +138,9 @@ class TestPendingReportFlow:
         state = make_state_with_enemy()
         handle_execute_action(state, "launch_scout", {"direction": "southwest"})
 
-        state.clock.game_time += timedelta(minutes=65)
-        check_scout_results(state)
+        self._advance_scout(state, ticks=9)
 
-        # Player shouldn't see the report yet
         assert len(state.known_enemy) == 0
-        # But should see "pending" in UI (tested via app.py)
 
 
 class TestEventSchedulerIntegration:
@@ -162,12 +154,9 @@ class TestEventSchedulerIntegration:
 
         handle_execute_action(state, "launch_scout", {"direction": "southwest"})
 
-        # Advance 5 ticks (75 min) — past ETA but maybe not past delay
         all_notifications = []
-        for _ in range(5):
+        for _ in range(9):
             notes = scheduler.tick(state, 15)
             all_notifications.extend(notes)
 
-        # Should have detection notification
         assert any("传输中" in n for n in all_notifications)
-        # May or may not have arrived yet depending on delay

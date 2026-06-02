@@ -108,21 +108,25 @@ class TestScoutLaunch:
 class TestScoutDetection:
     """Test the detection probability system."""
 
+    def _advance_scout(self, state, ticks=1, tick_min=15):
+        """Helper: advance time and check scouts, simulating EventScheduler ticks."""
+        from datetime import timedelta
+        for _ in range(ticks):
+            state.clock.game_time += timedelta(minutes=tick_min)
+            check_scout_results(state)
+
     def test_detection_creates_pending_report(self):
         """With favorable seed, southwest scout should detect and create pending report."""
         random.seed(1)  # Known to succeed
         state = make_state_with_enemy()
         handle_execute_action(state, "launch_scout", {"direction": "southwest"})
 
-        # Advance time past ETA
-        from datetime import timedelta
-        state.clock.game_time += timedelta(minutes=61)
+        # Advance 9 ticks × 15min = 135 min (PREP 15 + OUTBOUND 45 + SEARCH 60 + 15 margin)
+        self._advance_scout(state, ticks=9)
 
-        notifications = check_scout_results(state)
-        # Day 4: detection creates PendingReport, not immediate EnemyKnown
+        # Detection creates PendingReport, not immediate EnemyKnown
         assert len(state.pending_reports) == 1
         assert len(state.known_enemy) == 0  # Not visible yet
-        assert any("传输中" in n for n in notifications)
 
     def test_detection_fails_when_sector_misses(self):
         """Northwest scout should never find enemy at 30°N 178°W."""
@@ -130,21 +134,17 @@ class TestScoutDetection:
         state = make_state_with_enemy()
         handle_execute_action(state, "launch_scout", {"direction": "northwest"})
 
-        from datetime import timedelta
-        state.clock.game_time += timedelta(minutes=61)
+        self._advance_scout(state, ticks=9)
 
-        check_scout_results(state)
         assert len(state.known_enemy) == 0
 
-    def test_detection_not_before_eta(self):
-        """Scout should not report before ETA."""
+    def test_detection_not_before_search(self):
+        """Scout should not report before SEARCHING phase completes."""
         state = make_state_with_enemy()
         handle_execute_action(state, "launch_scout", {"direction": "southwest"})
 
-        from datetime import timedelta
-        state.clock.game_time += timedelta(minutes=30)  # Only 30 min, ETA is 60
+        self._advance_scout(state, ticks=2)  # 30 min, still PREPARING
 
-        check_scout_results(state)
         assert len(state.known_enemy) == 0
         assert state.active_scouts[0].status == "in_flight"
 
@@ -153,7 +153,7 @@ class TestEventSchedulerIntegration:
     """Test scouting integrated with the event scheduler."""
 
     def test_full_flow_with_scheduler(self):
-        """Launch scout → advance time 4 ticks → detection creates pending report."""
+        """Launch scout → advance 8 ticks (120 min) → detection creates pending report."""
         random.seed(1)
         state = make_state_with_enemy()
         scheduler = EventScheduler()
@@ -161,12 +161,12 @@ class TestEventSchedulerIntegration:
         # Launch scout
         handle_execute_action(state, "launch_scout", {"direction": "southwest"})
 
-        # Advance 4 × 15 min = 60 min
+        # Advance 8 × 15 min = 120 min (PREP 15 + OUTBOUND 45 + SEARCH 60)
         all_notifications = []
-        for _ in range(4):
+        for _ in range(8):
             notes = scheduler.tick(state, 15)
             all_notifications.extend(notes)
 
-        # Day 4: detection creates pending report, not immediate EnemyKnown
+        # Detection creates pending report, not immediate EnemyKnown
         assert len(state.pending_reports) == 1
         assert any("传输中" in n for n in all_notifications)

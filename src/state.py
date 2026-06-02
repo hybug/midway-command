@@ -83,18 +83,55 @@ class PendingSuggestion(BaseModel):
     proposed_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class ScoutPhase(str, Enum):
+    """侦察任务阶段"""
+    PREPARING = "preparing"     # 起飞准备 (15分钟)
+    OUTBOUND = "outbound"       # 飞往搜索区域
+    SEARCHING = "searching"     # 搜索中
+    RETURNING = "returning"     # 返航中
+    LANDED = "landed"           # 着舰
+    DIVERTED = "diverted"       # 转降中途岛
+    DITCHED = "ditched"         # 海面迫降
+    LOST = "lost"               # 损失（燃油耗尽/被击落）
+
+
 class ScoutMission(BaseModel):
-    """一次侦察任务"""
+    """一次侦察任务（含燃油和返航追踪）"""
     id: str
     direction: str  # northwest / north / east / etc.
     heading: int  # 侦察机航向 (0-359)
     launched_at: datetime
     eta_minutes: int = 60
-    status: str = "in_flight"  # in_flight / completed
+    status: str = "in_flight"  # in_flight / completed（向后兼容）
     search_bearing_min: int = 0
     search_bearing_max: int = 0
     search_distance_nm: int = 200
     aircraft_count: int = 4
+
+    # 阶段追踪
+    phase: ScoutPhase = ScoutPhase.PREPARING
+    phase_started_at: Optional[datetime] = None
+
+    # 燃油追踪
+    fuel_pct: float = 100.0
+    fuel_burn_per_nm: float = 0.8      # 每海里消耗百分比
+    fuel_burn_per_search_min: float = 0.4  # 每搜索分钟消耗百分比
+
+    # 返航信息
+    return_eta_minutes: int = 0
+    return_heading: int = 0
+
+    # 损失追踪
+    aircraft_lost: int = 0
+    loss_reasons: list[str] = Field(default_factory=list)
+
+
+class AircraftLoss(BaseModel):
+    """单架飞机损失记录"""
+    scout_id: str
+    aircraft_number: int
+    reason: str  # fuel_exhausted / ditched / shot_down / diverted_midway / weather
+    time: datetime
 
 
 class PendingReport(BaseModel):
@@ -127,6 +164,7 @@ class GameState(BaseModel):
     pending_suggestions: list[PendingSuggestion] = Field(default_factory=list)
     active_scouts: list[ScoutMission] = Field(default_factory=list)
     pending_reports: list[PendingReport] = Field(default_factory=list)
+    aircraft_losses: list[AircraftLoss] = Field(default_factory=list)
     # Action Points
     turn_type: TurnType = TurnType.NORMAL
     action_points: int = Field(default=3, ge=0)

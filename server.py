@@ -135,8 +135,21 @@ async def get_state():
                 "launched_at": s.launched_at.isoformat(),
                 "search_bearing_min": s.search_bearing_min,
                 "search_bearing_max": s.search_bearing_max,
+                "phase": s.phase.value,
+                "fuel_pct": s.fuel_pct,
+                "aircraft_lost": s.aircraft_lost,
+                "loss_reasons": s.loss_reasons,
             }
             for s in game_state.active_scouts
+        ],
+        "aircraft_losses": [
+            {
+                "scout_id": l.scout_id,
+                "aircraft_number": l.aircraft_number,
+                "reason": l.reason,
+                "time": l.time.isoformat(),
+            }
+            for l in game_state.aircraft_losses
         ],
         "pending_reports": [
             {

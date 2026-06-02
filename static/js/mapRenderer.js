@@ -75,6 +75,7 @@ class MapRenderer {
       this._drawGrid(ctx, W, H, ox, oy);
       this._drawDistanceRings(ctx, fpx, fpy, 8);
       this._drawSearchSectors(ctx, state, fqr, frr);
+      this._drawScoutAircraft(ctx, state, fqr, frr);
       this._drawMidway(ctx, 0, 0, 1.5);
       this._drawOwnFleet(ctx, tf);
       this._drawEnemyContacts(ctx, state);
@@ -285,6 +286,81 @@ class MapRenderer {
     ctx.fillText('Henderson Field', 7 * s, 9 * s);
 
     ctx.restore();
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Scout Aircraft
+  // ═══════════════════════════════════════════════════════
+  _drawScoutAircraft(ctx, state, fleetQ, fleetR) {
+    const [fx, fy] = this._hexToPixel(fleetQ, fleetR);
+
+    state.active_scouts.forEach(scout => {
+      if (scout.status !== 'in_flight') return;
+
+      // Position based on phase
+      let px, py;
+      const dist = scout.search_distance_nm / CELL_NM * HEX_SIZE * SQRT3;
+      const midAngle = ((scout.search_bearing_min + scout.search_bearing_max) / 2 - 90) * Math.PI / 180;
+
+      if (scout.phase === 'preparing' || scout.phase === 'outbound') {
+        // En route — between fleet and search area
+        const progress = scout.phase === 'preparing' ? 0.1 : 0.6;
+        px = fx + dist * progress * Math.cos(midAngle);
+        py = fy + dist * progress * Math.sin(midAngle);
+      } else if (scout.phase === 'searching') {
+        // At search area
+        px = fx + dist * 0.8 * Math.cos(midAngle);
+        py = fy + dist * 0.8 * Math.sin(midAngle);
+      } else if (scout.phase === 'returning') {
+        // Returning — between search area and fleet
+        const progress = 0.3;
+        px = fx + dist * progress * Math.cos(midAngle);
+        py = fy + dist * progress * Math.sin(midAngle);
+      } else {
+        return; // Terminal phases — don't draw
+      }
+
+      ctx.save();
+      ctx.translate(px, py);
+
+      // Aircraft symbol (small triangle)
+      const isReturning = scout.phase === 'returning';
+      const fuelColor = scout.fuel_pct > 30 ? COL.inkMain :
+                        scout.fuel_pct > 15 ? '#8a6020' : COL.enemyRed;
+
+      ctx.strokeStyle = isReturning ? COL.inkFade : fuelColor;
+      ctx.lineWidth = isReturning ? 1 : 1.5;
+      if (isReturning) ctx.setLineDash([2, 2]);
+
+      // Triangle pointing in direction of travel
+      const angle = isReturning ? (scout.return_heading - 90) * Math.PI / 180 : midAngle;
+      const size = 6;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle) * size, Math.sin(angle) * size);
+      ctx.lineTo(Math.cos(angle + 2.3) * size * 0.6, Math.sin(angle + 2.3) * size * 0.6);
+      ctx.lineTo(Math.cos(angle - 2.3) * size * 0.6, Math.sin(angle - 2.3) * size * 0.6);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Label
+      ctx.fillStyle = fuelColor;
+      ctx.font = '8px Caveat, cursive';
+      ctx.textAlign = 'center';
+      const phaseLabel = scout.phase === 'searching' ? 'SEARCH' :
+                         scout.phase === 'returning' ? 'RETURN' :
+                         scout.phase === 'preparing' ? 'PREP' : 'EN ROUTE';
+      ctx.fillText(scout.id, 0, -10);
+      ctx.font = '7px Caveat, cursive';
+      ctx.fillStyle = COL.inkFade;
+      ctx.fillText(`${Math.round(scout.fuel_pct)}% ${phaseLabel}`, 0, 12);
+      if (scout.aircraft_lost > 0) {
+        ctx.fillStyle = COL.enemyRed;
+        ctx.fillText(`-${scout.aircraft_lost}`, 8, 12);
+      }
+
+      ctx.restore();
+    });
   }
 
   // ═══════════════════════════════════════════════════════
