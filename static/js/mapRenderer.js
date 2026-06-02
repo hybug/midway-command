@@ -1,7 +1,6 @@
 /**
  * 中途岛指挥官 — Canvas 海图渲染器
- * Phase 2: 纸张背景 + 网格 + 中途岛 + 罗盘 + 比例尺
- * Phase 3: 动态实体（己方/敌方/扇面/距离环）
+ * 参考：1942年美军太平洋海图风格
  */
 
 // ── Constants ──
@@ -11,26 +10,23 @@ const CELL_NM = 10;
 const REF_LAT = 28.2;
 const REF_LON = -177.4;
 
-// ── Colors (from CSS Variables, hardcoded for Canvas) ──
+// ── Colors ──
 const COL = {
   paperBase: '#f5edd6',
-  paperDark: '#e8dcc8',
   inkMain: '#2a2218',
   inkFade: '#6b5d4a',
   inkFaint: '#a89878',
   enemyRed: '#8b2500',
-  gridLine: 'rgba(196, 184, 154, 0.5)',
-  lagoon: '#c8d8c8',
-  sand: '#c4b080',
-  eastern: '#b8a870',
-  reef: '#6b5d4a',
+  gridLine: 'rgba(160, 140, 110, 0.35)',
+  lagoon: '#b8d4c8',
+  reef: '#8aaa98',
+  sand: '#d4c4a0',
+  eastern: '#c8b890',
   runway: '#6b5d4a',
-  secretRed: '#8b2500',
+  depth: 'rgba(100,140,180,0.15)',
+  secretRed: '#c0392b',
 };
 
-// ═══════════════════════════════════════════════════════
-// MapRenderer class
-// ═══════════════════════════════════════════════════════
 class MapRenderer {
   constructor(canvasId) {
     this.canvas = document.getElementById(canvasId);
@@ -61,7 +57,7 @@ class MapRenderer {
     const W = this.width, H = this.height;
 
     this._drawPaper(ctx, W, H);
-    this._drawGrid(ctx, W, H);
+    this._drawChartBorder(ctx, W, H);
 
     if (state) {
       const tf = state.task_forces[0];
@@ -74,163 +70,405 @@ class MapRenderer {
       ctx.save();
       ctx.translate(ox, oy);
 
+      // Draw layers in order (back to front)
+      this._drawDepthContours(ctx, fpx, fpy);
+      this._drawGrid(ctx, W, H, ox, oy);
       this._drawDistanceRings(ctx, fpx, fpy, 8);
       this._drawSearchSectors(ctx, state, fqr, frr);
-      this._drawMidway(ctx, 0, 0, 1.2);
+      this._drawMidway(ctx, 0, 0, 1.5);
       this._drawOwnFleet(ctx, tf);
-      this._drawCourseArrow(ctx, fpx, fpy, tf.course);
       this._drawEnemyContacts(ctx, state);
 
       ctx.restore();
     } else {
-      // No state yet — just draw Midway at center
-      this._drawMidway(ctx, this.centerX, this.centerY, 1.2);
+      this._drawGrid(ctx, W, H, 0, 0);
+      this._drawMidway(ctx, this.centerX, this.centerY, 1.5);
     }
 
-    this._drawCompass(ctx, W - 45, 45, 25);
+    this._drawCompass(ctx, W - 50, 50, 28);
     this._drawScaleBar(ctx, W, H);
     this._drawSecretStamp(ctx);
   }
 
   // ═══════════════════════════════════════════════════════
-  // Background
+  // Paper Background
   // ═══════════════════════════════════════════════════════
   _drawPaper(ctx, W, H) {
+    // Base
     ctx.fillStyle = COL.paperBase;
     ctx.fillRect(0, 0, W, H);
-    // Grain noise
-    for (let i = 0; i < 6000; i++) {
-      ctx.fillStyle = `rgba(42,34,24,${Math.random() * 0.03})`;
+    // Subtle grain
+    for (let i = 0; i < 4000; i++) {
+      ctx.fillStyle = `rgba(42,34,24,${Math.random() * 0.025})`;
       ctx.fillRect(Math.random() * W, Math.random() * H, 1, 1);
     }
-    // Edge darkening (vignette)
-    const edge = ctx.createLinearGradient(0, 0, 0, H);
-    edge.addColorStop(0, 'rgba(42,34,24,0.06)');
-    edge.addColorStop(0.04, 'rgba(42,34,24,0)');
-    edge.addColorStop(0.96, 'rgba(42,34,24,0)');
-    edge.addColorStop(1, 'rgba(42,34,24,0.06)');
-    ctx.fillStyle = edge;
-    ctx.fillRect(0, 0, W, H);
-    const edgeH = ctx.createLinearGradient(0, 0, W, 0);
-    edgeH.addColorStop(0, 'rgba(42,34,24,0.04)');
-    edgeH.addColorStop(0.03, 'rgba(42,34,24,0)');
-    edgeH.addColorStop(0.97, 'rgba(42,34,24,0)');
-    edgeH.addColorStop(1, 'rgba(42,34,24,0.04)');
-    ctx.fillStyle = edgeH;
-    ctx.fillRect(0, 0, W, H);
     // Age stains
-    for (let i = 0; i < 4; i++) {
-      const sx = Math.random() * W, sy = Math.random() * H, sr = 20 + Math.random() * 50;
+    for (let i = 0; i < 3; i++) {
+      const sx = Math.random() * W, sy = Math.random() * H, sr = 25 + Math.random() * 60;
       const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr);
-      grad.addColorStop(0, 'rgba(180,160,120,0.05)');
-      grad.addColorStop(1, 'rgba(180,160,120,0)');
+      grad.addColorStop(0, 'rgba(170,150,110,0.04)');
+      grad.addColorStop(1, 'rgba(170,150,110,0)');
       ctx.fillStyle = grad;
       ctx.fillRect(sx - sr, sy - sr, sr * 2, sr * 2);
     }
   }
 
   // ═══════════════════════════════════════════════════════
-  // Grid
+  // Chart Border (double line)
   // ═══════════════════════════════════════════════════════
-  _drawGrid(ctx, W, H) {
-    const step = HEX_SIZE * SQRT3 * 2;
+  _drawChartBorder(ctx, W, H) {
+    ctx.strokeStyle = COL.inkFade;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(8, 8, W - 16, H - 16);
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(12, 12, W - 24, H - 24);
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Grid (coordinate lines with degree markers)
+  // ═══════════════════════════════════════════════════════
+  _drawGrid(ctx, W, H, ox, oy) {
+    const step = HEX_SIZE * SQRT3 * 3;
     ctx.strokeStyle = COL.gridLine;
-    ctx.lineWidth = 0.4;
-    ctx.setLineDash([5, 5]);
-    for (let x = 0; x < W; x += step) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    ctx.lineWidth = 0.3;
+    ctx.setLineDash([4, 6]);
+
+    // Vertical lines
+    for (let x = ox % step; x < W; x += step) {
+      ctx.beginPath(); ctx.moveTo(x, 14); ctx.lineTo(x, H - 14); ctx.stroke();
     }
-    for (let y = 0; y < H; y += step) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    // Horizontal lines
+    for (let y = oy % step; y < H; y += step) {
+      ctx.beginPath(); ctx.moveTo(14, y); ctx.lineTo(W - 14, y); ctx.stroke();
     }
     ctx.setLineDash([]);
-    // Degree labels
+
+    // Degree labels at edges
     ctx.fillStyle = COL.inkFaint;
-    ctx.font = '9px Caveat, cursive';
-    ctx.textAlign = 'left';
-    for (let x = 0; x < W; x += step) {
-      ctx.fillText((177 + (x / W) * 2).toFixed(1) + '°W', x + 3, 12);
-    }
+    ctx.font = '8px Caveat, cursive';
     ctx.textAlign = 'center';
-    for (let y = 0; y < H; y += step) {
-      ctx.fillText((28 + (y / H) * 2).toFixed(1) + '°N', 18, y - 3);
+    for (let x = ox % step; x < W; x += step) {
+      const lonDeg = 177 + ((x - ox) / (HEX_SIZE * SQRT3)) * CELL_NM / 60;
+      ctx.fillText(Math.abs(lonDeg).toFixed(0) + '°', x, 10);
+      ctx.fillText(Math.abs(lonDeg).toFixed(0) + '°', x, H - 4);
+    }
+    ctx.textAlign = 'right';
+    for (let y = oy % step; y < H; y += step) {
+      const latDeg = 28 + ((y - oy) / (HEX_SIZE * 1.5)) * CELL_NM / 60;
+      ctx.fillText(latDeg.toFixed(0) + '°', 22, y + 3);
+      ctx.textAlign = 'left';
+      ctx.fillText(latDeg.toFixed(0) + '°', W - 16, y + 3);
+      ctx.textAlign = 'right';
     }
   }
 
   // ═══════════════════════════════════════════════════════
-  // Midway Atoll
+  // Depth Contours
+  // ═══════════════════════════════════════════════════════
+  _drawDepthContours(ctx, fx, fy) {
+    ctx.save();
+    ctx.strokeStyle = COL.depth;
+    ctx.lineWidth = 0.6;
+    ctx.setLineDash([3, 4]);
+    // Concentric irregular circles around Midway (depth contours)
+    const depths = [30, 50, 80, 120];
+    depths.forEach((d, i) => {
+      const r = 25 + i * 18;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 1.2, r, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Midway Atoll (improved)
   // ═══════════════════════════════════════════════════════
   _drawMidway(ctx, cx, cy, scale) {
     ctx.save();
     ctx.translate(cx, cy);
+    const s = scale;
 
-    // Lagoon
-    ctx.fillStyle = COL.lagoon;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 12 * scale, 10 * scale, -0.2, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Reef ring (dotted)
+    // Outer reef ring (irregular, organic shape)
+    ctx.fillStyle = 'rgba(180,210,195,0.3)';
     ctx.strokeStyle = COL.reef;
     ctx.lineWidth = 1.5;
-    ctx.setLineDash([2, 2]);
     ctx.beginPath();
-    ctx.ellipse(0, 0, 14 * scale, 12 * scale, -0.2, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Sand Island (left, larger)
-    ctx.fillStyle = COL.sand;
-    ctx.strokeStyle = COL.inkMain;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.ellipse(-5 * scale, -1 * scale, 5 * scale, 3 * scale, -0.3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Eastern Island (triangular)
-    ctx.fillStyle = COL.eastern;
-    ctx.beginPath();
-    ctx.moveTo(6 * scale, -3 * scale);
-    ctx.lineTo(10 * scale, 1 * scale);
-    ctx.lineTo(4 * scale, 2 * scale);
+    // Organic reef shape using bezier curves
+    ctx.moveTo(-14 * s, 2 * s);
+    ctx.bezierCurveTo(-14 * s, -8 * s, -8 * s, -13 * s, 0, -12 * s);
+    ctx.bezierCurveTo(8 * s, -13 * s, 14 * s, -8 * s, 14 * s, 2 * s);
+    ctx.bezierCurveTo(14 * s, 8 * s, 8 * s, 13 * s, 0, 12 * s);
+    ctx.bezierCurveTo(-8 * s, 13 * s, -14 * s, 8 * s, -14 * s, 2 * s);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
-    // Runways on Eastern Island
-    ctx.strokeStyle = COL.runway;
-    ctx.lineWidth = 0.6;
-    ctx.beginPath(); ctx.moveTo(5 * scale, -2 * scale); ctx.lineTo(9 * scale, 1 * scale); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(9 * scale, 1 * scale); ctx.lineTo(5 * scale, 1.5 * scale); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(5 * scale, 1.5 * scale); ctx.lineTo(5 * scale, -2 * scale); ctx.stroke();
+    // Lagoon (lighter blue-green)
+    ctx.fillStyle = COL.lagoon;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 10 * s, 8 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Spit Island
+    // Sand Island (western, larger, irregular shape)
     ctx.fillStyle = COL.sand;
     ctx.strokeStyle = COL.inkMain;
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.arc(-2 * scale, 6 * scale, 1.5 * scale, 0, Math.PI * 2);
+    // Organic Sand Island shape
+    ctx.moveTo(-8 * s, -2 * s);
+    ctx.bezierCurveTo(-7 * s, -4 * s, -3 * s, -4 * s, -2 * s, -2 * s);
+    ctx.bezierCurveTo(-1 * s, -1 * s, -1 * s, 1 * s, -2 * s, 2 * s);
+    ctx.bezierCurveTo(-4 * s, 3 * s, -7 * s, 2 * s, -8 * s, -2 * s);
+    ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
+    // Eastern Island (triangular, more defined)
+    ctx.fillStyle = COL.eastern;
+    ctx.beginPath();
+    ctx.moveTo(5 * s, -4 * s);
+    ctx.bezierCurveTo(8 * s, -3 * s, 11 * s, -1 * s, 10 * s, 1 * s);
+    ctx.bezierCurveTo(9 * s, 3 * s, 6 * s, 3 * s, 4 * s, 2 * s);
+    ctx.bezierCurveTo(3 * s, 0 * s, 4 * s, -3 * s, 5 * s, -4 * s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Runways on Eastern Island (triangle pattern)
+    ctx.strokeStyle = COL.runway;
+    ctx.lineWidth = 0.8;
+    // Main runway (NW-SE)
+    ctx.beginPath(); ctx.moveTo(5.5 * s, -3 * s); ctx.lineTo(9 * s, 0.5 * s); ctx.stroke();
+    // Cross runway (NE-SW)
+    ctx.beginPath(); ctx.moveTo(8 * s, -2 * s); ctx.lineTo(5 * s, 1.5 * s); ctx.stroke();
+    // Third runway (E-W)
+    ctx.beginPath(); ctx.moveTo(5 * s, -0.5 * s); ctx.lineTo(9.5 * s, -0.5 * s); ctx.stroke();
+
+    // Spit Island (small dot SE of Sand Island)
+    ctx.fillStyle = COL.sand;
+    ctx.strokeStyle = COL.inkMain;
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.ellipse(-1 * s, 5 * s, 2 * s, 1 * s, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Channel between islands
+    ctx.strokeStyle = COL.reef;
+    ctx.lineWidth = 0.5;
+    ctx.setLineDash([2, 2]);
+    ctx.beginPath();
+    ctx.moveTo(-1 * s, -1 * s);
+    ctx.lineTo(4 * s, -1 * s);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
     // Labels
     ctx.fillStyle = COL.inkMain;
-    ctx.font = 'bold 10px Caveat, cursive';
+    ctx.font = 'bold 12px Caveat, cursive';
     ctx.textAlign = 'center';
-    ctx.fillText('MIDWAY ATOLL', 0, -16 * scale);
-    ctx.font = '8px Caveat, cursive';
+    ctx.fillText('MIDWAY ATOLL', 0, -16 * s);
+    ctx.font = '9px Caveat, cursive';
     ctx.fillStyle = COL.inkFade;
-    ctx.fillText('28°12\'N 177°21\'W', 0, -14 * scale + 10);
-    ctx.fillText('Sand I.', -5 * scale, 4 * scale);
-    ctx.fillText('Eastern I.', 7 * scale, 5 * scale);
-    ctx.fillText('Henderson Fld', 7 * scale, 8 * scale);
+    ctx.fillText('28°12\'N  177°21\'W', 0, -14 * s + 12);
+
+    // Island labels
+    ctx.font = '9px Caveat, cursive';
+    ctx.fillStyle = COL.inkMain;
+    ctx.fillText('SAND ISLAND', -5 * s, 6 * s);
+    ctx.fillText('EASTERN', 7 * s, 5 * s);
+    ctx.fillText('ISLAND', 7 * s, 7 * s);
+    ctx.font = '7px Caveat, cursive';
+    ctx.fillStyle = COL.inkFade;
+    ctx.fillText('Henderson Field', 7 * s, 9 * s);
 
     ctx.restore();
   }
 
   // ═══════════════════════════════════════════════════════
-  // Compass Rose
+  // Distance Rings
+  // ═══════════════════════════════════════════════════════
+  _drawDistanceRings(ctx, fx, fy, radius) {
+    ctx.save();
+    ctx.setLineDash([5, 4]);
+    ctx.lineWidth = 0.5;
+    for (let ring = 2; ring <= radius; ring += 2) {
+      const rpx = ring * HEX_SIZE * SQRT3;
+      ctx.strokeStyle = ring === 2 ? 'rgba(42,34,24,0.15)' : 'rgba(42,34,24,0.08)';
+      ctx.beginPath(); ctx.arc(fx, fy, rpx, 0, Math.PI * 2); ctx.stroke();
+      // Label at 3 o'clock
+      ctx.fillStyle = 'rgba(42,34,24,0.25)';
+      ctx.font = '9px Caveat, cursive';
+      ctx.textAlign = 'left';
+      ctx.fillText(ring * CELL_NM + 'nm', fx + rpx + 3, fy + 3);
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Own Fleet (improved)
+  // ═══════════════════════════════════════════════════════
+  _drawOwnFleet(ctx, tf) {
+    tf.carriers.forEach(c => {
+      const [q, r] = this._worldToHex(c.position.lat, c.position.lon);
+      const [px, py] = this._hexToPixel(q, r);
+      const short = c.name.includes('Enterprise') ? 'ENT' : 'HOR';
+
+      // Circle
+      ctx.strokeStyle = COL.inkMain;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(px, py, 10, 0, Math.PI * 2); ctx.stroke();
+
+      // Cross inside
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(px - 6, py); ctx.lineTo(px + 6, py); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px, py - 6); ctx.lineTo(px, py + 6); ctx.stroke();
+
+      // Label above
+      ctx.fillStyle = COL.inkMain;
+      ctx.font = 'bold 13px Caveat, cursive';
+      ctx.textAlign = 'center';
+      ctx.fillText(short, px, py - 16);
+
+      // Course arrow for this carrier
+      this._drawSingleCourseArrow(ctx, px, py, tf.course);
+    });
+  }
+
+  _drawSingleCourseArrow(ctx, fx, fy, course) {
+    const len = HEX_SIZE * 2.5;
+    const rad = (course - 90) * Math.PI / 180;
+    const ax = fx + len * Math.cos(rad);
+    const ay = fy + len * Math.sin(rad);
+
+    ctx.strokeStyle = COL.inkMain;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(ax, ay); ctx.stroke();
+
+    // Arrowhead
+    const hl = 8, ha = 0.4;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax - hl * Math.cos(rad - ha), ay - hl * Math.sin(rad - ha));
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax - hl * Math.cos(rad + ha), ay - hl * Math.sin(rad + ha));
+    ctx.stroke();
+
+    // Projected course (dashed)
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = COL.inkFade;
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax + len * 0.5 * Math.cos(rad), ay + len * 0.5 * Math.sin(rad));
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Enemy Contacts (improved)
+  // ═══════════════════════════════════════════════════════
+  _drawEnemyContacts(ctx, state) {
+    state.known_enemy.forEach((e, i) => {
+      const [q, r] = this._worldToHex(e.position.lat, e.position.lon);
+      const [px, py] = this._hexToPixel(q, r);
+
+      // Dashed circle
+      ctx.strokeStyle = COL.enemyRed;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath(); ctx.arc(px, py, 12, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Question mark
+      ctx.fillStyle = COL.enemyRed;
+      ctx.font = 'bold 18px Caveat, cursive';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('?', px, py);
+
+      // Label with confidence
+      ctx.font = '10px Caveat, cursive';
+      ctx.fillText('ENEMY', px, py + 20);
+      if (e.confidence) {
+        ctx.font = '8px Caveat, cursive';
+        ctx.fillStyle = 'rgba(139,37,0,0.6)';
+        ctx.fillText('(' + e.confidence + ')', px, py + 30);
+      }
+      ctx.textBaseline = 'alphabetic';
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Search Sectors (wedge-shaped扇形 with hatching)
+  // ═══════════════════════════════════════════════════════
+  _drawSearchSectors(ctx, state, fleetQ, fleetR) {
+    const [fx, fy] = this._hexToPixel(fleetQ, fleetR);
+    const sectorRadius = 8 * HEX_SIZE * SQRT3;
+
+    state.active_scouts.filter(s => s.status === 'in_flight').forEach(s => {
+      const startRad = ((s.search_bearing_min - 90) * Math.PI) / 180;
+      const endRad = ((s.search_bearing_max - 90) * Math.PI) / 180;
+
+      ctx.save();
+
+      // Wedge fill (semi-transparent)
+      ctx.fillStyle = 'rgba(160,140,110,0.08)';
+      ctx.beginPath();
+      ctx.moveTo(fx, fy);
+      ctx.arc(fx, fy, sectorRadius, startRad, endRad);
+      ctx.closePath();
+      ctx.fill();
+
+      // Wedge border
+      ctx.strokeStyle = 'rgba(42,34,24,0.15)';
+      ctx.lineWidth = 0.8;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(fx, fy);
+      ctx.arc(fx, fy, sectorRadius, startRad, endRad);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Hatching inside wedge
+      ctx.strokeStyle = 'rgba(42,34,24,0.06)';
+      ctx.lineWidth = 0.4;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(fx, fy);
+      ctx.arc(fx, fy, sectorRadius, startRad, endRad);
+      ctx.closePath();
+      ctx.clip();
+      for (let d = -sectorRadius; d < sectorRadius; d += 6) {
+        ctx.beginPath();
+        ctx.moveTo(fx + d, fy - sectorRadius);
+        ctx.lineTo(fx + d + sectorRadius, fy + sectorRadius);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Sector label
+      const midAngle = (startRad + endRad) / 2;
+      const labelR = sectorRadius * 0.7;
+      const lx = fx + labelR * Math.cos(midAngle);
+      const ly = fy + labelR * Math.sin(midAngle);
+      ctx.fillStyle = 'rgba(42,34,24,0.2)';
+      ctx.font = '9px Caveat, cursive';
+      ctx.textAlign = 'center';
+      ctx.fillText(s.direction, lx, ly);
+
+      ctx.restore();
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Compass Rose (improved)
   // ═══════════════════════════════════════════════════════
   _drawCompass(ctx, x, y, size) {
     ctx.save();
@@ -240,35 +478,42 @@ class MapRenderer {
     ctx.strokeStyle = COL.inkFade;
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(0, 0, size, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.arc(0, 0, size * 0.85, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, size * 0.88, 0, Math.PI * 2); ctx.stroke();
 
-    // Star lines
-    ctx.lineWidth = 0.8;
+    // Inner decorative circle
+    ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.arc(0, 0, size * 0.3, 0, Math.PI * 2); ctx.stroke();
+
+    // Star points (8 directions)
     for (let i = 0; i < 8; i++) {
       const a = i * Math.PI / 4;
-      const r1 = i % 2 === 0 ? size * 0.85 : size * 0.5;
+      const r1 = i % 2 === 0 ? size * 0.88 : size * 0.55;
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.lineTo(Math.sin(a) * r1, -Math.cos(a) * r1);
       ctx.strokeStyle = i % 2 === 0 ? COL.inkMain : COL.inkFade;
+      ctx.lineWidth = i % 2 === 0 ? 1.2 : 0.6;
       ctx.stroke();
     }
 
-    // Labels
+    // Cardinal labels
     ctx.fillStyle = COL.inkMain;
-    ctx.font = 'bold 11px Caveat, cursive';
+    ctx.font = 'bold 12px Caveat, cursive';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('N', 0, -size - 8);
+    ctx.fillText('N', 0, -size - 10);
     ctx.fillText('S', 0, size + 12);
-    ctx.fillText('E', size + 10, 0);
-    ctx.fillText('W', -size - 10, 0);
-    ctx.font = '8px Caveat, cursive';
+    ctx.fillText('E', size + 12, 0);
+    ctx.fillText('W', -size - 12, 0);
+
+    // Intercardinal labels
+    ctx.font = '9px Caveat, cursive';
     ctx.fillStyle = COL.inkFade;
-    ctx.fillText('NE', size * 0.7, -size * 0.7);
-    ctx.fillText('SE', size * 0.7, size * 0.7);
-    ctx.fillText('SW', -size * 0.7, size * 0.7);
-    ctx.fillText('NW', -size * 0.7, -size * 0.7);
+    const is = size * 0.72;
+    ctx.fillText('NE', is, -is);
+    ctx.fillText('SE', is, is);
+    ctx.fillText('SW', -is, is);
+    ctx.fillText('NW', -is, -is);
 
     ctx.restore();
   }
@@ -279,135 +524,46 @@ class MapRenderer {
   _drawScaleBar(ctx, W, H) {
     const nm = 50;
     const px = (nm / CELL_NM) * HEX_SIZE * SQRT3;
+    const x = W - px - 30, y = H - 25;
+
     ctx.strokeStyle = COL.inkMain;
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(W - px - 20, H - 20); ctx.lineTo(W - 20, H - 20); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(W - px - 20, H - 24); ctx.lineTo(W - px - 20, H - 16); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(W - 20, H - 24); ctx.lineTo(W - 20, H - 16); ctx.stroke();
+    // Main line
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + px, y); ctx.stroke();
+    // Ticks
+    ctx.beginPath(); ctx.moveTo(x, y - 4); ctx.lineTo(x, y + 4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + px, y - 4); ctx.lineTo(x + px, y + 4); ctx.stroke();
+    // Mid tick
+    ctx.beginPath(); ctx.moveTo(x + px / 2, y - 2); ctx.lineTo(x + px / 2, y + 2); ctx.stroke();
+
+    // Labels
     ctx.fillStyle = COL.inkMain;
-    ctx.font = '9px Caveat, cursive';
+    ctx.font = '10px Caveat, cursive';
     ctx.textAlign = 'center';
-    ctx.fillText(nm + ' nm', W - px / 2 - 20, H - 25);
+    ctx.fillText('0', x, y - 8);
+    ctx.fillText(nm + ' nm', x + px, y - 8);
   }
 
   // ═══════════════════════════════════════════════════════
   // SECRET Stamp
   // ═══════════════════════════════════════════════════════
   _drawSecretStamp(ctx) {
+    ctx.save();
+    ctx.translate(24, 24);
+
+    // Border
     ctx.strokeStyle = COL.secretRed;
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(12, 8, 70, 18);
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, 80, 24);
+
+    // Text
     ctx.fillStyle = COL.secretRed;
-    ctx.font = 'bold 12px Caveat, cursive';
+    ctx.font = 'bold 16px Caveat, cursive';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('SECRET', 47, 17);
-    ctx.textBaseline = 'alphabetic';
-  }
+    ctx.fillText('SECRET', 40, 12);
 
-  // ═══════════════════════════════════════════════════════
-  // Dynamic Entities (Phase 3)
-  // ═══════════════════════════════════════════════════════
-  _drawDistanceRings(ctx, fx, fy, radius) {
-    ctx.save();
-    ctx.setLineDash([6, 4]);
-    ctx.strokeStyle = 'rgba(42,34,24,0.12)';
-    ctx.lineWidth = 0.5;
-    for (let ring = 2; ring <= radius; ring += 2) {
-      const rpx = ring * HEX_SIZE * SQRT3;
-      ctx.beginPath(); ctx.arc(fx, fy, rpx, 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = 'rgba(42,34,24,0.2)';
-      ctx.font = '9px Caveat, cursive';
-      ctx.textAlign = 'center';
-      ctx.fillText(ring * CELL_NM + ' nm', fx + rpx, fy - 3);
-    }
     ctx.restore();
-  }
-
-  _drawOwnFleet(ctx, tf) {
-    tf.carriers.forEach(c => {
-      const [q, r] = this._worldToHex(c.position.lat, c.position.lon);
-      const [px, py] = this._hexToPixel(q, r);
-      const short = c.name.includes('Enterprise') ? 'ENT' : 'HOR';
-      // Circle + cross
-      ctx.strokeStyle = COL.inkMain;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(px, py, 8, 0, Math.PI * 2); ctx.stroke();
-      ctx.lineWidth = 0.8;
-      ctx.beginPath(); ctx.moveTo(px - 5, py); ctx.lineTo(px + 5, py); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(px, py - 5); ctx.lineTo(px, py + 5); ctx.stroke();
-      // Label
-      ctx.fillStyle = COL.inkMain;
-      ctx.font = 'bold 11px Caveat, cursive';
-      ctx.textAlign = 'center';
-      ctx.fillText(short, px, py - 12);
-    });
-  }
-
-  _drawCourseArrow(ctx, fx, fy, course) {
-    const len = HEX_SIZE * 3;
-    const rad = (course - 90) * Math.PI / 180;
-    const ax = fx + len * Math.cos(rad);
-    const ay = fy + len * Math.sin(rad);
-    // Main line
-    ctx.strokeStyle = COL.inkMain;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(ax, ay); ctx.stroke();
-    // Arrowhead
-    const hl = 8, ha = 0.4;
-    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax - hl * Math.cos(rad - ha), ay - hl * Math.sin(rad - ha)); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax - hl * Math.cos(rad + ha), ay - hl * Math.sin(rad + ha)); ctx.stroke();
-    // Projected course (dashed)
-    ctx.setLineDash([4, 4]);
-    ctx.strokeStyle = COL.inkFade;
-    ctx.lineWidth = 0.8;
-    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax + len * 0.8 * Math.cos(rad), ay + len * 0.8 * Math.sin(rad)); ctx.stroke();
-    ctx.setLineDash([]);
-    // Label
-    ctx.fillStyle = COL.inkMain;
-    ctx.font = 'bold 11px Caveat, cursive';
-    ctx.textAlign = 'left';
-    ctx.fillText('COURSE ' + course + '°', ax + 6, ay - 2);
-  }
-
-  _drawEnemyContacts(ctx, state) {
-    state.known_enemy.forEach(e => {
-      const [q, r] = this._worldToHex(e.position.lat, e.position.lon);
-      const [px, py] = this._hexToPixel(q, r);
-      ctx.strokeStyle = COL.enemyRed;
-      ctx.lineWidth = 1;
-      ctx.setLineDash([3, 3]);
-      ctx.beginPath(); ctx.arc(px, py, 10, 0, Math.PI * 2); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = COL.enemyRed;
-      ctx.font = 'bold 14px Caveat, cursive';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('?', px, py);
-      ctx.font = '9px Caveat, cursive';
-      ctx.fillText('ENEMY', px, py + 16);
-      ctx.textBaseline = 'alphabetic';
-    });
-  }
-
-  _drawSearchSectors(ctx, state, fleetQ, fleetR) {
-    state.active_scouts.filter(s => s.status === 'in_flight').forEach(s => {
-      const cells = this._getSectorCells(fleetQ, fleetR, s.search_bearing_min, s.search_bearing_max, 20);
-      ctx.save();
-      ctx.globalAlpha = 0.06;
-      ctx.strokeStyle = COL.inkMain;
-      ctx.lineWidth = 0.4;
-      cells.forEach(([cq, cr]) => {
-        const [px, py] = this._hexToPixel(cq, cr);
-        for (let d = -HEX_SIZE; d < HEX_SIZE; d += 4) {
-          ctx.beginPath();
-          ctx.moveTo(px + d, py - HEX_SIZE);
-          ctx.lineTo(px + d + HEX_SIZE, py + HEX_SIZE);
-          ctx.stroke();
-        }
-      });
-      ctx.restore();
-    });
   }
 
   // ═══════════════════════════════════════════════════════
@@ -442,33 +598,7 @@ class MapRenderer {
     ];
   }
 
-  _hexBearing(q1, r1, q2, r2) {
-    const [lat1, lon1] = this._hexToWorld(q1, r1);
-    const [lat2, lon2] = this._hexToWorld(q2, r2);
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const lat1r = lat1 * Math.PI / 180, lat2r = lat2 * Math.PI / 180;
-    const y = Math.sin(dLon) * Math.cos(lat2r);
-    const x = Math.cos(lat1r) * Math.sin(lat2r) - Math.sin(lat1r) * Math.cos(lat2r) * Math.cos(dLon);
-    return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
-  }
 
-  _bearingInSector(b, min, max) {
-    return min <= max ? (b >= min && b <= max) : (b >= min || b <= max);
-  }
-
-  _getSectorCells(cq, cr, bearingMin, bearingMax, radius) {
-    const cells = [];
-    for (let q = cq - radius; q <= cq + radius; q++) {
-      for (let r = cr - radius; r <= cr + radius; r++) {
-        const dist = Math.max(Math.abs(q - cq), Math.abs(r - cr), Math.abs(-(q - cq) - (r - cr)));
-        if (dist > radius || dist === 0) continue;
-        const bearing = this._hexBearing(cq, cr, q, r);
-        if (this._bearingInSector(bearing, bearingMin, bearingMax)) cells.push([q, r]);
-      }
-    }
-    return cells;
-  }
 }
 
-// Export for main.js
 window.MapRenderer = MapRenderer;

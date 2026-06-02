@@ -7,11 +7,11 @@ class UIController {
   constructor() {
     this.npcIds = ['browning', 'murray', 'mitscher', 'radio_officer', 'intel_officer'];
     this.npcLabels = {
-      browning: '参谋长',
-      murray: '企业号舰长',
-      mitscher: '大黄蜂舰长',
-      radio_officer: '通信官',
-      intel_officer: '情报官',
+      browning: 'COS',
+      murray: 'TF16 CAPT',
+      mitscher: 'COMM',
+      radio_officer: 'INTEL',
+      intel_officer: 'ADML',
     };
     this.npcSenders = {
       browning: '布朗宁（BROWNING）· 参谋长',
@@ -19,6 +19,13 @@ class UIController {
       mitscher: '米切尔（MITSCHER）· 大黄蜂舰长',
       radio_officer: '通信官 · TBS',
       intel_officer: '情报官 · 情报参谋',
+    };
+    this.npcSections = {
+      browning: 'PLAYER',
+      murray: 'PLAYER',
+      mitscher: 'PLAYER',
+      radio_officer: 'INTEL',
+      intel_officer: 'INTEL',
     };
   }
 
@@ -43,25 +50,28 @@ class UIController {
   // ═══════════════════════════════════════════════════════
   renderChat(activeNpc, messages, gameTime) {
     const container = document.getElementById('chat-log');
+    const section = this.npcSections[activeNpc] || 'PLAYER';
     const timeStr = gameTime
       ? new Date(gameTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
       : '04:00';
 
+    let html = `<div class="section-header section-${section.toLowerCase()}">${section}</div>`;
+
     if (!messages || messages.length === 0) {
-      container.innerHTML = '<div class="chat-empty">等待指令（AWAITING ORDERS）...</div>';
+      html += '<div class="chat-empty">等待指令（AWAITING ORDERS）...</div>';
+      container.innerHTML = html;
       return;
     }
 
-    let html = '';
     messages.forEach((msg, i) => {
       const isPlayer = msg.role === 'user';
       const sender = isPlayer ? '指挥官（SPRUANCE）' : this.npcSenders[activeNpc];
       const borderClass = isPlayer ? '' : ' msg-sender-npc';
       const safeText = msg.content.replace(/</g, '&lt;').replace(/\n/g, '<br>');
+      const zTime = timeStr + ' Z';
       html += `<div class="msg${borderClass}">
         <div class="msg-header">
-          <span>#${String(i + 1).padStart(3, '0')}</span>
-          <span>${timeStr}</span>
+          <span>${zTime}</span>
         </div>
         <div class="msg-sender">${sender}</div>
         <div class="msg-text">${safeText}</div>
@@ -76,18 +86,17 @@ class UIController {
     const timeStr = gameTime
       ? new Date(gameTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
       : '04:00';
-    const msgCount = container.querySelectorAll('.msg').length;
     const isPlayer = role === 'user';
     const sender = isPlayer ? '指挥官（SPRUANCE）' : this.npcSenders[activeNpc];
     const borderClass = isPlayer ? '' : ' msg-sender-npc';
     const safeText = content.replace(/</g, '&lt;').replace(/\n/g, '<br>');
+    const zTime = timeStr + ' Z';
 
     const div = document.createElement('div');
     div.className = `msg${borderClass}`;
     div.innerHTML = `
       <div class="msg-header">
-        <span>#${String(msgCount + 1).padStart(3, '0')}</span>
-        <span>${timeStr}</span>
+        <span>${zTime}</span>
       </div>
       <div class="msg-sender">${sender}</div>
       <div class="msg-text">${safeText}</div>
@@ -161,7 +170,8 @@ class UIController {
     // Clock
     const clockEl = document.getElementById('clock');
     if (clockEl && state.clock) {
-      clockEl.textContent = new Date(state.clock.game_time).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const timeStr = new Date(state.clock.game_time).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+      clockEl.innerHTML = timeStr + '<span class="topbar-clock-suffix"> Z</span>';
     }
   }
 
@@ -192,40 +202,29 @@ class UIController {
   }
 
   _renderMilitaryOrder(sug, detailStr) {
-    const timeStr = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
     return `
     <div class="mil-order">
       <div class="mil-order-header">
-        <span class="mil-order-title">美 国 海 军 · 作 战 命 令</span>
-        <span class="mil-order-class">机密 · SECRET</span>
-      </div>
-      <div class="mil-order-meta">
-        <span>编号: TF16-${sug.action_type.toUpperCase()}-${timeStr.replace(':', '')}</span>
-        <span>04 JUN 1942 · ${timeStr} (Z+12)</span>
+        <span class="mil-order-title">SECRET — INTERCEPTION PLAN</span>
       </div>
       <div class="mil-order-body">
-        <div class="mil-order-sign">
-          <div><span class="mil-label">签发</span><br><span class="mil-val">${sug.npc}</span></div>
-          <div><span class="mil-label">呈报</span><br><span class="mil-val">指挥官 R.A. Spruance</span></div>
+        <div class="mil-order-section">
+          <div class="mil-section-title">MISSION:</div>
+          <div class="mil-section-body">${sug.action_type.replace(/_/g, ' ').toUpperCase()}</div>
         </div>
         <div class="mil-order-section">
-          <div class="mil-section-title">1. 任务 MISSION</div>
-          <div class="mil-section-body">${sug.npc} 建议执行: ${sug.action_type}</div>
-        </div>
-        <div class="mil-order-section">
-          <div class="mil-section-title">2. 执行 EXECUTION</div>
+          <div class="mil-section-title">EXECUTION:</div>
           <div class="mil-section-body mil-detail">${detailStr}</div>
         </div>
       </div>
       <div class="mil-order-footer">
         <div class="mil-signature">
-          <div class="mil-label">指挥官签署</div>
+          <div class="mil-label">COMMANDER SIGNATURE:</div>
           <div class="mil-sig-line"></div>
-          <div class="mil-label">R.A. Spruance, 少将</div>
         </div>
         <div class="mil-order-actions">
-          <button class="btn btn-approve" data-idx="${sug.index}">批准执行</button>
-          <button class="btn btn-reject" data-idx="${sug.index}">驳回修改</button>
+          <button class="btn btn-approve" data-idx="${sug.index}">EXECUTE ORDER</button>
+          <button class="btn btn-reject" data-idx="${sug.index}">REVISE PLAN</button>
         </div>
       </div>
     </div>`;
