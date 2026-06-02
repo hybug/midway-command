@@ -28,12 +28,12 @@ st.set_page_config(page_title="中途岛指挥官", page_icon="⚓", layout="wid
 # ═══════════════════════════════════════════════════════════
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Special+Elite&display=swap');
 
-    /* ── 舰桥 CRT 终端主题 ── */
+    /* ── 二战海图主题 ── */
     .stApp {
-        background: #0a1628;
-        color: #4ae04a;
+        background: #f5edd6;
+        color: #2a2218;
     }
 
     section[data-testid="stSidebar"] { display: none !important; }
@@ -43,81 +43,71 @@ st.markdown("""
 
     /* 全局字体 */
     * {
-        font-family: 'Share Tech Mono', 'Courier New', monospace !important;
+        font-family: 'Special Elite', 'Courier New', monospace !important;
     }
 
     h1, h2, h3 {
-        font-family: 'Share Tech Mono', monospace !important;
-        color: #4ae04a !important;
-        text-shadow: 0 0 6px rgba(74,224,74,0.3);
-        font-size: 13px !important;
-        text-transform: uppercase;
-        letter-spacing: 2px;
+        font-family: 'Special Elite', monospace !important;
+        color: #2a2218 !important;
+        font-size: 14px !important;
+        letter-spacing: 1px;
     }
 
-    /* 扫描线纹理 */
+    /* 纸张纹理 */
     .stApp::before {
         content: '';
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
-        background: repeating-linear-gradient(
-            0deg,
-            transparent,
-            transparent 2px,
-            rgba(0,0,0,0.08) 2px,
-            rgba(0,0,0,0.08) 4px
-        );
+        background:
+            repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(42,34,24,0.02) 3px, rgba(42,34,24,0.02) 4px),
+            repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(42,34,24,0.015) 3px, rgba(42,34,24,0.015) 4px);
         pointer-events: none;
         z-index: 9999;
     }
 
-    /* 物理按钮风格 */
+    /* 按钮：复古纸质风格 */
     .stButton button {
-        background: #0d1a2d !important;
-        color: #4ae04a !important;
-        border: 1px solid #1a3a5c !important;
-        border-radius: 4px;
-        box-shadow: inset 0 1px 0 rgba(74,224,74,0.05), inset 0 -2px 4px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.5);
-        font-family: 'Share Tech Mono', monospace !important;
+        background: #e8dcc8 !important;
+        color: #2a2218 !important;
+        border: 1px solid #a89878 !important;
+        border-radius: 2px;
+        box-shadow: 1px 1px 2px rgba(42,34,24,0.2);
+        font-family: 'Special Elite', monospace !important;
         font-size: 12px !important;
-        text-transform: uppercase;
         letter-spacing: 1px;
         transition: all 0.1s;
     }
 
     .stButton button:hover {
-        background: #132940 !important;
-        color: #6aff6a !important;
-        border-color: #4ae04a !important;
-        box-shadow: inset 0 1px 0 rgba(74,224,74,0.1), 0 0 8px rgba(74,224,74,0.2);
+        background: #d4c8b0 !important;
+        border-color: #2a2218 !important;
     }
 
     .stButton button:active {
-        box-shadow: inset 0 2px 6px rgba(0,0,0,0.6);
+        box-shadow: inset 1px 1px 3px rgba(42,34,24,0.3);
         transform: translateY(1px);
     }
 
-    /* 主按钮（高亮） */
+    /* 主按钮 */
     .stButton button[kind="primary"],
     button[data-testid="stBaseButton-primary"] {
-        background: #1a3320 !important;
-        color: #6aff6a !important;
-        border-color: #4ae04a !important;
-        box-shadow: inset 0 1px 0 rgba(74,224,74,0.15), 0 0 12px rgba(74,224,74,0.15);
+        background: #2a2218 !important;
+        color: #f5edd6 !important;
+        border-color: #2a2218 !important;
     }
 
     /* 输入框 */
     .stTextInput input, .stChatInput input {
-        background: #0d1a2d !important;
-        color: #4ae04a !important;
-        border: 1px solid #1a3a5c !important;
+        background: #e8dcc8 !important;
+        color: #2a2218 !important;
+        border: 1px solid #a89878 !important;
         border-radius: 2px;
-        caret-color: #4ae04a;
+        caret-color: #2a2218;
     }
 
     .stTextInput input:focus, .stChatInput input:focus {
-        border-color: #4ae04a !important;
-        box-shadow: 0 0 8px rgba(74,224,74,0.2);
+        border-color: #2a2218 !important;
+        box-shadow: 0 0 4px rgba(42,34,24,0.15);
     }
 
     /* 容器 */
@@ -132,32 +122,32 @@ st.markdown("""
 
     /* 滚动条 */
     ::-webkit-scrollbar { width: 5px; }
-    ::-webkit-scrollbar-track { background: #0a1628; }
-    ::-webkit-scrollbar-thumb { background: #1a3a5c; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #2a5a8c; }
+    ::-webkit-scrollbar-track { background: #e8dcc8; }
+    ::-webkit-scrollbar-thumb { background: #a89878; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #8a7e5a; }
 
     /* Expander 样式 */
     .streamlit-expanderHeader {
-        background: #0d1a2d !important;
-        border: 1px solid #1a3a5c !important;
-        color: #4ae04a !important;
+        background: #e8dcc8 !important;
+        border: 1px solid #a89878 !important;
+        color: #2a2218 !important;
     }
 
     /* 分割线 */
     hr {
-        border-color: #1a3a5c !important;
+        border-color: #a89878 !important;
     }
 
     /* 警告/成功/错误消息 */
     .stAlert {
-        background: #0d1a2d !important;
+        background: #e8dcc8 !important;
         border-radius: 2px;
     }
 
     /* 对话框标题 */
     [data-testid="stDialog"] {
-        background: #0a1628 !important;
-        border: 1px solid #1a3a5c !important;
+        background: #f5edd6 !important;
+        border: 1px solid #a89878 !important;
     }
 
     /* 消息淡入动画 */
@@ -166,37 +156,6 @@ st.markdown("""
         to { opacity: 1; transform: translateY(0); }
     }
     .msg-in { animation: fadeSlideIn 0.3s ease-out; }
-
-    /* 闪烁光标 */
-    @keyframes blink {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0; }
-    }
-    .blink-cursor::after {
-        content: '\\2588';
-        color: #4ae04a;
-        animation: blink 1s step-end infinite;
-    }
-
-    /* 脉冲通知 */
-    @keyframes pulse {
-        0%, 100% { box-shadow: 0 0 4px rgba(255,136,0,0.2); }
-        50% { box-shadow: 0 0 12px rgba(255,136,0,0.4); }
-    }
-    .pulse-notify { animation: pulse 2s ease-in-out infinite; }
-
-    /* 连接中动画 */
-    @keyframes dots {
-        0%, 20% { content: '.'; }
-        40% { content: '..'; }
-        60% { content: '...'; }
-        80%, 100% { content: ''; }
-    }
-    .connecting::after {
-        content: '';
-        animation: dots 1.5s steps(4, end) infinite;
-    }
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -270,10 +229,9 @@ def render_telegram_msg(msg_id, time_str, sender, sender_role, text, priority="�
     """渲染一条 CRT 终端风格的消息"""
     import html as html_mod
     is_player = "指挥官" in sender
-    border_color = "#2a7a3a" if is_player else "#4ae04a"
-    glow = "none" if is_player else "0 0 6px rgba(74,224,74,0.15)"
+    border_color = "#6b5d4a" if is_player else "#2a2218"
     safe_text = html_mod.escape(text).replace("\n", "<br>")
-    return f"""<div class="msg-in" style="background:#0d1a2d;border:1px solid #1a3a5c;border-left:3px solid {border_color};padding:5px 10px;margin:2px 0;box-shadow:{glow};"><div style="display:flex;justify-content:space-between;color:#2a7a3a;font-size:10px;letter-spacing:2px;margin-bottom:3px;border-bottom:1px dashed #152a40;padding-bottom:2px;text-transform:uppercase;"><span>#{msg_id:03d}</span><span>{time_str}</span><span>{priority}</span></div><div style="color:{border_color};font-size:10px;letter-spacing:2px;margin-bottom:2px;text-transform:uppercase;">{sender}</div><div style="color:#4ae04a;font-size:14px;line-height:1.5;">{safe_text}</div></div>"""
+    return f"""<div class="msg-in" style="background:#e8dcc8;border:1px solid #a89878;border-left:3px solid {border_color};padding:5px 10px;margin:2px 0;"><div style="display:flex;justify-content:space-between;color:#6b5d4a;font-size:10px;letter-spacing:2px;margin-bottom:3px;border-bottom:1px dashed #c4b89a;padding-bottom:2px;text-transform:uppercase;"><span>#{msg_id:03d}</span><span>{time_str}</span><span>{priority}</span></div><div style="color:{border_color};font-size:10px;letter-spacing:2px;margin-bottom:2px;text-transform:uppercase;">{sender}</div><div style="color:#2a2218;font-size:14px;line-height:1.5;">{safe_text}</div></div>"""
 
 
 # ═══════════════════════════════════════════════════════════
@@ -291,29 +249,29 @@ drawer_open = st.session_state.drawer_open
 drawer_btn_label = "■ 收起通信（COMM OFF）" if drawer_open else "□ 通信（COMM ON）"
 st.markdown(f"""
 <div style="
-    background: #0d1a2d;
-    border: 1px solid #1a3a5c;
-    border-bottom: 2px solid #1a3a5c;
+    background: #e8dcc8;
+    border: 1px solid #a89878;
+    border-bottom: 2px solid #a89878;
     padding: 6px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
 ">
     <div>
-        <span style="color: #4ae04a; font-family: 'Share Tech Mono', monospace; font-size: 14px; text-shadow: 0 0 8px rgba(74,224,74,0.3); text-transform:uppercase; letter-spacing:3px;">
+        <span style="color: #2a2218; font-family: 'Special Elite', monospace; font-size: 14px; letter-spacing:3px;">
             中途岛指挥官
         </span>
-        <span style="color: #2a7a3a; font-size: 12px; margin-left: 16px; letter-spacing:1px;">
+        <span style="color: #6b5d4a; font-size: 12px; margin-left: 16px; letter-spacing:1px;">
             USN · TF-16 · USS ENTERPRISE (CV-6) FLAGSHIP
         </span>
     </div>
     <div style="text-align: right;">
-        <span style="color: #2a7a3a; font-size: 12px; letter-spacing:1px;">04 JUN 1942 · Z+12</span>
-        <span style="color: #4ae04a; font-size: 28px; margin-left: 12px; text-shadow: 0 0 12px rgba(74,224,74,0.4); font-weight:bold;">
+        <span style="color: #6b5d4a; font-size: 12px; letter-spacing:1px;">04 JUN 1942 · Z+12</span>
+        <span style="color: #2a2218; font-size: 28px; margin-left: 12px; font-weight:bold;">
             {state.clock.game_time.strftime('%H:%M')}
         </span>
-        <span style="color: #2a7a3a; font-size: 12px; margin-left: 12px;">
-            AP <span style="color:#4ae04a;">{ap['current']}</span>/{ap['max']}
+        <span style="color: #6b5d4a; font-size: 12px; margin-left: 12px;">
+            AP <span style="color:#2a2218;">{ap['current']}</span>/{ap['max']}
         </span>
     </div>
 </div>
@@ -341,7 +299,7 @@ with col_main:
     # ═══════════════════════════════════════════════════════
     c1, c2 = tf.carriers[0], tf.carriers[1]
     dmg_map = {0: "OK", 1: "LGT", 2: "MOD", 3: "HVY"}
-    dmg_color = {0: "#4ae04a", 1: "#88cc44", 2: "#ff8800", 3: "#ff4444"}
+    dmg_color = {0: "#2a2218", 1: "#6b5d4a", 2: "#8b5a2b", 3: "#8b2500"}
 
     # ── Dialog 函数 ──
     @st.dialog("态势详情（SITUATION）")
@@ -430,27 +388,27 @@ with col_main:
         total = sum(ag.count for ag in carrier.air_groups)
         ready = sum(ag.count for ag in carrier.air_groups if ag.status.value == "ready")
         airborne = sum(ag.count for ag in carrier.air_groups if ag.status.value in ("launched", "in_flight", "returning"))
-        deck_parts.append(f'{short} <span style="color:#4ae04a;">{total}</span>/{ready}备/{airborne}飞')
+        deck_parts.append(f'{short} <span style="color:#2a2218;">{total}</span>/{ready}备/{airborne}飞')
 
     st.markdown(f"""
-    <div style="background:#0a1628; border:1px solid #1a3a5c; border-top:2px solid #1a3a5c; padding:4px 14px; display:flex; justify-content:space-between; align-items:center; gap:4px; flex-wrap:nowrap; overflow:hidden;">
-        <span style="color:#2a7a3a; font-size:11px;">航向<span style="color:#4ae04a; text-shadow:0 0 6px rgba(74,224,74,0.3); font-size:13px; margin-left:2px;">{tf.course:03d}°</span></span>
-        <span style="color:#1a3a5c;">│</span>
-        <span style="color:#2a7a3a; font-size:11px;">航速<span style="color:#4ae04a; text-shadow:0 0 6px rgba(74,224,74,0.3); font-size:13px; margin-left:2px;">{tf.speed}</span>节</span>
-        <span style="color:#1a3a5c;">│</span>
-        <span style="color:#2a7a3a; font-size:11px;">位置<span style="color:#4ae04a; font-size:11px; margin-left:2px;">{c1.position.lat:.1f}°N {abs(c1.position.lon):.1f}°W</span></span>
-        <span style="color:#1a3a5c;">│</span>
-        <span style="color:#2a7a3a; font-size:11px;">损伤<span style="color:{dmg_color.get(c1.damage_level,'#4ae04a')}; font-size:11px; margin-left:2px;">企业:{dmg_map.get(c1.damage_level,'?')}</span> <span style="color:{dmg_color.get(c2.damage_level,'#4ae04a')};">大黄蜂:{dmg_map.get(c2.damage_level,'?')}</span></span>
-        <span style="color:#1a3a5c;">│</span>
-        <span style="color:#2a7a3a; font-size:11px;">甲板 <span style="font-size:11px;">{' '.join(deck_parts)}</span></span>
-        <span style="color:#1a3a5c;">│</span>
-        <span style="color:#2a7a3a; font-size:11px;">巡逻<span style="color:#4ae04a; font-size:12px; margin-left:2px;">{cap_total}</span>架</span>
-        <span style="color:#1a3a5c;">│</span>
-        <span style="color:#2a7a3a; font-size:11px;">侦察<span style="color:#4ae04a; font-size:11px; margin-left:2px;">{scout_count}</span> <span style="color:#2a7a3a; font-size:10px;">{scout_txt}</span></span>
-        <span style="color:#1a3a5c;">│</span>
-        <span style="color:#2a7a3a; font-size:11px;">报告<span style="color:#4ae04a; font-size:11px; margin-left:2px;">{pr_count}</span> <span style="color:#2a7a3a; font-size:10px;">{pr_txt}</span></span>
-        <span style="color:#1a3a5c;">│</span>
-        <span style="color:#2a7a3a; font-size:11px;">敌情<span style="color:#ff8800; font-size:11px; margin-left:2px;">{enemy_text}</span></span>
+    <div style="background:#e8dcc8; border:1px solid #a89878; border-top:2px solid #a89878; padding:4px 14px; display:flex; justify-content:space-between; align-items:center; gap:4px; flex-wrap:nowrap; overflow:hidden;">
+        <span style="color:#6b5d4a; font-size:11px;">航向<span style="color:#2a2218; font-size:13px; margin-left:2px;">{tf.course:03d}°</span></span>
+        <span style="color:#c4b89a;">│</span>
+        <span style="color:#6b5d4a; font-size:11px;">航速<span style="color:#2a2218; font-size:13px; margin-left:2px;">{tf.speed}</span>节</span>
+        <span style="color:#c4b89a;">│</span>
+        <span style="color:#6b5d4a; font-size:11px;">位置<span style="color:#2a2218; font-size:11px; margin-left:2px;">{c1.position.lat:.1f}°N {abs(c1.position.lon):.1f}°W</span></span>
+        <span style="color:#c4b89a;">│</span>
+        <span style="color:#6b5d4a; font-size:11px;">损伤<span style="color:{dmg_color.get(c1.damage_level,'#2a2218')}; font-size:11px; margin-left:2px;">企业:{dmg_map.get(c1.damage_level,'?')}</span> <span style="color:{dmg_color.get(c2.damage_level,'#2a2218')};">大黄蜂:{dmg_map.get(c2.damage_level,'?')}</span></span>
+        <span style="color:#c4b89a;">│</span>
+        <span style="color:#6b5d4a; font-size:11px;">甲板 <span style="font-size:11px;">{' '.join(deck_parts)}</span></span>
+        <span style="color:#c4b89a;">│</span>
+        <span style="color:#6b5d4a; font-size:11px;">巡逻<span style="color:#2a2218; font-size:12px; margin-left:2px;">{cap_total}</span>架</span>
+        <span style="color:#c4b89a;">│</span>
+        <span style="color:#6b5d4a; font-size:11px;">侦察<span style="color:#2a2218; font-size:11px; margin-left:2px;">{scout_count}</span> <span style="color:#6b5d4a; font-size:10px;">{scout_txt}</span></span>
+        <span style="color:#c4b89a;">│</span>
+        <span style="color:#6b5d4a; font-size:11px;">报告<span style="color:#2a2218; font-size:11px; margin-left:2px;">{pr_count}</span> <span style="color:#6b5d4a; font-size:10px;">{pr_txt}</span></span>
+        <span style="color:#c4b89a;">│</span>
+        <span style="color:#6b5d4a; font-size:11px;">敌情<span style="color:#8b2500; font-size:11px; margin-left:2px;">{enemy_text}</span></span>
     </div>
     """, unsafe_allow_html=True)
     if st.button("详细态势", key="btn_info", use_container_width=False):
@@ -463,7 +421,7 @@ with col_main:
     fleet_lon = state.task_forces[0].carriers[0].position.lon
     fleet_q, fleet_r = world_to_hex(fleet_lat, fleet_lon)
     map_html = render_html_map(state, center_q=fleet_q, center_r=fleet_r, radius=8, course=tf.course)
-    st.markdown('<div style="color:#2a7a3a; font-size:10px; letter-spacing:3px; margin-bottom:4px;">海图（CHART）</div>',
+    st.markdown('<div style="color:#6b5d4a; font-size:10px; letter-spacing:3px; margin-bottom:4px;">海图（CHART）</div>',
                 unsafe_allow_html=True)
     components.html(map_html, height=600)
 
@@ -491,9 +449,9 @@ if drawer_open:
     if st.session_state.event_notifications:
         for n in st.session_state.event_notifications:
             st.markdown(f"""
-            <div class="pulse-notify" style="background:#0d1a2d; border:1px solid #ff8800; border-left:3px solid #ff8800;
+            <div style="background:#e8dcc8; border:1px solid #8b2500; border-left:3px solid #8b2500;
                         padding:5px 10px; margin-bottom:3px;">
-                <span style="color:#ff8800; font-size:13px; text-shadow:0 0 4px rgba(255,136,0,0.3);">! {n}</span>
+                <span style="color:#8b2500; font-size:13px;">! {n}</span>
             </div>
             """, unsafe_allow_html=True)
         st.session_state.event_notifications = []
@@ -503,9 +461,9 @@ if drawer_open:
         if changes:
             npc_name = NPC_DISPLAY[active_npc_id][0]
             st.markdown(f"""
-            <div style="background:#0d1a2d; border:1px solid #4ae04a; border-left:3px solid #4ae04a;
-                        padding:5px 10px; margin-bottom:3px; box-shadow:0 0 8px rgba(74,224,74,0.1);">
-                <span style="color:#4ae04a; font-size:13px; text-shadow:0 0 4px rgba(74,224,74,0.2);">已执行（EXEC）{npc_name}: {', '.join(changes)}</span>
+            <div style="background:#e8dcc8; border:1px solid #2a2218; border-left:3px solid #2a2218;
+                        padding:5px 10px; margin-bottom:3px;">
+                <span style="color:#2a2218; font-size:13px;">已执行（EXEC）{npc_name}: {', '.join(changes)}</span>
             </div>
             """, unsafe_allow_html=True)
             st.session_state.state_snapshot = None
@@ -537,15 +495,15 @@ if drawer_open:
 
     st.markdown(f"""
     <div style="
-        background: #0a1628;
-        border: 1px solid #1a3a5c;
+        background: #f5edd6;
+        border: 1px solid #a89878;
         padding: 6px 10px;
     ">
-        <div style="color:#2a7a3a; font-size:10px; letter-spacing:3px; margin-bottom:4px; border-bottom:1px dashed #152a40; padding-bottom:3px; text-transform:uppercase;">
+        <div style="color:#6b5d4a; font-size:10px; letter-spacing:3px; margin-bottom:4px; border-bottom:1px dashed #c4b89a; padding-bottom:3px;">
             通信记录（COMM）· {NPC_DISPLAY[active_npc_id][0]}
         </div>
         <div style="height:360px; overflow-y:auto; padding-right:4px;">
-            {chat_html if chat_html else '<div style="color:#1a5a2a; font-style:italic; text-align:center; padding:60px; letter-spacing:2px;">等待指令（AWAITING ORDERS）...</div>'}
+            {chat_html if chat_html else '<div style="color:#a89878; font-style:italic; text-align:center; padding:60px; letter-spacing:2px;">等待指令（AWAITING ORDERS）...</div>'}
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -715,11 +673,11 @@ if drawer_open:
             else:
                 detail_str = ", ".join(f"{k}={v}" for k, v in details.items())
                 st.markdown(f"""
-                <div style="background:#0d1a2d; border:1px solid #4ae04a; padding:10px; margin:6px 0; border-radius:2px;">
-                    <div style="color:#4ae04a; font-size:11px; letter-spacing:3px; margin-bottom:6px; text-transform:uppercase;">PENDING ORDER</div>
-                    <div style="color:#4ae04a; font-size:13px;">
+                <div style="background:#e8dcc8; border:1px solid #a89878; padding:10px; margin:6px 0; border-radius:2px;">
+                    <div style="color:#6b5d4a; font-size:11px; letter-spacing:3px; margin-bottom:6px;">PENDING ORDER</div>
+                    <div style="color:#2a2218; font-size:13px;">
                         {sug.npc}: {action_type}<br>
-                        <span style="color:#2a7a3a;">{detail_str}</span>
+                        <span style="color:#6b5d4a;">{detail_str}</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
