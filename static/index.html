@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>中途岛指挥官</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Special+Elite&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ═══ Top Bar ═══ -->
+  <header id="topbar">
+    <div class="topbar-left">
+      <span class="topbar-title">中途岛指挥官</span>
+      <span class="topbar-subtitle">USN · TF-16 · USS ENTERPRISE (CV-6) FLAGSHIP</span>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-date">04 JUN 1942 · Z+12</span>
+      <span class="topbar-clock" id="clock">04:00</span>
+      <span class="topbar-ap">AP <span class="topbar-ap-val" id="ap-current">3</span>/<span class="topbar-ap-val" id="ap-max">3</span></span>
+    </div>
+  </header>
+
+  <!-- ═══ Main Chart Area ═══ -->
+  <main id="chart-area">
+    <div class="chart-label">海图（CHART）</div>
+    <canvas id="tacticalMap"></canvas>
+  </main>
+
+  <!-- ═══ Bottom Dashboard + Controls ═══ -->
+  <div id="dashboard-wrap">
+    <div id="dashboard">
+      <div class="dash-item">航向 <span class="dash-val" id="d-course">240°</span></div>
+      <div class="dash-sep">│</div>
+      <div class="dash-item">航速 <span class="dash-val" id="d-speed">25</span>节</div>
+      <div class="dash-sep">│</div>
+      <div class="dash-item">位置 <span class="dash-val" id="d-pos">32.0°N 175.0°W</span></div>
+      <div class="dash-sep">│</div>
+      <div class="dash-item">损伤 <span class="dash-val" id="d-dmg">企业:OK 大黄蜂:OK</span></div>
+      <div class="dash-sep">│</div>
+      <div class="dash-item">甲板 <span class="dash-val" id="d-deck">—</span></div>
+      <div class="dash-sep">│</div>
+      <div class="dash-item">巡逻 <span class="dash-val" id="d-cap">0</span>架</div>
+      <div class="dash-sep">│</div>
+      <div class="dash-item">侦察 <span class="dash-val" id="d-scout">无</span></div>
+      <div class="dash-sep">│</div>
+      <div class="dash-item">敌情 <span class="dash-val" id="d-enemy">暂无</span></div>
+    </div>
+    <div id="controls">
+      <button class="btn" id="btn-advance">推进 15 分钟（ADVANCE）</button>
+      <button class="btn" id="btn-sitrep">态势简报（REPORT）</button>
+    </div>
+  </div>
+
+  <!-- ═══ Right Sidebar ═══ -->
+  <aside id="sidebar">
+    <div id="npc-tabs"></div>
+    <div id="chat-log"></div>
+    <div id="suggestions"></div>
+    <div id="input-bar">
+      <input type="text" id="chat-input" placeholder="输入指令..." autocomplete="off">
+      <button class="btn btn-send" id="btn-send">发送</button>
+    </div>
+  </aside>
+
+</div>
+
+<script src="/static/js/mapRenderer.js"></script>
+<script src="/static/js/uiController.js"></script>
+<script src="/static/js/main.js"></script>
+</body>
+</html>
