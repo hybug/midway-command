@@ -164,6 +164,9 @@ class ScoutMission(BaseModel):
     # 飞机引用
     aircraft_ids: list[str] = Field(default_factory=list)
 
+    # 侦察机当前位置（用于地图显示）
+    position: Optional[Position] = None
+
 
 class AircraftLoss(BaseModel):
     """单架飞机损失记录"""

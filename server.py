@@ -139,6 +139,7 @@ async def get_state():
                 "fuel_pct": s.fuel_pct,
                 "aircraft_lost": s.aircraft_lost,
                 "loss_reasons": s.loss_reasons,
+                "position": {"lat": s.position.lat, "lon": s.position.lon} if s.position else None,
             }
             for s in game_state.active_scouts
         ],

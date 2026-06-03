@@ -297,27 +297,20 @@ class MapRenderer {
     state.active_scouts.forEach(scout => {
       if (scout.status !== 'in_flight') return;
 
-      // Position based on phase
+      // Use actual position from API if available
       let px, py;
-      const dist = scout.search_distance_nm / CELL_NM * HEX_SIZE * SQRT3;
-      const midAngle = ((scout.search_bearing_min + scout.search_bearing_max) / 2 - 90) * Math.PI / 180;
-
-      if (scout.phase === 'preparing' || scout.phase === 'outbound') {
-        // En route — between fleet and search area
-        const progress = scout.phase === 'preparing' ? 0.1 : 0.6;
-        px = fx + dist * progress * Math.cos(midAngle);
-        py = fy + dist * progress * Math.sin(midAngle);
-      } else if (scout.phase === 'searching') {
-        // At search area
-        px = fx + dist * 0.8 * Math.cos(midAngle);
-        py = fy + dist * 0.8 * Math.sin(midAngle);
-      } else if (scout.phase === 'returning') {
-        // Returning — between search area and fleet
-        const progress = 0.3;
-        px = fx + dist * progress * Math.cos(midAngle);
-        py = fy + dist * progress * Math.sin(midAngle);
+      if (scout.position) {
+        const [sq, sr] = this._worldToHex(scout.position.lat, scout.position.lon);
+        [px, py] = this._hexToPixel(sq, sr);
       } else {
-        return; // Terminal phases — don't draw
+        // Fallback: estimate from phase
+        const dist = scout.search_distance_nm / CELL_NM * HEX_SIZE * SQRT3;
+        const midAngle = ((scout.search_bearing_min + scout.search_bearing_max) / 2 - 90) * Math.PI / 180;
+        const progress = scout.phase === 'preparing' ? 0.1 :
+                        scout.phase === 'outbound' ? 0.6 :
+                        scout.phase === 'searching' ? 0.8 : 0.3;
+        px = fx + dist * progress * Math.cos(midAngle);
+        py = fy + dist * progress * Math.sin(midAngle);
       }
 
       ctx.save();

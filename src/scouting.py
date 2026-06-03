@@ -121,6 +121,21 @@ def _advance_phase(scout: ScoutMission, new_phase: ScoutPhase, state: GameState)
     """Transition to a new phase."""
     scout.phase = new_phase
     scout.phase_started_at = state.clock.game_time
+
+    # Update position based on phase
+    fleet_pos = _get_fleet_pos(state)
+    if new_phase == ScoutPhase.OUTBOUND:
+        # Start at fleet position
+        scout.position = Position(lat=fleet_pos[0], lon=fleet_pos[1])
+    elif new_phase == ScoutPhase.SEARCHING:
+        # Move to search area center (bearing + distance from fleet)
+        mid_bearing = (scout.search_bearing_min + scout.search_bearing_max) / 2
+        search_dist = min(scout.search_distance_nm, 180)  # Cap at 180nm
+        scout.position = _bearing_distance_to_position(fleet_pos, mid_bearing, search_dist)
+    elif new_phase == ScoutPhase.RETURNING:
+        # Start return from current search position
+        pass  # position stays at search area, will move toward fleet each tick
+
     logger.info(f"[SCOUT] {scout.id} → {new_phase.value} (fuel: {scout.fuel_pct:.1f}%)")
 
 
@@ -157,6 +172,22 @@ def _process_returning(scout: ScoutMission, state: GameState) -> list[str]:
 
     # Burn return fuel
     _burn_fuel(scout, FUEL_BURN_PER_NM * 2, state)  # ~2nm per 15min tick at cruise
+
+    # Move position toward fleet (2nm per tick)
+    if scout.position:
+        fleet_pos = _get_fleet_pos(state)
+        current = (scout.position.lat, scout.position.lon)
+        dist_to_fleet = calculate_distance_nm(current, fleet_pos)
+        if dist_to_fleet > 2:
+            # Move 2nm toward fleet
+            bearing_to_fleet = calculate_bearing(current, fleet_pos)
+            new_pos = _bearing_distance_to_position(current, bearing_to_fleet, 2.0)
+            scout.position.lat = new_pos.lat
+            scout.position.lon = new_pos.lon
+        else:
+            # Close enough — snap to fleet
+            scout.position.lat = fleet_pos[0]
+            scout.position.lon = fleet_pos[1]
 
     # Check fuel status
     if scout.fuel_pct <= FUEL_CRITICAL:
@@ -360,6 +391,24 @@ def check_scout_results(state: GameState) -> list[str]:
 # Pending reports (unchanged logic)
 # ═══════════════════════════════════════════════════════
 
+def _bearing_distance_to_position(origin: tuple, bearing_deg: float, distance_nm: float) -> Position:
+    """Convert bearing + distance from origin to a Position (lat/lon)."""
+    lat1 = math.radians(origin[0])
+    lon1 = math.radians(origin[1])
+    bearing = math.radians(bearing_deg)
+    R = 3440.065  # Earth radius in nm
+
+    lat2 = math.asin(
+        math.sin(lat1) * math.cos(distance_nm / R) +
+        math.cos(lat1) * math.sin(distance_nm / R) * math.cos(bearing)
+    )
+    lon2 = lon1 + math.atan2(
+        math.sin(bearing) * math.sin(distance_nm / R) * math.cos(lat1),
+        math.cos(distance_nm / R) - math.sin(lat1) * math.sin(lat2)
+    )
+    return Position(lat=math.degrees(lat2), lon=math.degrees(lon2))
+
+
 def check_pending_reports(state: GameState) -> list[str]:
     """Check if any pending reports have arrived. Convert to EnemyKnown."""
     notifications = []
@@ -367,8 +416,15 @@ def check_pending_reports(state: GameState) -> list[str]:
 
     for report in state.pending_reports:
         if state.clock.game_time >= report.arrive_at:
+            # Compute actual position from bearing/distance
+            tf = state.task_forces[0]
+            fleet_pos = (tf.carriers[0].position.lat, tf.carriers[0].position.lon)
+            enemy_pos = _bearing_distance_to_position(
+                fleet_pos, report.reported_bearing, report.reported_distance_nm
+            )
+
             enemy = EnemyKnown(
-                position=Position(lat=0, lon=0),
+                position=enemy_pos,
                 description=(
                     f"SBD {report.scout_id}: 敌航母约 {report.reported_carrier_count} 艘"
                     f" - 方位 {report.reported_bearing}°"
