@@ -3,7 +3,7 @@ import random
 import pytest
 from datetime import datetime, timezone
 
-from src.state import GameState, GameClock, TaskForce, Carrier, AirGroup, AirGroupType, AirGroupStatus, Position
+from src.state import GameState, GameClock, TaskForce, Carrier, AirGroup, AirGroupType, AirGroupStatus, Position, Aircraft, AircraftType, AircraftStatus
 from src.scouting import calculate_bearing, calculate_distance_nm, in_sector, check_scout_results
 from src.tools import handle_execute_action
 from src.events import EventScheduler
@@ -11,6 +11,19 @@ from src.events import EventScheduler
 
 def make_state_with_enemy(enemy_lat=30.0, enemy_lon=-178.0):
     """Create a state with hidden enemy at specified position."""
+    # Generate test aircraft (10 SBDs for testing)
+    test_aircraft = [
+        Aircraft(
+            id=f"SBD-VB6-{i:02d}",
+            type=AircraftType.SBD,
+            squadron="VB-6",
+            carrier="Enterprise",
+            status=AircraftStatus.READY,
+            fuel_pct=100.0,
+            ammo_pct=100.0,
+        )
+        for i in range(1, 11)
+    ]
     carrier = Carrier(
         name="USS Enterprise (CV-6)",
         position=Position(lat=32.0, lon=-175.0),
@@ -19,6 +32,7 @@ def make_state_with_enemy(enemy_lat=30.0, enemy_lon=-178.0):
             AirGroup(type=AirGroupType.FIGHTER, count=27, status=AirGroupStatus.READY, squadron_name="VF-6"),
             AirGroup(type=AirGroupType.DIVE_BOMBER, count=38, status=AirGroupStatus.READY, squadron_name="VB-6"),
         ],
+        aircraft=test_aircraft,
     )
     tf = TaskForce(name="TF16", carriers=[carrier], course=240, speed=25)
     state = GameState(

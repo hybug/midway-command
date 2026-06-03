@@ -38,6 +38,41 @@ class AirGroup(BaseModel):
     target: Optional[str] = None
 
 
+# ── Aircraft Entity System ──
+
+class AircraftType(str, Enum):
+    """飞机型号"""
+    SBD = "SBD"    # 俯冲轰炸机（侦察+攻击）
+    TBD = "TBD"    # 鱼雷机（攻击）
+    VF = "VF"      # 战斗机（CAP+护航）
+
+
+class AircraftStatus(str, Enum):
+    """飞机状态"""
+    READY = "ready"             # 待命
+    LOADING = "loading"         # 装弹/加油
+    IN_FLIGHT = "in_flight"     # 飞行中
+    RETURNING = "returning"     # 返航
+    LANDING = "landing"         # 着舰中
+    MAINTENANCE = "maintenance" # 维修中
+
+
+class Aircraft(BaseModel):
+    """单架飞机实体"""
+    id: str                          # "SBD-VB6-01"
+    type: AircraftType
+    squadron: str                    # "VB-6"
+    carrier: str                     # "Enterprise"
+    status: AircraftStatus = AircraftStatus.READY
+    fuel_pct: float = 100.0          # 0-100
+    ammo_pct: float = 100.0          # 0-100
+    ordnance: str = "none"           # "500lb_bomb" / "torpedo" / "none"
+    assigned_mission: Optional[str] = None  # 任务ID
+    # 关键飞机标记（历史人物）
+    is_key_pilot: bool = False
+    pilot_name: Optional[str] = None
+
+
 class Position(BaseModel):
     lat: float
     lon: float
@@ -51,7 +86,8 @@ class Carrier(BaseModel):
     position: Position
     course: int = Field(default=240, ge=0, le=359)
     speed: int = Field(default=25, ge=0, le=35)
-    air_groups: list[AirGroup] = Field(default_factory=list)
+    air_groups: list[AirGroup] = Field(default_factory=list)  # 向后兼容
+    aircraft: list[Aircraft] = Field(default_factory=list)    # 新：具体飞机列表
     cap_strength: int = Field(default=0, ge=0)
     damage_level: int = Field(default=0, ge=0, le=3)
 
@@ -124,6 +160,9 @@ class ScoutMission(BaseModel):
     # 损失追踪
     aircraft_lost: int = 0
     loss_reasons: list[str] = Field(default_factory=list)
+
+    # 飞机引用
+    aircraft_ids: list[str] = Field(default_factory=list)
 
 
 class AircraftLoss(BaseModel):

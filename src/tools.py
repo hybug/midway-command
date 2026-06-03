@@ -3,7 +3,7 @@
 Tools follow OpenAI function-calling format. Handlers receive GameState and
 mutate it in-place (for write tools) or return serialized data (for read tools).
 """
-from src.state import GameState, ScoutMission, ScoutPhase
+from src.state import GameState, ScoutMission, ScoutPhase, AircraftStatus
 from src.recon_plan import create_recon_plan, ReconPlan
 
 # ---------------------------------------------------------------------------
@@ -177,6 +177,21 @@ def handle_execute_action(state: GameState, action_type: str, details: dict) -> 
         bearing_min = (heading - half) % 360
         bearing_max = (heading + half) % 360
 
+        # Select SBD aircraft from Enterprise (first carrier)
+        tf = state.task_forces[0]
+        carrier = tf.carriers[0]
+        available_sbd = [
+            a for a in carrier.aircraft
+            if a.type.value == "SBD" and a.status == AircraftStatus.READY
+        ]
+        if len(available_sbd) < count:
+            return f"Error: 只有 {len(available_sbd)} 架 SBD 可用，不足 {count} 架。"
+
+        selected = available_sbd[:count]
+        for a in selected:
+            a.status = AircraftStatus.IN_FLIGHT
+            a.assigned_mission = f"scout-{len(state.active_scouts) + 1}"
+
         mission_id = f"SBD-{len(state.active_scouts) + 1}"
         mission = ScoutMission(
             id=mission_id,
@@ -195,11 +210,12 @@ def handle_execute_action(state: GameState, action_type: str, details: dict) -> 
             fuel_burn_per_nm=0.8,
             fuel_burn_per_search_min=0.4,
             return_heading=(heading + 180) % 360,
+            aircraft_ids=[a.id for a in selected],
         )
         state.active_scouts.append(mission)
         return (
-            f"SBD {count} 架已起飞，搜索扇面 {bearing_min}°-{bearing_max}°，"
-            f"约 200 海里。预计 1 小时后有报告。"
+            f"SBD {count} 架已起飞（{', '.join(a.id for a in selected)}），"
+            f"搜索扇面 {bearing_min}°-{bearing_max}°，约 200 海里。"
         )
 
     else:

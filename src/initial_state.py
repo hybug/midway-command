@@ -9,6 +9,9 @@ from src.state import (
     AirGroup,
     AirGroupStatus,
     AirGroupType,
+    Aircraft,
+    AircraftType,
+    AircraftStatus,
     Carrier,
     GameClock,
     GameState,
@@ -29,31 +32,55 @@ def build_initial_state() -> GameState:
     # TF16 position: approx 32°N 175°W, course 240°, speed 25 knots
     tf16_position = Position(lat=32.0, lon=-175.0)
 
+    # ── Helper: generate aircraft list for a carrier ──
+    def make_aircraft(carrier_name: str, squadron: str, aircraft_type: AircraftType,
+                      count: int, key_pilots: dict = None) -> list[Aircraft]:
+        """Generate a list of Aircraft objects for a squadron."""
+        aircraft = []
+        for i in range(1, count + 1):
+            aid = f"{aircraft_type.value}-{squadron}-{i:02d}"
+            is_key = bool(key_pilots and i in key_pilots)
+            pilot = key_pilots.get(i) if is_key else None
+            aircraft.append(Aircraft(
+                id=aid,
+                type=aircraft_type,
+                squadron=squadron,
+                carrier=carrier_name,
+                status=AircraftStatus.READY,
+                fuel_pct=100.0,
+                ammo_pct=100.0,
+                ordnance="500lb_bomb" if aircraft_type == AircraftType.SBD else
+                         "torpedo" if aircraft_type == AircraftType.TBD else "none",
+                is_key_pilot=is_key,
+                pilot_name=pilot,
+            ))
+        return aircraft
+
+    # Enterprise aircraft
+    ent_fighters = make_aircraft("Enterprise", "VF-6", AircraftType.VF, 27)
+    ent_dive = make_aircraft("Enterprise", "VB-6", AircraftType.SBD, 38,
+                             key_pilots={1: "C. Wade McClusky (CAG)"})
+    ent_torpedo = make_aircraft("Enterprise", "VT-6", AircraftType.TBD, 15)
+    enterprise_aircraft = ent_fighters + ent_dive + ent_torpedo
+
+    # Hornet aircraft
+    hor_fighters = make_aircraft("Hornet", "VF-8", AircraftType.VF, 27)
+    hor_dive = make_aircraft("Hornet", "VB-8", AircraftType.SBD, 38)
+    hor_torpedo = make_aircraft("Hornet", "VT-8", AircraftType.TBD, 15,
+                                key_pilots={1: "John C. Waldron (CDR)"})
+    hornet_aircraft = hor_fighters + hor_dive + hor_torpedo
+
     # USS Enterprise (CV-6) — flagship
     enterprise = Carrier(
         name="USS Enterprise (CV-6)",
         position=tf16_position,
         cap_strength=12,
         air_groups=[
-            AirGroup(
-                type=AirGroupType.FIGHTER,
-                count=27,
-                status=AirGroupStatus.READY,
-                squadron_name="VF-6",
-            ),
-            AirGroup(
-                type=AirGroupType.DIVE_BOMBER,
-                count=38,
-                status=AirGroupStatus.READY,
-                squadron_name="VB-6/VS-6",
-            ),
-            AirGroup(
-                type=AirGroupType.TORPEDO,
-                count=15,
-                status=AirGroupStatus.READY,
-                squadron_name="VT-6",
-            ),
+            AirGroup(type=AirGroupType.FIGHTER, count=27, squadron_name="VF-6"),
+            AirGroup(type=AirGroupType.DIVE_BOMBER, count=38, squadron_name="VB-6/VS-6"),
+            AirGroup(type=AirGroupType.TORPEDO, count=15, squadron_name="VT-6"),
         ],
+        aircraft=enterprise_aircraft,
     )
 
     # USS Hornet (CV-8)
@@ -62,25 +89,11 @@ def build_initial_state() -> GameState:
         position=tf16_position,
         cap_strength=12,
         air_groups=[
-            AirGroup(
-                type=AirGroupType.FIGHTER,
-                count=27,
-                status=AirGroupStatus.READY,
-                squadron_name="VF-8",
-            ),
-            AirGroup(
-                type=AirGroupType.DIVE_BOMBER,
-                count=38,
-                status=AirGroupStatus.READY,
-                squadron_name="VB-8/VS-8",
-            ),
-            AirGroup(
-                type=AirGroupType.TORPEDO,
-                count=15,
-                status=AirGroupStatus.READY,
-                squadron_name="VT-8",
-            ),
+            AirGroup(type=AirGroupType.FIGHTER, count=27, squadron_name="VF-8"),
+            AirGroup(type=AirGroupType.DIVE_BOMBER, count=38, squadron_name="VB-8/VS-8"),
+            AirGroup(type=AirGroupType.TORPEDO, count=15, squadron_name="VT-8"),
         ],
+        aircraft=hornet_aircraft,
     )
 
     # TF16

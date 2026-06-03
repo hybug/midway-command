@@ -19,7 +19,7 @@ from datetime import timedelta
 
 from src.state import (
     GameState, EnemyKnown, Position, PendingReport,
-    ScoutMission, ScoutPhase, AircraftLoss,
+    ScoutMission, ScoutPhase, AircraftLoss, AircraftStatus,
 )
 
 logger = logging.getLogger("midway.scouting")
@@ -106,9 +106,15 @@ def _get_fleet_pos(state: GameState) -> tuple:
     return (tf.carriers[0].position.lat, tf.carriers[0].position.lon)
 
 
-def _burn_fuel(scout: ScoutMission, amount: float):
-    """Burn fuel, clamped to 0."""
+def _burn_fuel(scout: ScoutMission, amount: float, state: GameState):
+    """Burn fuel on ScoutMission and linked Aircraft objects."""
     scout.fuel_pct = max(0.0, scout.fuel_pct - amount)
+    # Also burn fuel on linked Aircraft
+    for tf in state.task_forces:
+        for carrier in tf.carriers:
+            for aircraft in carrier.aircraft:
+                if aircraft.id in scout.aircraft_ids:
+                    aircraft.fuel_pct = max(0.0, aircraft.fuel_pct - amount)
 
 
 def _advance_phase(scout: ScoutMission, new_phase: ScoutPhase, state: GameState):
@@ -116,6 +122,16 @@ def _advance_phase(scout: ScoutMission, new_phase: ScoutPhase, state: GameState)
     scout.phase = new_phase
     scout.phase_started_at = state.clock.game_time
     logger.info(f"[SCOUT] {scout.id} → {new_phase.value} (fuel: {scout.fuel_pct:.1f}%)")
+
+
+def _update_aircraft_on_landing(state: GameState, scout: ScoutMission, new_status: AircraftStatus):
+    """Update Aircraft status when scout mission ends."""
+    for tf in state.task_forces:
+        for carrier in tf.carriers:
+            for aircraft in carrier.aircraft:
+                if aircraft.id in scout.aircraft_ids:
+                    aircraft.status = new_status
+                    aircraft.assigned_mission = None
 
 
 def _check_enemy_proximity(state: GameState, scout: ScoutMission) -> bool:
@@ -140,7 +156,7 @@ def _process_returning(scout: ScoutMission, state: GameState) -> list[str]:
     elapsed = (state.clock.game_time - scout.phase_started_at).total_seconds() / 60
 
     # Burn return fuel
-    _burn_fuel(scout, FUEL_BURN_PER_NM * 2)  # ~2nm per 15min tick at cruise
+    _burn_fuel(scout, FUEL_BURN_PER_NM * 2, state)  # ~2nm per 15min tick at cruise
 
     # Check fuel status
     if scout.fuel_pct <= FUEL_CRITICAL:
@@ -206,10 +222,13 @@ def _process_returning(scout: ScoutMission, state: GameState) -> list[str]:
         if remaining <= 0:
             _advance_phase(scout, ScoutPhase.LOST, state)
             scout.status = "completed"
+            # Mark all aircraft as lost
+            _update_aircraft_on_landing(state, scout, AircraftStatus.MAINTENANCE)
             notifications.append(f"❌ {scout.id}: 全部飞机损失！任务终止。")
         else:
             _advance_phase(scout, ScoutPhase.LANDED, state)
             scout.status = "completed"
+            _update_aircraft_on_landing(state, scout, AircraftStatus.LANDING)
             notifications.append(
                 f"✅ {scout.id}: {remaining}/{scout.aircraft_count} 架飞机安全着舰"
                 + (f"（损失 {scout.aircraft_lost} 架）" if scout.aircraft_lost > 0 else "")
@@ -225,7 +244,7 @@ def _process_searching(scout: ScoutMission, state: GameState) -> list[str]:
     elapsed_search = (state.clock.game_time - scout.phase_started_at).total_seconds() / 60
 
     # Burn search fuel
-    _burn_fuel(scout, FUEL_BURN_PER_SEARCH_MIN * 15)  # 15 min per tick
+    _burn_fuel(scout, FUEL_BURN_PER_SEARCH_MIN * 15, state)  # 15 min per tick
 
     # Detection check (at end of search)
     if elapsed_search >= SEARCH_TIME_MIN:
@@ -291,7 +310,7 @@ def _process_outbound(scout: ScoutMission, state: GameState) -> list[str]:
     elapsed = (state.clock.game_time - scout.phase_started_at).total_seconds() / 60
 
     # Burn outbound fuel
-    _burn_fuel(scout, FUEL_BURN_PER_NM * 2)  # ~2nm per 15min tick
+    _burn_fuel(scout, FUEL_BURN_PER_NM * 2, state)  # ~2nm per 15min tick
 
     if elapsed >= OUTBOUND_TIME_MIN:
         _advance_phase(scout, ScoutPhase.SEARCHING, state)
