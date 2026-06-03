@@ -42,7 +42,7 @@ class TestBrowningNPC:
         assert "04:00" in prompt
         assert "Task Force 16" in prompt
         assert "USS Enterprise" in prompt
-        assert "aggressive" in prompt.lower() or "decisive" in prompt.lower()
+        assert "果断" in prompt or "暴躁" in prompt or "Miles R. Browning" in prompt
 
     def test_build_system_prompt_no_enemy(self):
         state = build_initial_state()
