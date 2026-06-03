@@ -103,12 +103,13 @@ class TestScoutLaunch:
         assert "SBD" in result
 
     def test_scout_sector_covers_enemy(self):
-        """Southwest search (210°-240°) should cover enemy at bearing ~233°."""
+        """Southwest search (205°-245°) should cover enemy at bearing ~233°."""
         state = make_state_with_enemy()
         handle_execute_action(state, "launch_scout", {"direction": "southwest"})
         scout = state.active_scouts[0]
-        assert scout.search_bearing_min == 210
-        assert scout.search_bearing_max == 240
+        # Sector search uses 40° spread: 225-20=205, 225+20=245
+        assert scout.search_bearing_min == 205
+        assert scout.search_bearing_max == 245
 
     def test_scout_sector_misses_enemy(self):
         """Northwest search (295°-325°) should NOT cover enemy at bearing ~233°."""

@@ -3,7 +3,7 @@
 Tools follow OpenAI function-calling format. Handlers receive GameState and
 mutate it in-place (for write tools) or return serialized data (for read tools).
 """
-from src.state import GameState, ScoutMission, ScoutPhase, AircraftStatus
+from src.state import GameState, ScoutMission, ScoutPhase, AircraftStatus, SearchPattern
 from src.recon_plan import create_recon_plan, ReconPlan
 
 # ---------------------------------------------------------------------------
@@ -166,13 +166,26 @@ def handle_execute_action(state: GameState, action_type: str, details: dict) -> 
     elif action_type == "launch_scout":
         direction = details.get("direction", "northwest")
         count = details.get("count", 4)
+        pattern_str = details.get("pattern", "sector")
+        pattern = SearchPattern(pattern_str) if pattern_str in ["sector", "parallel", "grid"] else SearchPattern.SECTOR
+
         direction_map = {
             "northwest": 310, "north": 0, "northeast": 45,
             "east": 90, "southeast": 135, "south": 180,
             "southwest": 225, "west": 270,
         }
         heading = direction_map.get(direction.lower(), 310)
-        spread = 30
+
+        # Sector width depends on search pattern
+        if pattern == SearchPattern.SECTOR:
+            spread = 40   # Narrow sector
+        elif pattern == SearchPattern.PARALLEL:
+            spread = 120  # Wide sector
+        elif pattern == SearchPattern.GRID:
+            spread = 60   # Medium sector
+        else:
+            spread = 40
+
         half = spread // 2
         bearing_min = (heading - half) % 360
         bearing_max = (heading + half) % 360
@@ -204,6 +217,7 @@ def handle_execute_action(state: GameState, action_type: str, details: dict) -> 
             search_bearing_max=bearing_max,
             search_distance_nm=200,
             aircraft_count=count,
+            search_pattern=pattern,
             phase=ScoutPhase.PREPARING,
             phase_started_at=state.clock.game_time,
             fuel_pct=100.0,
@@ -213,9 +227,12 @@ def handle_execute_action(state: GameState, action_type: str, details: dict) -> 
             aircraft_ids=[a.id for a in selected],
         )
         state.active_scouts.append(mission)
+
+        pattern_cn = {"sector": "扇形", "parallel": "平行", "grid": "方格"}
         return (
             f"SBD {count} 架已起飞（{', '.join(a.id for a in selected)}），"
-            f"搜索扇面 {bearing_min}°-{bearing_max}°，约 200 海里。"
+            f"搜索模式：{pattern_cn.get(pattern_str, '扇形')}，"
+            f"扇面 {bearing_min}°-{bearing_max}°，约 200 海里。"
         )
 
     else:

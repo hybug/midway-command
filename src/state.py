@@ -119,6 +119,13 @@ class PendingSuggestion(BaseModel):
     proposed_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class SearchPattern(str, Enum):
+    """搜索模式"""
+    SECTOR = "sector"       # 扇形搜索：窄/深/快/高概率
+    PARALLEL = "parallel"   # 平行搜索：宽/浅/中/低概率
+    GRID = "grid"           # 方格搜索：局部/深/慢/最高概率
+
+
 class ScoutPhase(str, Enum):
     """侦察任务阶段"""
     PREPARING = "preparing"     # 起飞准备 (15分钟)
@@ -143,6 +150,7 @@ class ScoutMission(BaseModel):
     search_bearing_max: int = 0
     search_distance_nm: int = 200
     aircraft_count: int = 4
+    search_pattern: SearchPattern = SearchPattern.SECTOR
 
     # 阶段追踪
     phase: ScoutPhase = ScoutPhase.PREPARING

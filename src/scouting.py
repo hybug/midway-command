@@ -19,7 +19,7 @@ from datetime import timedelta
 
 from src.state import (
     GameState, EnemyKnown, Position, PendingReport,
-    ScoutMission, ScoutPhase, AircraftLoss, AircraftStatus,
+    ScoutMission, ScoutPhase, AircraftLoss, AircraftStatus, SearchPattern,
 )
 
 logger = logging.getLogger("midway.scouting")
@@ -294,9 +294,22 @@ def _process_searching(scout: ScoutMission, state: GameState) -> list[str]:
             if distance > scout.search_distance_nm:
                 continue
 
-            base_prob = 0.8
+            # Pattern-dependent detection probability
+            if scout.search_pattern == SearchPattern.SECTOR:
+                base_prob = 0.8
+                distance_decay = 0.4
+            elif scout.search_pattern == SearchPattern.PARALLEL:
+                base_prob = 0.6
+                distance_decay = 0.3
+            elif scout.search_pattern == SearchPattern.GRID:
+                base_prob = 0.9
+                distance_decay = 0.2
+            else:
+                base_prob = 0.8
+                distance_decay = 0.4
+
             distance_ratio = distance / scout.search_distance_nm
-            prob = base_prob * (1.0 - distance_ratio * 0.4)
+            prob = base_prob * (1.0 - distance_ratio * distance_decay)
 
             if random.random() < prob:
                 real_count = len(enemy.get("carriers", []))
