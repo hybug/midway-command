@@ -156,10 +156,10 @@ class ScoutMission(BaseModel):
     phase: ScoutPhase = ScoutPhase.PREPARING
     phase_started_at: Optional[datetime] = None
 
-    # 燃油追踪
+    # 燃油追踪 (SBD Dauntless: 200gal tank, 1.2 gal/nm cruise, 25 gal/hr search)
     fuel_pct: float = 100.0
-    fuel_burn_per_nm: float = 0.8      # 每海里消耗百分比
-    fuel_burn_per_search_min: float = 0.4  # 每搜索分钟消耗百分比
+    fuel_burn_per_nm: float = 0.6      # 1.2 gal/nm ÷ 200 gal = 0.6%/nm
+    fuel_burn_per_search_min: float = 0.125  # 25 gal/hr ÷ 200 gal = 0.125%/min
 
     # 返航信息
     return_eta_minutes: int = 0

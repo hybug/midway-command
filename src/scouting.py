@@ -24,13 +24,13 @@ from src.state import (
 
 logger = logging.getLogger("midway.scouting")
 
-# ── SBD Dauntless parameters (normalized to fuel_pct) ──
+# ── SBD Dauntless parameters (normalized to fuel_pct, 200gal tank) ──
 PREP_TIME_MIN = 15          # 起飞准备时间
 OUTBOUND_TIME_MIN = 45      # 飞往搜索区域时间
 SEARCH_TIME_MIN = 60        # 搜索持续时间
 RETURN_TIME_MIN = 45        # 返航时间（与去程相同）
-FUEL_BURN_PER_NM = 0.8      # 每海里消耗燃油百分比
-FUEL_BURN_PER_SEARCH_MIN = 0.4  # 每搜索分钟消耗燃油百分比
+FUEL_BURN_PER_NM = 0.6      # 巡航油耗: 1.2 gal/nm ÷ 200 gal = 0.6%/nm
+FUEL_BURN_PER_SEARCH_MIN = 0.125  # 搜索油耗: 25 gal/hr ÷ 200 gal = 0.125%/min
 FUEL_RETURN_MINIMUM = 15.0  # 返航最低燃油百分比
 FUEL_CRITICAL = 5.0         # 燃油危险线
 FUEL_LOW = 10.0             # 燃油低线

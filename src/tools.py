@@ -221,8 +221,8 @@ def handle_execute_action(state: GameState, action_type: str, details: dict) -> 
             phase=ScoutPhase.PREPARING,
             phase_started_at=state.clock.game_time,
             fuel_pct=100.0,
-            fuel_burn_per_nm=0.8,
-            fuel_burn_per_search_min=0.4,
+            fuel_burn_per_nm=0.6,
+            fuel_burn_per_search_min=0.125,
             return_heading=(heading + 180) % 360,
             aircraft_ids=[a.id for a in selected],
         )
