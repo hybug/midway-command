@@ -278,15 +278,13 @@ class MapRenderer {
     ctx.fillStyle = COL.inkFade;
     ctx.fillText('28°12\'N  177°21\'W', 0, -14 * s + 12);
 
-    // Island labels
-    ctx.font = '9px Caveat, cursive';
-    ctx.fillStyle = COL.inkMain;
-    ctx.fillText('SAND ISLAND', -5 * s, 6 * s);
-    ctx.fillText('EASTERN', 7 * s, 5 * s);
-    ctx.fillText('ISLAND', 7 * s, 7 * s);
-    ctx.font = '7px Caveat, cursive';
-    ctx.fillStyle = COL.inkFade;
-    ctx.fillText('Henderson Field', 7 * s, 9 * s);
+    // Island labels (inside ctx.translate context)
+    this._tryPlaceLabel(ctx, 'SAND ISLAND', -5 * s, 6 * s, '9px Caveat, cursive', COL.inkMain,
+      [[0, 6*s], [0, -6*s], [-8*s, 0]], 2);
+    this._tryPlaceLabel(ctx, 'EASTERN ISLAND', 7 * s, 5 * s, '9px Caveat, cursive', COL.inkMain,
+      [[0, 6*s], [0, -6*s], [8*s, 0]], 2);
+    this._tryPlaceLabel(ctx, 'Henderson Fld', 7 * s, 9 * s, '7px Caveat, cursive', COL.inkFade,
+      [[0, 4*s], [0, -8*s]], 1);
 
     ctx.restore();
   }
@@ -401,9 +399,9 @@ class MapRenderer {
       ctx.beginPath(); ctx.moveTo(px - 6, py); ctx.lineTo(px + 6, py); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(px, py - 6); ctx.lineTo(px, py + 6); ctx.stroke();
 
-      // Label (collision-aware)
+      // Label (priority: high — fleet is important)
       this._tryPlaceLabel(ctx, short, px, py - 16, 'bold 13px Caveat, cursive', COL.inkMain,
-        [[0, -16], [0, 18], [-18, 0], [18, 0]]);
+        [[0, -16], [16, -10], [-16, -10], [0, 18]], 3);
 
       // Course arrow for this carrier
       this._drawSingleCourseArrow(ctx, px, py, tf.course);
@@ -464,9 +462,9 @@ class MapRenderer {
       ctx.textBaseline = 'middle';
       ctx.fillText('?', px, py);
 
-      // Label (collision-aware)
+      // Label (priority: medium — enemy is important but "?" is primary)
       this._tryPlaceLabel(ctx, 'ENEMY', px, py + 20, '10px Caveat, cursive', COL.enemyRed,
-        [[0, 20], [0, -22], [18, 10], [-18, 10]]);
+        [[0, 20], [16, 14], [-16, 14], [0, -22]], 2);
     });
   }
 
@@ -519,13 +517,13 @@ class MapRenderer {
       }
       ctx.restore();
 
-      // Sector label
+      // Sector label (priority: low — can be hidden)
       const midAngle = (startRad + endRad) / 2;
       const labelR = sectorRadius * 0.7;
       const lx = fx + labelR * Math.cos(midAngle);
       const ly = fy + labelR * Math.sin(midAngle);
       this._tryPlaceLabel(ctx, s.direction, lx, ly, '10px Caveat, cursive', COL.inkMain,
-        [[0, 0], [0, -12], [12, 0], [-12, 0]]);
+        [[0, 0], [0, -14], [14, 0], [-14, 0]], 1);
 
       ctx.restore();
     });
@@ -609,38 +607,74 @@ class MapRenderer {
   }
 
   // ═══════════════════════════════════════════════════════
-  // Label Collision Detection
+  // Label Placement System
   // ═══════════════════════════════════════════════════════
-  _checkOverlap(x, y, w, h) {
+
+  _checkOverlap(x, y, w, h, margin = 2) {
     for (const b of this.labelBounds) {
-      if (x < b.x + b.w && x + w > b.x && y < b.y + b.h && y + h > b.y) {
+      if (x - margin < b.x + b.w && x + w + margin > b.x &&
+          y - margin < b.y + b.h && y + h + margin > b.y) {
         return true;
       }
     }
     return false;
   }
 
-  _tryPlaceLabel(ctx, text, px, py, font, color, offsets) {
-    // Try to place a label at px,py, checking collisions with offsets
+  _clampToCanvas(x, y, w, h, padding = 4) {
+    const cx = Math.max(padding, Math.min(this.width - w - padding, x));
+    const cy = Math.max(padding, Math.min(this.height - h - padding, y));
+    return [cx, cy];
+  }
+
+  _drawLeaderLine(ctx, fromX, fromY, toX, toY) {
+    ctx.strokeStyle = 'rgba(42,34,24,0.2)';
+    ctx.lineWidth = 0.5;
+    ctx.setLineDash([2, 2]);
+    ctx.beginPath();
+    ctx.moveTo(fromX, fromY);
+    ctx.lineTo(toX, toY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  _tryPlaceLabel(ctx, text, anchorX, anchorY, font, color, offsets, priority = 1) {
     ctx.font = font;
     ctx.fillStyle = color;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const metrics = ctx.measureText(text);
-    const lw = metrics.width + 4;
+    const lw = metrics.width + 6;
     const lh = parseInt(font) + 4;
 
     for (const [ox, oy] of offsets) {
-      const x = px + ox;
-      const y = py + oy;
-      if (!this._checkOverlap(x - lw/2, y - lh/2, lw, lh)) {
-        ctx.fillText(text, x, y);
-        this.labelBounds.push({ x: x - lw/2, y: y - lh/2, w: lw, h: lh });
+      const x = anchorX + ox;
+      const y = anchorY + oy;
+      // Check canvas bounds
+      const [cx, cy] = this._clampToCanvas(x - lw/2, y - lh/2, lw, lh);
+      // Check overlap
+      if (!this._checkOverlap(cx, cy, lw, lh)) {
+        ctx.fillText(text, cx + lw/2, cy + lh/2);
+        this.labelBounds.push({ x: cx, y: cy, w: lw, h: lh });
+        // Draw leader line if offset is significant
+        const dist = Math.sqrt(ox*ox + oy*oy);
+        if (dist > 20) {
+          this._drawLeaderLine(ctx, anchorX, anchorY, cx + lw/2, cy + lh/2);
+        }
         return true;
       }
     }
-    // All positions taken — skip label
-    return false;
+    // Low priority labels can be hidden
+    if (priority < 2) return false;
+    // High priority: force place at first offset
+    const [ox, oy] = offsets[0];
+    const x = anchorX + ox;
+    const y = anchorY + oy;
+    const [cx, cy] = this._clampToCanvas(x - lw/2, y - lh/2, lw, lh);
+    ctx.globalAlpha = 0.5;
+    ctx.fillText(text, cx + lw/2, cy + lh/2);
+    ctx.globalAlpha = 1.0;
+    this.labelBounds.push({ x: cx, y: cy, w: lw, h: lh });
+    return true;
   }
 
   // ═══════════════════════════════════════════════════════
