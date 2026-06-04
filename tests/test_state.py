@@ -38,9 +38,9 @@ class TestInitialState:
     def test_tf16_position(self):
         state = build_initial_state()
         tf16 = state.task_forces[0]
-        # Approx 32°N 175°W
-        assert 31.5 <= tf16.carriers[0].position.lat <= 32.5
-        assert -175.5 <= tf16.carriers[0].position.lon <= -174.5
+        # 31.5°N 176°W (~200nm NE of Midway)
+        assert 31.0 <= tf16.carriers[0].position.lat <= 32.0
+        assert -176.5 <= tf16.carriers[0].position.lon <= -175.5
 
     def test_two_carriers(self):
         state = build_initial_state()
