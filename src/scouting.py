@@ -290,9 +290,6 @@ def _process_searching(scout: ScoutMission, state: GameState) -> list[str]:
         # Get NPC config for dice modifiers (Browning as default)
         npc_config = NPC_REGISTRY["browning"]
 
-        # Determine weather (simplified — could come from game state)
-        weather = "clear"  # TODO: get from game state weather system
-
         detected = False
 
         for enemy in hidden:
@@ -309,7 +306,6 @@ def _process_searching(scout: ScoutMission, state: GameState) -> list[str]:
             # Roll dice for detection
             result = roll_scout_check(
                 npc_config,
-                weather=weather,
                 distance_nm=distance,
                 pattern=scout.search_pattern.value,
             )

@@ -160,21 +160,13 @@ def roll_with_npc(npc_config, situational_mods=None, advantage=False, disadvanta
     )
 
 
-def roll_scout_check(npc_config, weather="clear", distance_nm=100, pattern="sector") -> DiceResult:
+def roll_scout_check(npc_config, distance_nm=100, pattern="sector") -> DiceResult:
     """侦察检定专用函数"""
     # NPC修正
     base = int(npc_config.competence * 25)
 
     # 情境修正
     situational = {}
-
-    # 天气修正
-    if weather == "clear":
-        situational["天气晴朗"] = 10
-    elif weather == "cloudy":
-        situational["天气多云"] = -5
-    elif weather == "storm":
-        situational["天气暴风雨"] = -20
 
     # 距离修正
     if distance_nm < 100:

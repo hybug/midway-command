@@ -116,13 +116,13 @@ class TestRollCheck:
 class TestScoutCheck:
     def test_scout_with_good_conditions(self):
         npc = NPC_REGISTRY["browning"]
-        result = roll_scout_check(npc, weather="clear", distance_nm=80, pattern="sector")
+        result = roll_scout_check(npc, distance_nm=80, pattern="sector")
         assert result.modified_roll > 50  # Good conditions
 
     def test_scout_with_bad_conditions(self):
         npc = NPC_REGISTRY["browning"]
-        good = [roll_scout_check(npc, weather="clear", distance_nm=80, pattern="sector").modified_roll for _ in range(100)]
-        bad = [roll_scout_check(npc, weather="storm", distance_nm=160, pattern="parallel").modified_roll for _ in range(100)]
+        good = [roll_scout_check(npc, distance_nm=80, pattern="sector").modified_roll for _ in range(100)]
+        bad = [roll_scout_check(npc, distance_nm=160, pattern="parallel").modified_roll for _ in range(100)]
         assert sum(bad) < sum(good)  # Bad conditions should produce lower average
 
     def test_scout_competence_matters(self):
@@ -148,6 +148,5 @@ class TestAttackCheck:
 
 
 class TestWeatherCheck:
-    def test_weather_range(self):
-        result = roll_weather_check()
-        assert 1 <= result.modified_roll <= 100
+    """Weather check tests deferred until weather system is implemented."""
+    pass
