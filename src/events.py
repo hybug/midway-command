@@ -12,6 +12,7 @@ from typing import Callable
 from src.state import GameState, EnemyKnown, Position
 from src.scouting import check_scout_results, check_pending_reports
 from src.entities import update_all_positions
+from src.spatial import update_spatial_index
 
 logger = logging.getLogger("midway.events")
 
@@ -48,6 +49,9 @@ class EventScheduler:
 
         # Update all entity positions
         update_all_positions(state, minutes)
+
+        # Update spatial index for fast queries
+        update_spatial_index(state)
 
         # Check scouting results first
         scout_notifications = check_scout_results(state)
