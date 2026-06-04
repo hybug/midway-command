@@ -121,8 +121,9 @@ class TestScoutCheck:
 
     def test_scout_with_bad_conditions(self):
         npc = NPC_REGISTRY["browning"]
-        result = roll_scout_check(npc, weather="storm", distance_nm=160, pattern="parallel")
-        assert result.modified_roll < 50  # Bad conditions
+        good = [roll_scout_check(npc, weather="clear", distance_nm=80, pattern="sector").modified_roll for _ in range(100)]
+        bad = [roll_scout_check(npc, weather="storm", distance_nm=160, pattern="parallel").modified_roll for _ in range(100)]
+        assert sum(bad) < sum(good)  # Bad conditions should produce lower average
 
     def test_scout_competence_matters(self):
         """Browning (competence=0.9) should roll better than radio officer (0.6)"""

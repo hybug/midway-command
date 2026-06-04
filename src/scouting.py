@@ -21,6 +21,8 @@ from src.state import (
     GameState, EnemyKnown, Position, PendingReport,
     ScoutMission, ScoutPhase, AircraftLoss, AircraftStatus, SearchPattern,
 )
+from src.dice import roll_scout_check, DiceResult
+from src.npc_config import NPC_REGISTRY
 
 logger = logging.getLogger("midway.scouting")
 
@@ -270,7 +272,10 @@ def _process_returning(scout: ScoutMission, state: GameState) -> list[str]:
 
 
 def _process_searching(scout: ScoutMission, state: GameState) -> list[str]:
-    """Process the search phase — detect enemies and check fuel."""
+    """Process the search phase — detect enemies and check fuel.
+
+    Uses the dice system for detection checks instead of fixed probabilities.
+    """
     notifications = []
     elapsed_search = (state.clock.game_time - scout.phase_started_at).total_seconds() / 60
 
@@ -281,6 +286,13 @@ def _process_searching(scout: ScoutMission, state: GameState) -> list[str]:
     if elapsed_search >= SEARCH_TIME_MIN:
         hidden = state._hidden_actual_enemy or []
         fleet_pos = _get_fleet_pos(state)
+
+        # Get NPC config for dice modifiers (Browning as default)
+        npc_config = NPC_REGISTRY["browning"]
+
+        # Determine weather (simplified — could come from game state)
+        weather = "clear"  # TODO: get from game state weather system
+
         detected = False
 
         for enemy in hidden:
@@ -294,26 +306,35 @@ def _process_searching(scout: ScoutMission, state: GameState) -> list[str]:
             if distance > scout.search_distance_nm:
                 continue
 
-            # Pattern-dependent detection probability
-            if scout.search_pattern == SearchPattern.SECTOR:
-                base_prob = 0.8
-                distance_decay = 0.4
-            elif scout.search_pattern == SearchPattern.PARALLEL:
-                base_prob = 0.6
-                distance_decay = 0.3
-            elif scout.search_pattern == SearchPattern.GRID:
-                base_prob = 0.9
-                distance_decay = 0.2
-            else:
-                base_prob = 0.8
-                distance_decay = 0.4
+            # Roll dice for detection
+            result = roll_scout_check(
+                npc_config,
+                weather=weather,
+                distance_nm=distance,
+                pattern=scout.search_pattern.value,
+            )
 
-            distance_ratio = distance / scout.search_distance_nm
-            prob = base_prob * (1.0 - distance_ratio * distance_decay)
+            logger.info(f"[SCOUT] {scout.id} 侦察检定: {result} (距离{int(distance)}nm)")
 
-            if random.random() < prob:
+            if result.is_success():
+                # Successful detection
                 real_count = len(enemy.get("carriers", []))
                 delay = compute_report_delay(distance)
+
+                # Apply distortion based on dice result
+                if result.is_critical():
+                    # Critical success: minimal distortion
+                    reported_bearing = distort_bearing(bearing, max_error=2)
+                    reported_distance = distort_distance(distance, max_error_pct=0.05)
+                    reported_count = real_count  # Accurate count
+                    confidence = "high"
+                else:
+                    # Normal success: standard distortion
+                    reported_bearing = distort_bearing(bearing)
+                    reported_distance = distort_distance(distance)
+                    reported_count = distort_count(real_count)
+                    confidence = "medium" if distance > 100 else "high"
+
                 report = PendingReport(
                     scout_id=scout.id,
                     detected_at=state.clock.game_time,
@@ -321,10 +342,10 @@ def _process_searching(scout: ScoutMission, state: GameState) -> list[str]:
                     real_bearing=bearing,
                     real_distance_nm=distance,
                     real_carrier_count=real_count,
-                    reported_bearing=distort_bearing(bearing),
-                    reported_distance_nm=distort_distance(distance),
-                    reported_carrier_count=distort_count(real_count),
-                    confidence="medium" if distance > 100 else "high",
+                    reported_bearing=reported_bearing,
+                    reported_distance_nm=reported_distance,
+                    reported_carrier_count=reported_count,
+                    confidence=confidence,
                 )
                 state.pending_reports.append(report)
                 notifications.append(
@@ -333,6 +354,32 @@ def _process_searching(scout: ScoutMission, state: GameState) -> list[str]:
                 logger.info(f"[SCOUT] {scout.id} DETECTED at bearing {int(bearing)}°, {int(distance)}nm")
                 detected = True
                 break
+
+            elif result.level == "partial":
+                # Partial identification — see something but unclear
+                notifications.append(
+                    f"📡 {scout.id}: 看到大型船只，但无法确认类型（方位{int(bearing)}°）"
+                )
+                logger.info(f"[SCOUT] {scout.id} PARTIAL at bearing {int(bearing)}°")
+
+            elif result.level == "failure":
+                # Missed — didn't see anything
+                logger.info(f"[SCOUT] {scout.id} MISSED at bearing {int(bearing)}°")
+
+            elif result.level == "critical_failure":
+                # Critical failure — aircraft lost or major false report
+                lost = min(1, scout.aircraft_count - scout.aircraft_lost)
+                if lost > 0:
+                    scout.aircraft_lost += lost
+                    scout.loss_reasons.append(f"侦察中被击落 {lost} 架")
+                    state.aircraft_losses.append(AircraftLoss(
+                        scout_id=scout.id,
+                        aircraft_number=scout.aircraft_lost,
+                        reason="shot_down",
+                        time=state.clock.game_time,
+                    ))
+                    notifications.append(f"❌ {scout.id}: 1 架飞机在侦察中被击落！")
+                logger.warning(f"[SCOUT] {scout.id} CRITICAL FAILURE — aircraft lost")
 
         if not detected:
             state.incoming_messages.append(
