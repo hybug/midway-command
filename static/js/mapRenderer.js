@@ -17,13 +17,13 @@ const COL = {
   inkFade: '#6b5d4a',
   inkFaint: '#a89878',
   enemyRed: '#8b2500',
-  gridLine: 'rgba(160, 140, 110, 0.35)',
-  lagoon: '#b8d4c8',
-  reef: '#8aaa98',
+  gridLine: 'rgba(140, 120, 90, 0.55)',
+  lagoon: '#a8c8b8',
+  reef: '#7a9a88',
   sand: '#d4c4a0',
   eastern: '#c8b890',
-  runway: '#6b5d4a',
-  depth: 'rgba(100,140,180,0.15)',
+  runway: '#5a4d3a',
+  depth: 'rgba(80,120,160,0.25)',
   secretRed: '#c0392b',
 };
 
@@ -36,6 +36,8 @@ class MapRenderer {
     this.height = 0;
     this.centerX = 0;
     this.centerY = 0;
+    // Label collision detection
+    this.labelBounds = [];  // [{x, y, w, h}]
   }
 
   resize() {
@@ -53,6 +55,7 @@ class MapRenderer {
 
   render(state) {
     this.resize();
+    this.labelBounds = [];  // Reset label collision tracker
     const ctx = this.ctx;
     const W = this.width, H = this.height;
 
@@ -367,10 +370,10 @@ class MapRenderer {
     ctx.lineWidth = 0.5;
     for (let ring = 2; ring <= radius; ring += 2) {
       const rpx = ring * HEX_SIZE * SQRT3;
-      ctx.strokeStyle = ring === 2 ? 'rgba(42,34,24,0.15)' : 'rgba(42,34,24,0.08)';
+      ctx.strokeStyle = ring === 2 ? 'rgba(42,34,24,0.3)' : 'rgba(42,34,24,0.18)';
       ctx.beginPath(); ctx.arc(fx, fy, rpx, 0, Math.PI * 2); ctx.stroke();
       // Label at 3 o'clock
-      ctx.fillStyle = 'rgba(42,34,24,0.25)';
+      ctx.fillStyle = 'rgba(42,34,24,0.4)';
       ctx.font = '9px Caveat, cursive';
       ctx.textAlign = 'left';
       ctx.fillText(ring * CELL_NM + 'nm', fx + rpx + 3, fy + 3);
@@ -398,11 +401,9 @@ class MapRenderer {
       ctx.beginPath(); ctx.moveTo(px - 6, py); ctx.lineTo(px + 6, py); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(px, py - 6); ctx.lineTo(px, py + 6); ctx.stroke();
 
-      // Label above
-      ctx.fillStyle = COL.inkMain;
-      ctx.font = 'bold 13px Caveat, cursive';
-      ctx.textAlign = 'center';
-      ctx.fillText(short, px, py - 16);
+      // Label (collision-aware)
+      this._tryPlaceLabel(ctx, short, px, py - 16, 'bold 13px Caveat, cursive', COL.inkMain,
+        [[0, -16], [0, 18], [-18, 0], [18, 0]]);
 
       // Course arrow for this carrier
       this._drawSingleCourseArrow(ctx, px, py, tf.course);
@@ -463,15 +464,9 @@ class MapRenderer {
       ctx.textBaseline = 'middle';
       ctx.fillText('?', px, py);
 
-      // Label with confidence
-      ctx.font = '10px Caveat, cursive';
-      ctx.fillText('ENEMY', px, py + 20);
-      if (e.confidence) {
-        ctx.font = '8px Caveat, cursive';
-        ctx.fillStyle = 'rgba(139,37,0,0.6)';
-        ctx.fillText('(' + e.confidence + ')', px, py + 30);
-      }
-      ctx.textBaseline = 'alphabetic';
+      // Label (collision-aware)
+      this._tryPlaceLabel(ctx, 'ENEMY', px, py + 20, '10px Caveat, cursive', COL.enemyRed,
+        [[0, 20], [0, -22], [18, 10], [-18, 10]]);
     });
   }
 
@@ -489,7 +484,7 @@ class MapRenderer {
       ctx.save();
 
       // Wedge fill (semi-transparent)
-      ctx.fillStyle = 'rgba(160,140,110,0.08)';
+      ctx.fillStyle = 'rgba(160,140,110,0.15)';
       ctx.beginPath();
       ctx.moveTo(fx, fy);
       ctx.arc(fx, fy, sectorRadius, startRad, endRad);
@@ -497,8 +492,8 @@ class MapRenderer {
       ctx.fill();
 
       // Wedge border
-      ctx.strokeStyle = 'rgba(42,34,24,0.15)';
-      ctx.lineWidth = 0.8;
+      ctx.strokeStyle = 'rgba(42,34,24,0.3)';
+      ctx.lineWidth = 1.2;
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
       ctx.moveTo(fx, fy);
@@ -508,8 +503,8 @@ class MapRenderer {
       ctx.setLineDash([]);
 
       // Hatching inside wedge
-      ctx.strokeStyle = 'rgba(42,34,24,0.06)';
-      ctx.lineWidth = 0.4;
+      ctx.strokeStyle = 'rgba(42,34,24,0.12)';
+      ctx.lineWidth = 0.6;
       ctx.save();
       ctx.beginPath();
       ctx.moveTo(fx, fy);
@@ -529,10 +524,8 @@ class MapRenderer {
       const labelR = sectorRadius * 0.7;
       const lx = fx + labelR * Math.cos(midAngle);
       const ly = fy + labelR * Math.sin(midAngle);
-      ctx.fillStyle = 'rgba(42,34,24,0.2)';
-      ctx.font = '9px Caveat, cursive';
-      ctx.textAlign = 'center';
-      ctx.fillText(s.direction, lx, ly);
+      this._tryPlaceLabel(ctx, s.direction, lx, ly, '10px Caveat, cursive', COL.inkMain,
+        [[0, 0], [0, -12], [12, 0], [-12, 0]]);
 
       ctx.restore();
     });
@@ -613,6 +606,41 @@ class MapRenderer {
     ctx.textAlign = 'center';
     ctx.fillText('0', x, y - 8);
     ctx.fillText(nm + ' nm', x + px, y - 8);
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Label Collision Detection
+  // ═══════════════════════════════════════════════════════
+  _checkOverlap(x, y, w, h) {
+    for (const b of this.labelBounds) {
+      if (x < b.x + b.w && x + w > b.x && y < b.y + b.h && y + h > b.y) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  _tryPlaceLabel(ctx, text, px, py, font, color, offsets) {
+    // Try to place a label at px,py, checking collisions with offsets
+    ctx.font = font;
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const metrics = ctx.measureText(text);
+    const lw = metrics.width + 4;
+    const lh = parseInt(font) + 4;
+
+    for (const [ox, oy] of offsets) {
+      const x = px + ox;
+      const y = py + oy;
+      if (!this._checkOverlap(x - lw/2, y - lh/2, lw, lh)) {
+        ctx.fillText(text, x, y);
+        this.labelBounds.push({ x: x - lw/2, y: y - lh/2, w: lw, h: lh });
+        return true;
+      }
+    }
+    // All positions taken — skip label
+    return false;
   }
 
   // ═══════════════════════════════════════════════════════
