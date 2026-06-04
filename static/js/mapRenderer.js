@@ -297,6 +297,9 @@ class MapRenderer {
     state.active_scouts.forEach(scout => {
       if (scout.status !== 'in_flight') return;
 
+      // Calculate search sector midpoint angle (always needed for direction)
+      const midAngle = ((scout.search_bearing_min + scout.search_bearing_max) / 2 - 90) * Math.PI / 180;
+
       // Use actual position from API if available
       let px, py;
       if (scout.position) {
@@ -305,7 +308,6 @@ class MapRenderer {
       } else {
         // Fallback: estimate from phase
         const dist = scout.search_distance_nm / CELL_NM * HEX_SIZE * SQRT3;
-        const midAngle = ((scout.search_bearing_min + scout.search_bearing_max) / 2 - 90) * Math.PI / 180;
         const progress = scout.phase === 'preparing' ? 0.1 :
                         scout.phase === 'outbound' ? 0.6 :
                         scout.phase === 'searching' ? 0.8 : 0.3;
