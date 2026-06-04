@@ -29,8 +29,9 @@ from src.entities import (
 def build_initial_state() -> GameState:
     """Return the historical opening state at 04:00, June 4, 1942."""
 
-    # TF16 position: approx 32°N 175°W, course 240°, speed 25 knots
-    tf16_position = Position(lat=32.0, lon=-175.0)
+    # TF16 position: ~200nm NE of Midway, course 240°, speed 25 knots
+    # Historical: Nimitz ordered TF16 to ambush position NE of Midway
+    tf16_position = Position(lat=31.5, lon=-176.0)
 
     # ── Helper: generate aircraft list for a carrier ──
     def make_aircraft(carrier_name: str, squadron: str, aircraft_type: AircraftType,
@@ -120,12 +121,14 @@ def build_initial_state() -> GameState:
         max_action_points=3,
     )
     # Enemy fleet (structured entity)
+    # Kido Butai: ~240nm NW of Midway (bearing ~315°)
+    # Historical: approaching from NW, moving ESE toward Midway
     akagi = EntityCarrier(
         id="akagi",
         name="Akagi",
-        position=EntityPosition(lat=30.0, lon=-178.0),
-        course=135,
-        speed=25,
+        position=EntityPosition(lat=31.0, lon=-180.0),
+        course=110,
+        speed=20,
         faction="japan",
         cap_strength=12,
         air_groups=[],
@@ -133,9 +136,9 @@ def build_initial_state() -> GameState:
     kaga = EntityCarrier(
         id="kaga",
         name="Kaga",
-        position=EntityPosition(lat=30.1, lon=-178.1),
-        course=135,
-        speed=25,
+        position=EntityPosition(lat=31.1, lon=-180.1),
+        course=110,
+        speed=20,
         faction="japan",
         cap_strength=12,
         air_groups=[],
@@ -143,9 +146,9 @@ def build_initial_state() -> GameState:
     soryu = EntityCarrier(
         id="soryu",
         name="Soryu",
-        position=EntityPosition(lat=29.9, lon=-177.9),
-        course=135,
-        speed=25,
+        position=EntityPosition(lat=30.9, lon=-179.9),
+        course=110,
+        speed=20,
         faction="japan",
         cap_strength=12,
         air_groups=[],
@@ -153,9 +156,9 @@ def build_initial_state() -> GameState:
     hiryu = EntityCarrier(
         id="hiryu",
         name="Hiryu",
-        position=EntityPosition(lat=30.0, lon=-178.2),
-        course=135,
-        speed=25,
+        position=EntityPosition(lat=31.05, lon=-179.95),
+        course=110,
+        speed=20,
         faction="japan",
         cap_strength=12,
         air_groups=[],
@@ -175,7 +178,7 @@ def build_initial_state() -> GameState:
         {
             "name": "Kido Butai",
             "carriers": ["Akagi", "Kaga", "Soryu", "Hiryu"],
-            "position": {"lat": 30.0, "lon": -178.0},
+            "position": {"lat": 31.0, "lon": -180.0},
             "status": "rearming_for_midway_attack",
             "aircraft_total": 248,
         }

@@ -16,7 +16,7 @@ REF_LON = -177.4
 
 # Grid parameters
 CELL_SIZE_NM = 10  # nautical miles per hex cell
-GRID_RADIUS = 20   # cells from center to edge
+GRID_RADIUS = 40   # cells from center to edge (covers 400nm, full battlefield)
 
 
 def world_to_hex(lat: float, lon: float) -> tuple[int, int]:
