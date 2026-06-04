@@ -4,7 +4,7 @@
  */
 
 // ── Constants ──
-const HEX_SIZE = 22;
+const HEX_SIZE = 12;  // Reduced to fit 400nm battlefield in canvas
 const SQRT3 = Math.sqrt(3);
 const CELL_NM = 10;
 const REF_LAT = 28.2;
