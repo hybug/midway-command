@@ -553,21 +553,33 @@ class MapRenderer {
       const pattern = d.pattern || 'sector';
 
       // Calculate sector angles
-      const startRad = ((sectorStart - 90) * Math.PI) / 180;
-      const endRad = ((sectorEnd - 90) * Math.PI) / 180;
+      let startRad = ((sectorStart - 90) * Math.PI) / 180;
+      let endRad = ((sectorEnd - 90) * Math.PI) / 180;
       const sectorRadius = rangeNm / CELL_NM * HEX_SIZE * SQRT3 * 0.8;
+
+      // Handle sector wrap-around (e.g., 330°-30° crosses 0°)
+      let drawStart = startRad;
+      let drawEnd = endRad;
+      if (sectorStart > sectorEnd) {
+        // Sector crosses 0° boundary — need to draw in two arcs or adjust
+        drawEnd = endRad + 2 * Math.PI;
+      }
+
+      // Calculate midpoint angle (always within the sector)
+      const midRad = (startRad + drawEnd) / 2;
+      const midAngleDeg = ((midRad * 180 / Math.PI) + 90 + 360) % 360;
 
       ctx.save();
 
-      // Dashed flight route
+      // Dashed flight route (goes in the middle of the sector)
       ctx.strokeStyle = 'rgba(200,160,60,0.7)';
       ctx.lineWidth = 2;
       ctx.setLineDash([8, 4]);
-      const midAngle = (startRad + endRad) / 2;
+      const routeAngle = midRad;
       ctx.beginPath();
       ctx.moveTo(fx, fy);
-      ctx.lineTo(fx + sectorRadius * 0.9 * Math.cos(midAngle),
-                 fy + sectorRadius * 0.9 * Math.sin(midAngle));
+      ctx.lineTo(fx + sectorRadius * 0.9 * Math.cos(routeAngle),
+                 fy + sectorRadius * 0.9 * Math.sin(routeAngle));
       ctx.stroke();
       ctx.setLineDash([]);
 
@@ -575,7 +587,7 @@ class MapRenderer {
       ctx.fillStyle = 'rgba(200,160,60,0.12)';
       ctx.beginPath();
       ctx.moveTo(fx, fy);
-      ctx.arc(fx, fy, sectorRadius, startRad, endRad);
+      ctx.arc(fx, fy, sectorRadius, drawStart, drawEnd);
       ctx.closePath();
       ctx.fill();
 
@@ -584,7 +596,7 @@ class MapRenderer {
       ctx.setLineDash([5, 3]);
       ctx.beginPath();
       ctx.moveTo(fx, fy);
-      ctx.arc(fx, fy, sectorRadius, startRad, endRad);
+      ctx.arc(fx, fy, sectorRadius, drawStart, drawEnd);
       ctx.closePath();
       ctx.stroke();
       ctx.setLineDash([]);
