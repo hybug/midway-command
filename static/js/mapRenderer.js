@@ -560,9 +560,9 @@ class MapRenderer {
       ctx.save();
 
       // Dashed flight route
-      ctx.strokeStyle = 'rgba(200,160,60,0.4)';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = 'rgba(200,160,60,0.7)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 4]);
       const midAngle = (startRad + endRad) / 2;
       ctx.beginPath();
       ctx.moveTo(fx, fy);
@@ -572,16 +572,16 @@ class MapRenderer {
       ctx.setLineDash([]);
 
       // Sector wedge (dashed border, semi-transparent fill)
-      ctx.fillStyle = 'rgba(200,160,60,0.06)';
+      ctx.fillStyle = 'rgba(200,160,60,0.12)';
       ctx.beginPath();
       ctx.moveTo(fx, fy);
       ctx.arc(fx, fy, sectorRadius, startRad, endRad);
       ctx.closePath();
       ctx.fill();
 
-      ctx.strokeStyle = 'rgba(200,160,60,0.3)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 3]);
+      ctx.strokeStyle = 'rgba(200,160,60,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 3]);
       ctx.beginPath();
       ctx.moveTo(fx, fy);
       ctx.arc(fx, fy, sectorRadius, startRad, endRad);
