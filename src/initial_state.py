@@ -72,9 +72,10 @@ def build_initial_state() -> GameState:
     hornet_aircraft = hor_fighters + hor_dive + hor_torpedo
 
     # USS Enterprise (CV-6) — flagship
+    # Each carrier needs its own Position object (no shared references)
     enterprise = Carrier(
         name="USS Enterprise (CV-6)",
-        position=tf16_position,
+        position=Position(lat=tf16_position.lat, lon=tf16_position.lon),
         cap_strength=12,
         air_groups=[
             AirGroup(type=AirGroupType.FIGHTER, count=27, squadron_name="VF-6"),
@@ -87,7 +88,7 @@ def build_initial_state() -> GameState:
     # USS Hornet (CV-8)
     hornet = Carrier(
         name="USS Hornet (CV-8)",
-        position=tf16_position,
+        position=Position(lat=tf16_position.lat, lon=tf16_position.lon),
         cap_strength=12,
         air_groups=[
             AirGroup(type=AirGroupType.FIGHTER, count=27, squadron_name="VF-8"),
