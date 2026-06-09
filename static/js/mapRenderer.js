@@ -77,6 +77,7 @@ class MapRenderer {
       this._drawDepthContours(ctx, fpx, fpy);
       this._drawGrid(ctx, W, H, ox, oy);
       this._drawDistanceRings(ctx, fpx, fpy, 8);
+      this._drawPendingRecon(ctx, state, fqr, frr);
       this._drawSearchSectors(ctx, state, fqr, frr);
       this._drawScoutAircraft(ctx, state, fqr, frr);
       this._drawMidway(ctx, 0, 0, 1.5);
@@ -524,6 +525,127 @@ class MapRenderer {
       const ly = fy + labelR * Math.sin(midAngle);
       this._tryPlaceLabel(ctx, s.direction, lx, ly, '10px Caveat, cursive', COL.inkMain,
         [[0, 0], [0, -14], [14, 0], [-14, 0]], 1);
+
+      ctx.restore();
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Pending Recon Plan (dashed, semi-transparent)
+  // ═══════════════════════════════════════════════════════
+  _drawPendingRecon(ctx, state, fleetQ, fleetR) {
+    const [fx, fy] = this._hexToPixel(fleetQ, fleetR);
+    const pending = state.pending_suggestions || [];
+
+    pending.forEach(sug => {
+      if (sug.action_type !== 'launch_scout') return;
+      const d = sug.details || {};
+      const dir = d.direction || 'northwest';
+      const count = d.aircraft_count || 4;
+      const sectorStart = d.sector_start || 280;
+      const sectorEnd = d.sector_end || 340;
+      const rangeNm = d.range_nm || 200;
+      const pattern = d.pattern || 'sector';
+
+      // Calculate sector angles
+      const startRad = ((sectorStart - 90) * Math.PI) / 180;
+      const endRad = ((sectorEnd - 90) * Math.PI) / 180;
+      const sectorRadius = rangeNm / CELL_NM * HEX_SIZE * SQRT3 * 0.8;
+
+      ctx.save();
+
+      // Dashed flight route
+      ctx.strokeStyle = 'rgba(200,160,60,0.4)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 4]);
+      const midAngle = (startRad + endRad) / 2;
+      ctx.beginPath();
+      ctx.moveTo(fx, fy);
+      ctx.lineTo(fx + sectorRadius * 0.9 * Math.cos(midAngle),
+                 fy + sectorRadius * 0.9 * Math.sin(midAngle));
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Sector wedge (dashed border, semi-transparent fill)
+      ctx.fillStyle = 'rgba(200,160,60,0.06)';
+      ctx.beginPath();
+      ctx.moveTo(fx, fy);
+      ctx.arc(fx, fy, sectorRadius, startRad, endRad);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(200,160,60,0.3)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(fx, fy);
+      ctx.arc(fx, fy, sectorRadius, startRad, endRad);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Aircraft icons (small triangles in formation)
+      const iconR = sectorRadius * 0.6;
+      const iconAngle = midAngle;
+      const iconX = fx + iconR * Math.cos(iconAngle);
+      const iconY = fy + iconR * Math.sin(iconAngle);
+
+      ctx.fillStyle = 'rgba(200,160,60,0.6)';
+      ctx.strokeStyle = 'rgba(200,160,60,0.8)';
+      ctx.lineWidth = 1;
+      const triSize = 5;
+      // Lead aircraft
+      ctx.beginPath();
+      ctx.moveTo(iconX, iconY - triSize);
+      ctx.lineTo(iconX + triSize * 0.6, iconY + triSize * 0.5);
+      ctx.lineTo(iconX - triSize * 0.6, iconY + triSize * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Wingmen
+      if (count > 1) {
+        ctx.beginPath();
+        ctx.moveTo(iconX - 8, iconY + 2);
+        ctx.lineTo(iconX - 5, iconY + 8);
+        ctx.lineTo(iconX - 11, iconY + 8);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (count > 2) {
+        ctx.beginPath();
+        ctx.moveTo(iconX + 8, iconY + 2);
+        ctx.lineTo(iconX + 5, iconY + 8);
+        ctx.lineTo(iconX + 11, iconY + 8);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Count label
+      ctx.fillStyle = 'rgba(200,160,60,0.8)';
+      ctx.font = '10px Caveat, cursive';
+      ctx.textAlign = 'center';
+      ctx.fillText(count + ' SBD', iconX, iconY + 16);
+
+      // Pattern label
+      const patternNames = { sector: '扇形', parallel: '平行', grid: '方格' };
+      ctx.font = '9px Caveat, cursive';
+      ctx.fillStyle = 'rgba(200,160,60,0.6)';
+      ctx.fillText(patternNames[pattern] || pattern, iconX, iconY + 26);
+
+      // PENDING stamp
+      ctx.save();
+      ctx.translate(fx + 20, fy - 30);
+      ctx.rotate(-0.15);
+      ctx.strokeStyle = 'rgba(200,160,60,0.5)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-30, -8, 60, 16);
+      ctx.fillStyle = 'rgba(200,160,60,0.6)';
+      ctx.font = 'bold 10px Caveat, cursive';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('PENDING', 0, 0);
+      ctx.restore();
 
       ctx.restore();
     });
