@@ -32,6 +32,9 @@ async function api(path, opts = {}) {
 // Init
 // ═══════════════════════════════════════════════════════
 async function init() {
+  // Load SVG icons first
+  await loadSVGIcons();
+
   mapRenderer = new MapRenderer('tacticalMap');
   ui = new UIController();
 

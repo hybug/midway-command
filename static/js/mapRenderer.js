@@ -390,15 +390,20 @@ class MapRenderer {
       const [px, py] = this._hexToPixel(q, r);
       const short = c.name.includes('Enterprise') ? 'ENT' : 'HOR';
 
-      // Circle
-      ctx.strokeStyle = COL.inkMain;
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(px, py, 10, 0, Math.PI * 2); ctx.stroke();
-
-      // Cross inside
-      ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.moveTo(px - 6, py); ctx.lineTo(px + 6, py); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(px, py - 6); ctx.lineTo(px, py + 6); ctx.stroke();
+      // Try SVG icon first
+      const icon = getIcon('carrier_us');
+      if (icon) {
+        const iconW = 30, iconH = 16;
+        ctx.drawImage(icon, px - iconW/2, py - iconH/2, iconW, iconH);
+      } else {
+        // Fallback: circle + cross
+        ctx.strokeStyle = COL.inkMain;
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(px, py, 10, 0, Math.PI * 2); ctx.stroke();
+        ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(px - 6, py); ctx.lineTo(px + 6, py); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(px, py - 6); ctx.lineTo(px, py + 6); ctx.stroke();
+      }
 
       // Label (priority: high — fleet is important)
       this._tryPlaceLabel(ctx, short, px, py - 16, 'bold 13px Caveat, cursive', COL.inkMain,
@@ -584,41 +589,57 @@ class MapRenderer {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Aircraft icons (small triangles in formation)
+      // Aircraft icons (SVG or fallback triangles)
       const iconR = sectorRadius * 0.6;
       const iconAngle = midAngle;
       const iconX = fx + iconR * Math.cos(iconAngle);
       const iconY = fy + iconR * Math.sin(iconAngle);
 
-      ctx.fillStyle = 'rgba(200,160,60,0.6)';
-      ctx.strokeStyle = 'rgba(200,160,60,0.8)';
-      ctx.lineWidth = 1;
-      const triSize = 5;
-      // Lead aircraft
-      ctx.beginPath();
-      ctx.moveTo(iconX, iconY - triSize);
-      ctx.lineTo(iconX + triSize * 0.6, iconY + triSize * 0.5);
-      ctx.lineTo(iconX - triSize * 0.6, iconY + triSize * 0.5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
+      const svgIcon = getIcon('aircraft_topdown');
+      if (svgIcon) {
+        // Draw SVG aircraft icons
+        const iconSize = 16;
+        ctx.globalAlpha = 0.6;
+        // Lead aircraft
+        ctx.drawImage(svgIcon, iconX - iconSize/2, iconY - iconSize/2, iconSize, iconSize);
+        // Wingmen
+        if (count > 1) {
+          ctx.drawImage(svgIcon, iconX - iconSize/2 - 10, iconY + 3, iconSize * 0.7, iconSize * 0.7);
+        }
+        if (count > 2) {
+          ctx.drawImage(svgIcon, iconX - iconSize/2 + 10, iconY + 3, iconSize * 0.7, iconSize * 0.7);
+        }
+        ctx.globalAlpha = 1.0;
+      } else {
+        // Fallback: triangles
+        ctx.fillStyle = 'rgba(200,160,60,0.6)';
+        ctx.strokeStyle = 'rgba(200,160,60,0.8)';
+        ctx.lineWidth = 1;
+        const triSize = 5;
+        ctx.beginPath();
+        ctx.moveTo(iconX, iconY - triSize);
+        ctx.lineTo(iconX + triSize * 0.6, iconY + triSize * 0.5);
+        ctx.lineTo(iconX - triSize * 0.6, iconY + triSize * 0.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
 
-      // Wingmen
-      if (count > 1) {
-        ctx.beginPath();
-        ctx.moveTo(iconX - 8, iconY + 2);
-        ctx.lineTo(iconX - 5, iconY + 8);
-        ctx.lineTo(iconX - 11, iconY + 8);
-        ctx.closePath();
-        ctx.fill();
-      }
-      if (count > 2) {
-        ctx.beginPath();
-        ctx.moveTo(iconX + 8, iconY + 2);
-        ctx.lineTo(iconX + 5, iconY + 8);
-        ctx.lineTo(iconX + 11, iconY + 8);
-        ctx.closePath();
-        ctx.fill();
+        if (count > 1) {
+          ctx.beginPath();
+          ctx.moveTo(iconX - 8, iconY + 2);
+          ctx.lineTo(iconX - 5, iconY + 8);
+          ctx.lineTo(iconX - 11, iconY + 8);
+          ctx.closePath();
+          ctx.fill();
+        }
+        if (count > 2) {
+          ctx.beginPath();
+          ctx.moveTo(iconX + 8, iconY + 2);
+          ctx.lineTo(iconX + 5, iconY + 8);
+          ctx.lineTo(iconX + 11, iconY + 8);
+          ctx.closePath();
+          ctx.fill();
+        }
       }
 
       // Count label
