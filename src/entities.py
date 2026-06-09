@@ -112,7 +112,14 @@ def calculate_new_position(
         math.cos(distance_nm / R) - math.sin(lat1) * math.sin(lat2)
     )
 
-    return Position(lat=math.degrees(lat2), lon=math.degrees(lon2))
+    # Wrap longitude to [-180, 180]
+    lon_deg = math.degrees(lon2)
+    while lon_deg > 180:
+        lon_deg -= 360
+    while lon_deg < -180:
+        lon_deg += 360
+
+    return Position(lat=math.degrees(lat2), lon=lon_deg)
 
 
 def update_entity_position(entity, minutes: int):
