@@ -5,7 +5,7 @@ Phases:
 2. OUTBOUND   (15-60min) — 飞往搜索区域，消耗燃油
 3. SEARCHING  (60-120min)— 搜索中，消耗燃油
 4. RETURNING  (120-165min)— 返航中，消耗燃油
-5. LANDED/DIVERTED/DITCHED/LOST — 着舰/转降/迫降/损失
+5. LANDED/LOST — 着舰/损失
 
 Fuel model (SBD Dauntless):
 - Cruise: 0.8% fuel per nm
@@ -72,6 +72,198 @@ def in_sector(bearing: float, bearing_min: int, bearing_max: int) -> bool:
         return bearing_min <= bearing <= bearing_max
     else:
         return bearing >= bearing_min or bearing <= bearing_max
+
+
+# ═══════════════════════════════════════════════════════
+# 航线生成函数（§6.5.1~6.5.3）
+# ═══════════════════════════════════════════════════════
+
+def generate_sector_route(
+    fleet_pos: tuple,
+    center_bearing: int,
+    sector_width: int,
+    radius_nm: int,
+) -> list[tuple[int, int]]:
+    """扇形搜索航线生成（§6.5.1）
+
+    Args:
+        fleet_pos: 舰队位置 (lat, lon)
+        center_bearing: 中心方位
+        sector_width: 扇面宽度（°）
+        radius_nm: 搜索半径（nm）
+
+    Returns:
+        list of (q, r) hex coordinates
+    """
+    from src.render.coordinate import world_to_hex, hex_to_world
+
+    route = []
+    bearing_min = (center_bearing - sector_width // 2) % 360
+    bearing_max = (center_bearing + sector_width // 2) % 360
+
+    # 出航段：沿中心方位飞到半径
+    steps = max(1, radius_nm // 10)
+    for i in range(1, steps + 1):
+        dist = i * 10
+        pos = _bearing_distance_to_position(fleet_pos, center_bearing, dist)
+        hex_pos = world_to_hex(pos.lat, pos.lon)
+        if hex_pos not in route:
+            route.append(hex_pos)
+
+    # 弧线段：在半径处沿弧线扫荡
+    arc_steps = max(1, sector_width // 10)
+    for i in range(arc_steps + 1):
+        if bearing_min <= bearing_max:
+            bearing = bearing_min + i * (sector_width / arc_steps)
+        else:
+            bearing = (bearing_min + i * ((360 - bearing_min + bearing_max) / arc_steps)) % 360
+        pos = _bearing_distance_to_position(fleet_pos, bearing, radius_nm)
+        hex_pos = world_to_hex(pos.lat, pos.lon)
+        if hex_pos not in route:
+            route.append(hex_pos)
+
+    # 返航段：从弧线末端返回舰队
+    # （简化：直接添加舰队位置）
+    fleet_hex = world_to_hex(fleet_pos[0], fleet_pos[1])
+    if fleet_hex not in route:
+        route.append(fleet_hex)
+
+    return route
+
+
+def generate_expanding_square_route(
+    fleet_pos: tuple,
+    max_radius_nm: int,
+) -> list[tuple[int, int]]:
+    """扩展方形航线生成（§6.5.2）
+
+    Args:
+        fleet_pos: 舰队位置 (lat, lon)
+        max_radius_nm: 最大半径（nm）
+
+    Returns:
+        list of (q, r) hex coordinates
+    """
+    from src.render.coordinate import world_to_hex
+
+    route = []
+    max_steps = max_radius_nm // 10
+
+    # 方向序列：北→东→南→西
+    directions = [
+        (0, 1),   # 北
+        (1, 0),   # 东
+        (0, -1),  # 南
+        (-1, 0),  # 西
+    ]
+
+    # 从舰队位置开始
+    start_hex = world_to_hex(fleet_pos[0], fleet_pos[1])
+    q, r = start_hex
+    route.append((q, r))
+
+    step_size = 1
+    dir_idx = 0
+
+    while step_size <= max_steps:
+        for _ in range(2):  # 每个步长执行两次（北1东1南2西2...）
+            dq, dr = directions[dir_idx % 4]
+            for _ in range(step_size):
+                q += dq
+                r += dr
+                if (q, r) not in route:
+                    route.append((q, r))
+            dir_idx += 1
+        step_size += 1
+
+    return route
+
+
+def generate_parallel_route(
+    fleet_pos: tuple,
+    bearing: int,
+    width_nm: int,
+    spacing_nm: int,
+) -> list[tuple[int, int]]:
+    """平行搜索航线生成（§6.5.3）
+
+    Args:
+        fleet_pos: 舰队位置 (lat, lon)
+        bearing: 主方向
+        width_nm: 宽度（nm）
+        spacing_nm: 间距（nm）
+
+    Returns:
+        list of (q, r) hex coordinates
+    """
+    from src.render.coordinate import world_to_hex
+
+    route = []
+    num_lines = max(1, width_nm // spacing_nm)
+    line_length = width_nm
+
+    for line in range(num_lines):
+        # 偏移方向（垂直于主方向）
+        offset_bearing = (bearing + 90) % 360
+        offset_dist = (line - num_lines // 2) * spacing_nm
+        line_start_pos = _bearing_distance_to_position(fleet_pos, offset_bearing, offset_dist)
+        line_start = (line_start_pos.lat, line_start_pos.lon)
+
+        # 沿主方向飞行
+        steps = max(1, line_length // 10)
+        for i in range(steps + 1):
+            dist = i * 10
+            if line % 2 == 0:
+                # 偶数行：正向
+                pos = _bearing_distance_to_position(line_start, bearing, dist)
+            else:
+                # 奇数行：反向
+                pos = _bearing_distance_to_position(line_start, (bearing + 180) % 360, dist)
+            hex_pos = world_to_hex(pos.lat, pos.lon)
+            if hex_pos not in route:
+                route.append(hex_pos)
+
+    return route
+
+
+# ═══════════════════════════════════════════════════════
+# 空间相遇检测（§6.5.4）
+# ═══════════════════════════════════════════════════════
+
+def check_detection(
+    scout_hex: tuple[int, int],
+    state: GameState,
+) -> list[dict]:
+    """空间相遇检测（§6.5.4）
+
+    Args:
+        scout_hex: 侦察机当前 hex
+        state: 游戏状态
+
+    Returns:
+        list of {enemy_id, enemy_hex, distance_hex}
+    """
+    from src.render.coordinate import hex_distance, world_to_hex
+
+    detections = []
+    hidden = state._hidden_actual_enemy or []
+
+    for i, enemy in enumerate(hidden):
+        epos = enemy.get("position", {})
+        enemy_lat = epos.get("lat", 0)
+        enemy_lon = epos.get("lon", 0)
+        enemy_hex = world_to_hex(enemy_lat, enemy_lon)
+
+        dist = hex_distance(scout_hex[0], scout_hex[1], enemy_hex[0], enemy_hex[1])
+        if dist <= 1:  # 同格或相邻
+            detections.append({
+                "enemy_id": enemy.get("name", f"enemy_{i}"),
+                "enemy_hex": enemy_hex,
+                "distance_hex": dist,
+                "enemy_data": enemy,
+            })
+
+    return detections
 
 
 # ═══════════════════════════════════════════════════════
@@ -428,7 +620,7 @@ def check_scout_results(state: GameState) -> list[str]:
     for scout in state.active_scouts:
         if scout.status != "in_flight":
             continue
-        if scout.phase in (ScoutPhase.LANDED, ScoutPhase.LOST, ScoutPhase.DITCHED, ScoutPhase.DIVERTED):
+        if scout.phase in (ScoutPhase.LANDED, ScoutPhase.LOST):
             continue
 
         if scout.phase == ScoutPhase.PREPARING:

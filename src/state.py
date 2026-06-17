@@ -13,6 +13,12 @@ from pydantic import BaseModel, Field, PrivateAttr
 from src.entities import TaskForce as EntityTaskForce
 
 
+class GamePhase(str, Enum):
+    """游戏生命周期"""
+    PLAYING = "playing"
+    GAME_OVER = "game_over"
+
+
 class AirGroupType(str, Enum):
     FIGHTER = "fighter"
     DIVE_BOMBER = "dive"
@@ -20,15 +26,20 @@ class AirGroupType(str, Enum):
 
 
 class AirGroupStatus(str, Enum):
+    """编组状态（完整生命周期）"""
     READY = "ready"
-    LOADING = "loading"
-    LAUNCHED = "launched"
-    IN_FLIGHT = "in_flight"
+    PLANNING = "planning"
+    LAUNCHING = "launching"
+    AIRBORNE = "airborne"
+    ATTACKING = "attacking"
     RETURNING = "returning"
-    LANDING = "landing"
+    REFUELING = "refueling"
+    REARMING = "rearming"
+    LOST = "lost"
 
 
 class AirGroup(BaseModel):
+    id: Optional[str] = None
     type: AirGroupType
     count: int = Field(ge=0)
     status: AirGroupStatus = AirGroupStatus.READY
@@ -36,6 +47,11 @@ class AirGroup(BaseModel):
     ammo_pct: int = Field(default=100, ge=0, le=100)
     squadron_name: Optional[str] = None
     target: Optional[str] = None
+    carrier_name: Optional[str] = None
+    plan_id: Optional[str] = None
+    mission_type: Optional[str] = None
+    launched_at: Optional[datetime] = None
+    intercept_heading: Optional[int] = None
 
 
 # ── Aircraft Entity System ──
@@ -55,6 +71,7 @@ class AircraftStatus(str, Enum):
     RETURNING = "returning"     # 返航
     LANDING = "landing"         # 着舰中
     MAINTENANCE = "maintenance" # 维修中
+    LOST = "lost"               # 损失
 
 
 class Aircraft(BaseModel):
@@ -66,6 +83,9 @@ class Aircraft(BaseModel):
     status: AircraftStatus = AircraftStatus.READY
     fuel_pct: float = 100.0          # 0-100
     ammo_pct: float = 100.0          # 0-100
+    hp: int = 3                      # 生命值（SBD/TBD=3, VF=3）
+    group_id: Optional[str] = None   # 所属编组ID
+    losses: int = 0                  # 已损失架数
     ordnance: str = "none"           # "500lb_bomb" / "torpedo" / "none"
     assigned_mission: Optional[str] = None  # 任务ID
     # 关键飞机标记（历史人物）
@@ -79,6 +99,9 @@ class Position(BaseModel):
     bearing: Optional[int] = Field(default=None, ge=0, le=359)
     distance_nm: Optional[int] = None
     reference: Optional[str] = None
+
+    def to_tuple(self) -> tuple:
+        return (self.lat, self.lon)
 
 
 class Carrier(BaseModel):
@@ -120,21 +143,19 @@ class PendingSuggestion(BaseModel):
 
 
 class SearchPattern(str, Enum):
-    """搜索模式"""
-    SECTOR = "sector"       # 扇形搜索：窄/深/快/高概率
-    PARALLEL = "parallel"   # 平行搜索：宽/浅/中/低概率
-    GRID = "grid"           # 方格搜索：局部/深/慢/最高概率
+    """搜索模式（历史参考）"""
+    SECTOR = "sector"               # 扇形搜索（日军中途岛用的模式）
+    EXPANDING_SQUARE = "expanding_square"  # 扩展方形（位置大致已知时）
+    PARALLEL = "parallel"           # 平行搜索（大范围无目标信息）
 
 
 class ScoutPhase(str, Enum):
     """侦察任务阶段"""
-    PREPARING = "preparing"     # 起飞准备 (15分钟)
+    PREPARING = "preparing"     # 起飞准备
     OUTBOUND = "outbound"       # 飞往搜索区域
     SEARCHING = "searching"     # 搜索中
     RETURNING = "returning"     # 返航中
     LANDED = "landed"           # 着舰
-    DIVERTED = "diverted"       # 转降中途岛
-    DITCHED = "ditched"         # 海面迫降
     LOST = "lost"               # 损失（燃油耗尽/被击落）
 
 
@@ -151,6 +172,10 @@ class ScoutMission(BaseModel):
     search_distance_nm: int = 200
     aircraft_count: int = 4
     search_pattern: SearchPattern = SearchPattern.SECTOR
+
+    # 航线（hex坐标列表）
+    route: list[tuple[int, int]] = Field(default_factory=list)
+    route_index: int = 0
 
     # 阶段追踪
     phase: ScoutPhase = ScoutPhase.PREPARING
@@ -175,6 +200,9 @@ class ScoutMission(BaseModel):
     # 侦察机当前位置（用于地图显示）
     position: Optional[Position] = None
 
+    # 检测结果
+    detections: list[dict] = Field(default_factory=list)
+
 
 class AircraftLoss(BaseModel):
     """单架飞机损失记录"""
@@ -182,6 +210,22 @@ class AircraftLoss(BaseModel):
     aircraft_number: int
     reason: str  # fuel_exhausted / ditched / shot_down / diverted_midway / weather
     time: datetime
+
+
+class MissionPlan(BaseModel):
+    """出击规划（拦截点、油量、警告）"""
+    id: str
+    target_position: Position
+    target_course: int = Field(ge=0, le=359)
+    target_speed: int = Field(ge=0)
+    intercept_point: Position
+    intercept_heading: int = Field(ge=0, le=359)
+    intercept_distance_nm: float = Field(ge=0)
+    flight_time_min: float = Field(ge=0)
+    fuel_margin_pct: float = 0.0
+    warnings: list[str] = Field(default_factory=list)
+    feasible: bool = True
+    npc_briefing_data: dict = Field(default_factory=dict)
 
 
 class PendingReport(BaseModel):
@@ -208,13 +252,16 @@ class TurnType(str, Enum):
 
 class GameState(BaseModel):
     clock: GameClock
+    game_phase: GamePhase = GamePhase.PLAYING
     task_forces: list[TaskForce] = Field(default_factory=list)
     known_enemy: list[EnemyKnown] = Field(default_factory=list)
+    actual_enemy: list[dict] = Field(default_factory=list)
     incoming_messages: list[str] = Field(default_factory=list)
     pending_suggestions: list[PendingSuggestion] = Field(default_factory=list)
     active_scouts: list[ScoutMission] = Field(default_factory=list)
     pending_reports: list[PendingReport] = Field(default_factory=list)
     aircraft_losses: list[AircraftLoss] = Field(default_factory=list)
+    mission_plans: list[MissionPlan] = Field(default_factory=list)
     # Action Points
     turn_type: TurnType = TurnType.NORMAL
     action_points: int = Field(default=3, ge=0)

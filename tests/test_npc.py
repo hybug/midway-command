@@ -31,9 +31,9 @@ class TestNPCConfig:
     def test_npc_params_in_range(self):
         for npc_id, cfg in NPC_REGISTRY.items():
             assert 0 <= cfg.autonomy <= 10, f"{npc_id} autonomy out of range"
-            assert 0 <= cfg.risk_tolerance <= 1, f"{npc_id} risk_tolerance out of range"
-            assert 0 <= cfg.initiative <= 1, f"{npc_id} initiative out of range"
-            assert 0 <= cfg.competence <= 1, f"{npc_id} competence out of range"
+            assert 0 <= cfg.risk_tolerance <= 10, f"{npc_id} risk_tolerance out of range"
+            assert 0 <= cfg.initiative <= 10, f"{npc_id} initiative out of range"
+            assert 0 <= cfg.competence <= 10, f"{npc_id} competence out of range"
 
     def test_browning_high_autonomy(self):
         assert NPC_REGISTRY["browning"].autonomy == 8

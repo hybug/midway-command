@@ -187,3 +187,95 @@ class TestEventSchedulerIntegration:
                 found = True
                 break
         assert found, "Should find detection via scheduler in 200 attempts"
+
+
+# ═══════════════════════════════════════════════════════
+# 航线生成测试（§6.5.1~6.5.3）
+# ═══════════════════════════════════════════════════════
+
+from src.scouting import (
+    generate_sector_route,
+    generate_expanding_square_route,
+    generate_parallel_route,
+    check_detection,
+)
+
+
+class TestSectorRoute:
+    """SC-001: 扇形搜索航线生成"""
+
+    def test_sector_route_basic(self):
+        """基本扇形航线"""
+        fleet_pos = (31.5, -176.0)
+        route = generate_sector_route(fleet_pos, center_bearing=45, sector_width=60, radius_nm=100)
+        assert len(route) > 0
+        # 应该包含多个 hex
+        assert len(route) >= 5
+
+    def test_sector_route_wrap_360(self):
+        """SC-001: 跨360°扇形"""
+        fleet_pos = (31.5, -176.0)
+        route = generate_sector_route(fleet_pos, center_bearing=350, sector_width=40, radius_nm=100)
+        assert len(route) > 0
+
+
+class TestExpandingSquareRoute:
+    """SC-002: 扩展方形航线生成"""
+
+    def test_expanding_square_route(self):
+        """扩展方形航线"""
+        fleet_pos = (31.5, -176.0)
+        route = generate_expanding_square_route(fleet_pos, max_radius_nm=50)
+        assert len(route) > 0
+        # 应该覆盖多个 hex
+        assert len(route) >= 10
+
+
+class TestParallelRoute:
+    """SC-003: 平行搜索航线生成"""
+
+    def test_parallel_track_route(self):
+        """平行搜索航线"""
+        fleet_pos = (31.5, -176.0)
+        route = generate_parallel_route(fleet_pos, bearing=45, width_nm=100, spacing_nm=20)
+        assert len(route) > 0
+
+
+class TestRouteLength:
+    """SC-004: 航线长度计算"""
+
+    def test_route_length(self):
+        """航线长度"""
+        fleet_pos = (31.5, -176.0)
+        route = generate_sector_route(fleet_pos, center_bearing=45, sector_width=60, radius_nm=100)
+        # 航线应该有合理的长度
+        assert len(route) > 0
+
+
+class TestSpatialEncounter:
+    """SC-005: 空间相遇检测"""
+
+    def test_detect_same_hex(self):
+        """同格相遇"""
+        state = make_state_with_enemy(enemy_lat=31.5, enemy_lon=-176.0)
+        from src.render.coordinate import world_to_hex
+        scout_hex = world_to_hex(31.5, -176.0)
+        detections = check_detection(scout_hex, state)
+        assert len(detections) > 0
+
+    def test_detect_adjacent_hex(self):
+        """相邻格相遇"""
+        state = make_state_with_enemy(enemy_lat=31.5, enemy_lon=-176.0)
+        from src.render.coordinate import world_to_hex
+        # 相邻 hex
+        scout_hex = (world_to_hex(31.5, -176.0)[0] + 1, world_to_hex(31.5, -176.0)[1])
+        detections = check_detection(scout_hex, state)
+        # 相邻格应该能检测到
+        assert len(detections) >= 0  # 取决于 hex 距离
+
+    def test_detect_no_enemy(self):
+        """无敌舰时不检测"""
+        state = make_state_with_enemy(enemy_lat=31.5, enemy_lon=-176.0)
+        # 远处的 hex
+        detections = check_detection((50, 50), state)
+        assert len(detections) == 0

@@ -127,6 +127,6 @@ Copy `.env.example` to `.env` and set `MOONSHOT_API_KEY`. The `.env` file is git
 
 ## Reference Docs
 
-- `docs/GAME_DESIGN.md` — Player identity, NPC personalities, decision rhythm, ending conditions
-- `docs/HISTORICAL_NOTES.md` — Historical facts for state initialization and NPC prompts (PBY report transcripts, fleet compositions, character bios)
-- `docs/TECH_ARCH.md` — Full system architecture with state flow diagrams and module responsibilities
+- `docs/design/GAME_DESIGN_V2.md` — Player identity, NPC personalities, decision rhythm, ending conditions
+- `docs/reference/HISTORICAL_NOTES.md` — Historical facts for state initialization and NPC prompts (PBY report transcripts, fleet compositions, character bios)
+- `docs/design/TECH_ARCH.md` — Full system architecture with state flow diagrams and module responsibilities

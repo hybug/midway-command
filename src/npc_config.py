@@ -10,13 +10,16 @@ from dataclasses import dataclass, field
 
 @dataclass
 class NPCConfig:
-    """Configuration for a single NPC."""
+    """Configuration for a single NPC (§8.2.1).
+
+    All parameters are 0-10 integers (骰子系统 §7.3).
+    """
     name: str
     role: str
-    autonomy: int          # 0-10
-    risk_tolerance: float  # 0-1
-    initiative: float      # 0-1
-    competence: float      # 0-1
+    autonomy: int          # 0-10: 越自主，行动越果断
+    risk_tolerance: int    # 0-10: 越敢冒险，波动越大
+    initiative: int        # 0-10: 越主动，越可能抓住机会
+    competence: int        # 0-10: 越专业，执行质量越高
     # Which parts of state this NPC can access
     info_scope: list[str] = field(default_factory=list)
     # Which tools this NPC can call (by name)
@@ -39,9 +42,9 @@ NPC_REGISTRY: dict[str, NPCConfig] = {
         name="Miles Browning",
         role="参谋长",
         autonomy=8,
-        risk_tolerance=0.8,
-        initiative=0.9,
-        competence=0.9,
+        risk_tolerance=8,
+        initiative=9,
+        competence=9,
         info_scope=[
             "fleet_global", "air_groups", "known_enemy",
             "active_scouts", "pending_reports",
@@ -54,9 +57,9 @@ NPC_REGISTRY: dict[str, NPCConfig] = {
         name="George Murray",
         role="企业号舰长",
         autonomy=5,
-        risk_tolerance=0.4,
-        initiative=0.5,
-        competence=0.7,
+        risk_tolerance=4,
+        initiative=5,
+        competence=7,
         info_scope=["own_carrier", "air_groups"],
         allowed_tools=["query_fleet_status", "execute_action"],
         carrier_filter="Enterprise",
@@ -65,9 +68,9 @@ NPC_REGISTRY: dict[str, NPCConfig] = {
         name="Marc Mitscher",
         role="大黄蜂舰长",
         autonomy=5,
-        risk_tolerance=0.4,
-        initiative=0.5,
-        competence=0.7,
+        risk_tolerance=4,
+        initiative=5,
+        competence=7,
         info_scope=["own_carrier", "air_groups"],
         allowed_tools=["query_fleet_status", "execute_action"],
         carrier_filter="Hornet",
@@ -76,9 +79,9 @@ NPC_REGISTRY: dict[str, NPCConfig] = {
         name="通信官",
         role="通信官",
         autonomy=1,
-        risk_tolerance=0.1,
-        initiative=0.2,
-        competence=0.6,
+        risk_tolerance=1,
+        initiative=2,
+        competence=6,
         info_scope=["incoming_msgs"],
         allowed_tools=[],
     ),
@@ -86,9 +89,9 @@ NPC_REGISTRY: dict[str, NPCConfig] = {
         name="情报官",
         role="情报参谋",
         autonomy=3,
-        risk_tolerance=0.3,
-        initiative=0.6,
-        competence=0.7,
+        risk_tolerance=3,
+        initiative=4,
+        competence=7,
         info_scope=["known_enemy", "pending_reports", "active_scouts"],
         allowed_tools=["query_fleet_status"],
     ),
