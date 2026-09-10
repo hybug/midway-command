@@ -542,3 +542,10 @@ html, body {
   background: url('/static/assets/ui/scratches.svg') center / cover no-repeat;
   opacity: 0.5; mix-blend-mode: multiply; pointer-events: none; z-index: 1;
 }
+
+/* ═══════════════════════════════════════════════════════
+   Phase 8b — A14/A15 桌面道具布景（木尺 + 铅笔）
+   ═══════════════════════════════════════════════════════ */
+.desk-prop { position: fixed; z-index: 5; pointer-events: none; filter: drop-shadow(2px 3px 3px rgba(0,0,0,0.4)); }
+.desk-ruler  { right: 12px; bottom: 62px; width: 300px; transform: rotate(-2deg); }
+.desk-pencil { left: 20px; bottom: 60px; width: 220px; transform: rotate(4deg); }
