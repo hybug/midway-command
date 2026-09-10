@@ -209,12 +209,41 @@ function drawRangeRings(ctx, w, h) {
   ctx.restore();
 }
 
+// Task 7.7：罗盘——右上角光栅罗盘（compass.svg 资产由 svgLoader 提供）
+function drawCompassRose(ctx, w, h) {
+  const icon = getIcon('compass');
+  if (icon) ctx.drawImage(icon, w - 150, 24, 110, 110);
+}
+
+// Task 7.7：分段比例尺 0-10-25-50nm——右下角黑白相间分段条
+function drawScaleBar(ctx, w, h) {
+  const x0 = w - 250, y0 = h - 46;
+  const pxPerNm = 200 / 50; // 50nm 宽 200px
+  const segs = [[0, 10], [10, 25], [25, 50]];
+  ctx.save();
+  ctx.strokeStyle = CHART_STYLE.ink;
+  ctx.lineWidth = 1;
+  ctx.font = `8px ${CHART_STYLE.fontTypewriter}`;
+  segs.forEach(([a, b], i) => {
+    ctx.fillStyle = i % 2 === 0 ? CHART_STYLE.ink : CHART_STYLE.paper;
+    ctx.fillRect(x0 + a * pxPerNm, y0, (b - a) * pxPerNm, 6);
+    ctx.strokeRect(x0 + a * pxPerNm, y0, (b - a) * pxPerNm, 6);
+    ctx.fillStyle = CHART_STYLE.ink;
+    ctx.fillText(String(a), x0 + a * pxPerNm - 3, y0 + 16);
+  });
+  ctx.fillText('50', x0 + 50 * pxPerNm - 6, y0 + 16);
+  ctx.fillText('nm', x0 + 50 * pxPerNm + 8, y0 + 16);
+  ctx.restore();
+}
+
 const ChartRenderer = {
   drawAll(ctx, w, h) {
     drawChartBase(ctx, w, h);
     drawLatLonGrid(ctx, w, h);
     drawAtoll(ctx, w, h);
     drawRangeRings(ctx, w, h);
+    drawCompassRose(ctx, w, h);
+    drawScaleBar(ctx, w, h);
   },
   chartNmToPx,
   latLonToChartPx,
