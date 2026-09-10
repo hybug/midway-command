@@ -80,7 +80,7 @@ function drawLatLonGrid(ctx, w, h) {
     ctx.setLineDash([4, 4]);
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillText(fmtLon(lon), x + 3, 14);
+    ctx.fillText(fmtLon(lon), x + 3, 26); // y=26 下移避让左上角 .chart-label div（fix round 3）
   }
   ctx.restore();
 }
@@ -123,7 +123,8 @@ function drawIslands(ctx, c, rx, ry) {
   roundRect(ctx, sx, sy, rx * 0.34, ry * 0.16, 3);
   ctx.fill(); ctx.stroke();
   ctx.fillStyle = CHART_STYLE.ink;
-  ctx.fillText(CHART_LABELS.sandIsland, sx + 4, sy + ry * 0.10);
+  // 标签置于矩形下方，避让环礁中心标注（fix round 3）
+  ctx.fillText(CHART_LABELS.sandIsland, sx + 4, sy + ry * 0.16 + 10);
   // EASTERN ISLAND — 东南侧三角形 + 三条交叉跑道
   const ex = c.x + rx * 0.28, ey = c.y + ry * 0.52, s = rx * 0.26;
   ctx.beginPath();
@@ -181,9 +182,9 @@ function drawAtoll(ctx, w, h) {
   ctx.fillStyle = CHART_STYLE.ink;
   ctx.textAlign = 'center';
   ctx.font = `bold 13px ${CHART_STYLE.fontTypewriter}`;
-  ctx.fillText(CHART_LABELS.atoll, c.x, c.y - 2);
+  ctx.fillText(CHART_LABELS.atoll, c.x, c.y - 8);
   ctx.font = `9px ${CHART_STYLE.fontTypewriter}`;
-  ctx.fillText(CHART_LABELS.atollCoords, c.x, c.y + 12);
+  ctx.fillText(CHART_LABELS.atollCoords, c.x, c.y + 20);
   ctx.textAlign = 'left';
 }
 

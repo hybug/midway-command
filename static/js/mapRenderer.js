@@ -309,7 +309,8 @@ class MapRenderer {
     // Task 7.8：旧罗盘/比例尺已被 ChartRenderer.drawCompassRose/drawScaleBar 取代（保留代码备查）
     // this._drawCompass(ctx, W - 50, 50, 28);
     // this._drawScaleBar(ctx, W, H);
-    this._drawSecretStamp(ctx);
+    // 设计图 A1 地图上无 SECRET 印章（印章属 Task 8.5 军令纸），旧戳与 A1 冲突（方法体保留）
+    // this._drawSecretStamp(ctx);
 
     // 绘制悬停提示
     this._drawTooltip(ctx);
