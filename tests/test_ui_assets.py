@@ -113,3 +113,13 @@ def test_svg_colors_within_approved_palette():
             continue
         for color in SVG_COLOR_RE.findall(p.read_text()):
             assert color.lower() in SVG_PALETTE, f"{fname} 使用了未批准色值 {color}"
+
+
+def test_chart_renderer_constants_match_css():
+    js = (BASE / "static" / "js" / "chartRenderer.js").read_text()
+    for value in ["#f5edd6", "#2a2218", "#b8d4c8", "#8aaa98", "#d4c4a0", "#c8b890",
+                  "#8b2500", "#6b5d4a", "#a89878", "#e8dcc8", "#d4c8a8"]:
+        assert value in js, f"chartRenderer.js 缺少色值 {value}"
+    for label in ["MIDWAY ATOLL", "28°12'N 177°21'W", "SAND ISLAND", "EASTERN ISLAND",
+                  "20nm", "40nm", "60nm"]:
+        assert label in js, f"chartRenderer.js 缺少标注 {label}"
