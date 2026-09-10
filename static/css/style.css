@@ -14,8 +14,12 @@
   --color-ink-fade: #6b5d4a;
   --color-ink-faint: #a89878;
   --color-enemy-red: #8b2500;
-  --color-grid-line: rgba(160, 140, 110, 0.4);
   --color-secret-red: #c0392b;
+  --color-grid-line: rgba(160,140,110,0.35);
+  --color-lagoon: #b8d4c8;
+  --color-reef: #8aaa98;
+  --color-sand: #d4c4a0;
+  --color-eastern: #c8b890;
 
   --font-handwriting: 'Caveat', cursive;
   --font-typewriter: 'Special Elite', monospace;

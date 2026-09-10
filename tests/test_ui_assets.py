@@ -71,7 +71,6 @@ def test_assets_are_valid_svg_with_required_content():
             assert kw in path.read_text(), f"{name}: {fname} 缺少关键字 {kw}"
 
 
-@pytest.mark.skip(reason="前瞻守卫：Phase 1 落地时摘除")
 def test_style_css_has_exact_design_tokens():
     css = (BASE / "static" / "css" / "style.css").read_text()
     for token, value in CSS_TOKENS.items():
