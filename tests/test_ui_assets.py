@@ -158,3 +158,23 @@ def test_ui_controller_classified_message_stamp():
         assert kw in js, f"uiController.js 缺少 {kw}"
     for kw in ["机密", "密级", "secret"]:
         assert kw.lower() in js.lower(), f"uiController.js 缺少机密判定关键词 {kw}"
+
+
+# ── Phase 8d · Task 8.7：输入区与按钮交互态打磨 ──
+
+def test_input_bar_and_button_focus_styles():
+    """输入区纸色墨线 + 打字机红光标 + 按钮键盘焦点虚线描边。"""
+    css = (BASE / "static" / "css" / "style.css").read_text()
+    assert "caret-color: var(--color-secret-red)" in css, \
+        "#chat-input 缺少 secret-red 打字机光标"
+    assert ".btn:focus-visible" in css, "缺少 .btn 键盘焦点态"
+    assert "outline: 2px dashed var(--color-ink-fade)" in css, \
+        ".btn:focus-visible 应为 ink-fade 虚线描边"
+
+
+def test_index_html_cache_version_consistent():
+    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（Phase 8d → 1780997983）。"""
+    html = (BASE / "static" / "index.html").read_text()
+    versions = set(re.findall(r'\?v=(\d+)', html))
+    assert len(versions) == 1, f"index.html 缓存号不一致: {versions}"
+    assert versions == {"1780997983"}, f"index.html 缓存号未递增到 1780997983: {versions}"

@@ -440,7 +440,7 @@ html, body {
   gap: 4px;
   padding: 6px 8px;
   background: var(--color-paper-dark);
-  border-top: 1px solid var(--color-ink-faint);
+  border-top: 1px solid var(--color-ink-main);
   flex-shrink: 0;
 }
 #chat-input {
@@ -453,7 +453,7 @@ html, body {
   font-size: 13px;
   outline: none;
 }
-#chat-input:focus { border-color: var(--color-ink-main); }
+#chat-input:focus { border-color: var(--color-ink-main); caret-color: var(--color-secret-red); }
 
 /* ═══════════════════════════════════════════════════════
    Buttons — 复古纸质风格
@@ -476,6 +476,10 @@ html, body {
 }
 .btn:active {
   transform: translate(1px, 1px);
+}
+.btn:focus-visible {
+  outline: 2px dashed var(--color-ink-fade);
+  outline-offset: 2px;
 }
 .btn-send { min-width: 52px; }
 
