@@ -612,3 +612,18 @@ html, body {
   background: url('/static/assets/ui/noise.svg');
   opacity: 0.22; mix-blend-mode: multiply;
 }
+
+/* ═══════════════════════════════════════════════════════
+   Phase 9.2 — 盖章砸落 + 军令纸滑入动效
+   ═══════════════════════════════════════════════════════ */
+@keyframes stampThunk {
+  0% { transform: rotate(-8deg) scale(2.2); opacity: 0; }
+  60% { transform: rotate(-8deg) scale(0.95); opacity: 1; }
+  100% { transform: rotate(-8deg) scale(1); }
+}
+.msg-stamp, .order-note .order-stamp-word { animation: stampThunk 0.35s ease-out both; transform-origin: center; }
+@keyframes paperIn {
+  from { transform: translateY(10px) rotate(-0.6deg); opacity: 0; }
+  to { transform: translateY(0) rotate(0); opacity: 1; }
+}
+.order-note { animation: paperIn 0.25s ease-out both; }

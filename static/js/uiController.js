@@ -19,6 +19,20 @@ function tabLabel(npc) {
 // 暗色情报卡（.msg-classified）+ SECRET 印章（.msg-stamp）
 const CLASSIFIED_MSG_RE = /机密|secret|密级/i;
 
+// 电传打字机（Phase 9.2）：逐字显示，40 字/秒；done 为可选完成回调
+// （打字期间用 textContent 安全逐字显示，完成后恢复带 <br> 换行的完整 HTML）
+function typewrite(el, text, cps = 40, done) {
+  el.textContent = '';
+  let i = 0;
+  const timer = setInterval(() => {
+    el.textContent = text.slice(0, ++i);
+    if (i >= text.length) {
+      clearInterval(timer);
+      if (done) done();
+    }
+  }, 1000 / cps);
+}
+
 class UIController {
   constructor() {
     this.npcIds = ['browning', 'murray', 'mitscher', 'radio_officer', 'intel_officer'];
@@ -120,6 +134,13 @@ class UIController {
     `;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
+
+    // Phase 9.2：NPC 新消息电传打字（仅 appendMessage 追加路径生效；
+    // renderChat 整列表重绘路径直接赋值，历史消息不重复播放动画）
+    if (role !== 'user') {
+      const textEl = div.querySelector('.msg-text');
+      typewrite(textEl, content, 40, () => { textEl.innerHTML = safeText; });
+    }
   }
 
   showNotification(text) {

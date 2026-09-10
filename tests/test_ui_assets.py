@@ -172,8 +172,32 @@ def test_input_bar_and_button_focus_styles():
 
 
 def test_index_html_cache_version_consistent():
-    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（9.1 氛围层 → 1780997985）。"""
+    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（9.2 动效 → 1780997986）。"""
     html = (BASE / "static" / "index.html").read_text()
     versions = set(re.findall(r'\?v=(\d+)', html))
     assert len(versions) == 1, f"index.html 缓存号不一致: {versions}"
-    assert versions == {"1780997985"}, f"index.html 缓存号未递增到 1780997985: {versions}"
+    assert versions == {"1780997986"}, f"index.html 缓存号未递增到 1780997986: {versions}"
+
+
+# ── Phase 9 · Task 9.2：电传打字 + 盖章动效 ──
+
+def test_stamp_and_paper_animations():
+    """盖章砸落动画应用于机密卡印章与军令纸 SECRET 字样；军令纸首次出现滑入。"""
+    css = (BASE / "static" / "css" / "style.css").read_text()
+    assert "@keyframes stampThunk" in css, "缺少 stampThunk 砸落动画"
+    assert ".msg-stamp, .order-note .order-stamp-word" in css, \
+        "stampThunk 应同时作用于情报卡印章与军令纸 SECRET 手写字"
+    assert "stampThunk 0.35s ease-out both" in css, "盖章动画参数应为 0.35s ease-out both"
+    assert "@keyframes paperIn" in css, "缺少 paperIn 滑入动画"
+    assert "paperIn 0.25s ease-out both" in css, "军令纸应为 paperIn 0.25s ease-out both 滑入"
+
+
+def test_ui_controller_typewriter():
+    """NPC 新消息走 typewrite 逐字显示；仅 appendMessage 追加路径接入，renderChat 直接赋值。"""
+    js = (BASE / "static" / "js" / "uiController.js").read_text()
+    assert "function typewrite(el, text, cps = 40" in js, "缺少 typewrite 打字机函数"
+    assert js.count("typewrite(textEl") == 1, "typewrite 只应在 appendMessage 调用一次"
+    assert js.index("appendMessage(") < js.index("typewrite(textEl") < js.index("showNotification("), \
+        "typewrite 调用点应在 appendMessage 内"
+    render_body = js[js.index("renderChat("):js.index("appendMessage(")]
+    assert "typewrite" not in render_body, "renderChat 重绘路径不应触发打字机"
