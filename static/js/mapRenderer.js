@@ -695,7 +695,8 @@ class MapRenderer {
 
       // Task 7.9：敌情标记改由 ChartRenderer.drawEnemyContact 绘制
       // （enemy_tag_q 光栅优先，大小随置信度 high 46 / medium 34 / low 26）。
-      // 字段映射：known_enemy[].confidence 即置信档字段（'high'|'medium'|'low'，缺省 'medium'）。
+      // 字段映射：known_enemy[].confidence 即置信档字段（'high'|'medium'|'low'，pydantic 默认 "low"；
+      // 代码 `|| 'medium'` 仅是字段缺失时的渲染回退）。
       ChartRenderer.drawEnemyContact(ctx, { x: px, y: py, confidence: e.confidence || 'medium' });
 
       // Task 7.9：旧手绘圈/问号/置信度文字/ENEMY 标签由标记资产取代（ENEMY 字样已内嵌素材，保留代码备查）

@@ -253,7 +253,8 @@ function drawTaskForceMarker(ctx, tf) {
     ctx.beginPath(); ctx.arc(tf.x, tf.y, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   }
   // 航向矢量 + CSE 标注（两模式共用，设计图：CSE 270°）
-  const rad = (tf.courseDeg * Math.PI) / 180;
+  // 航海约定 0°=北朝上：屏幕坐标 y 向下，需 -90° 修正（与 mapRenderer 旧 _drawSingleCourseArrow 一致）
+  const rad = ((tf.courseDeg - 90) * Math.PI) / 180;
   ctx.strokeStyle = CHART_STYLE.ink;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
