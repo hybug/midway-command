@@ -148,9 +148,9 @@ def update_spatial_index(state) -> None:
         for carrier in tf.carriers:
             idx.update_entity(carrier.name, carrier.position.lat, carrier.position.lon)
 
-    # Update enemy positions from _hidden_actual_enemy
-    if state._hidden_actual_enemy:
-        for i, enemy in enumerate(state._hidden_actual_enemy):
+    # Update enemy positions from actual_enemy
+    if state.actual_enemy:
+        for i, enemy in enumerate(state.actual_enemy):
             epos = enemy.get("position", {})
             name = enemy.get("name", f"enemy_{i}")
             idx.update_entity(name, epos.get("lat", 0), epos.get("lon", 0))

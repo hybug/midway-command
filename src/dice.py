@@ -260,3 +260,8 @@ def roll_landing_check(npc_config, weather="clear", fuel_pct=80, is_night=False,
         situational["甲板未清空"] = -15
 
     return roll_check(npc_modifier=npc_layer, situational_mods=situational)
+
+def roll_npc_decision(npc_config, situational_mods=None):
+    npc_layer = (npc_config.autonomy + npc_config.initiative)
+    npc_layer = min(NPC_LAYER_CAP, npc_layer)
+    return roll_check(npc_modifier=npc_layer, situational_mods=situational_mods)

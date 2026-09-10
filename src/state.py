@@ -2,14 +2,13 @@
 
 GameState is the sole source of truth. All game data lives here.
 NPCs can only access state through query_* functions — they never see
-_hidden_actual_enemy directly.
+actual_enemy directly.
 """
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, PrivateAttr
-
 from src.entities import TaskForce as EntityTaskForce
 
 
@@ -266,5 +265,4 @@ class GameState(BaseModel):
     turn_type: TurnType = TurnType.NORMAL
     action_points: int = Field(default=3, ge=0)
     max_action_points: int = Field(default=3, ge=0)
-    _hidden_actual_enemy: Optional[list[dict]] = PrivateAttr(default=None)
-    _enemy_fleet: Optional[EntityTaskForce] = PrivateAttr(default=None)
+    enemy_fleet: Optional[EntityTaskForce] = Field(default=None)

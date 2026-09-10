@@ -183,14 +183,14 @@ class TestInitialState:
 
     def test_state_has_enemy_fleet(self):
         state = build_initial_state()
-        assert state._enemy_fleet is not None
-        assert state._enemy_fleet.name == "Kido Butai"
-        assert state._enemy_fleet.faction == "japan"
+        assert state.enemy_fleet is not None
+        assert state.enemy_fleet.name == "Kido Butai"
+        assert state.enemy_fleet.faction == "japan"
 
     def test_enemy_fleet_has_four_carriers(self):
         state = build_initial_state()
-        assert len(state._enemy_fleet.carriers) == 4
-        carrier_names = [c.name for c in state._enemy_fleet.carriers]
+        assert len(state.enemy_fleet.carriers) == 4
+        carrier_names = [c.name for c in state.enemy_fleet.carriers]
         assert "Akagi" in carrier_names
         assert "Kaga" in carrier_names
         assert "Soryu" in carrier_names
@@ -198,18 +198,18 @@ class TestInitialState:
 
     def test_enemy_fleet_has_course_and_speed(self):
         state = build_initial_state()
-        assert state._enemy_fleet.course == 135
-        assert state._enemy_fleet.speed == 25
+        assert state.enemy_fleet.course == 135
+        assert state.enemy_fleet.speed == 25
 
     def test_enemy_carriers_have_positions(self):
         state = build_initial_state()
-        for carrier in state._enemy_fleet.carriers:
+        for carrier in state.enemy_fleet.carriers:
             assert carrier.position.lat != 0
             assert carrier.position.lon != 0
 
     def test_enemy_carriers_are_japan(self):
         state = build_initial_state()
-        for carrier in state._enemy_fleet.carriers:
+        for carrier in state.enemy_fleet.carriers:
             assert carrier.faction == "japan"
 
 
@@ -221,7 +221,7 @@ class TestPositionUpdateIntegration:
 
         # Record initial positions
         us_carrier = state.task_forces[0].carriers[0]
-        enemy_carrier = state._enemy_fleet.carriers[0]
+        enemy_carrier = state.enemy_fleet.carriers[0]
         us_initial = (us_carrier.position.lat, us_carrier.position.lon)
         enemy_initial = (enemy_carrier.position.lat, enemy_carrier.position.lon)
 
@@ -240,7 +240,7 @@ class TestPositionUpdateIntegration:
 
         # Record initial distance
         us_lat = state.task_forces[0].carriers[0].position.lat
-        enemy_lat = state._enemy_fleet.carriers[0].position.lat
+        enemy_lat = state.enemy_fleet.carriers[0].position.lat
         initial_lat_diff = abs(us_lat - enemy_lat)
 
         # Update multiple ticks
@@ -249,7 +249,7 @@ class TestPositionUpdateIntegration:
 
         # Check new distance
         us_lat = state.task_forces[0].carriers[0].position.lat
-        enemy_lat = state._enemy_fleet.carriers[0].position.lat
+        enemy_lat = state.enemy_fleet.carriers[0].position.lat
         new_lat_diff = abs(us_lat - enemy_lat)
 
         # They should be moving in different directions (us=240°, enemy=135°)

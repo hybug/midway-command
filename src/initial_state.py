@@ -173,9 +173,9 @@ def build_initial_state() -> GameState:
         speed=25,
     )
 
-    state._enemy_fleet = kido_butai
+    state.enemy_fleet = kido_butai
 
-    state._hidden_actual_enemy = [
+    state.actual_enemy = [
         {
             "name": "Kido Butai",
             "carriers": ["Akagi", "Kaga", "Soryu", "Hiryu"],

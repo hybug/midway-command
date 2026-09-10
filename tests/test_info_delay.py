@@ -39,7 +39,7 @@ def make_state_with_enemy():
         clock=GameClock(game_time=datetime(1942, 6, 4, 4, 0, tzinfo=timezone.utc)),
         task_forces=[tf],
     )
-    state._hidden_actual_enemy = [{
+    state.actual_enemy = [{
         "name": "Kido Butai",
         "carriers": ["Akagi", "Kaga", "Soryu", "Hiryu"],
         "position": {"lat": 30.0, "lon": -178.0},

@@ -41,7 +41,7 @@ def _make_state() -> GameState:
             )
         ],
     )
-    state._hidden_actual_enemy = [{
+    state.actual_enemy = [{
         "name": "Kido Butai",
         "carriers": ["Akagi", "Kaga"],
         "position": {"lat": 31.0, "lon": -180.0},
@@ -88,7 +88,7 @@ class TestNoActualEnemy:
         for npc_name in NPC_REGISTRY:
             filtered = filter_state_for_npc(state, npc_name)
             assert "actual_enemy" not in filtered
-            assert "_hidden_actual_enemy" not in filtered
+            assert "actual_enemy" not in filtered
 
 
 class TestNPCParams:

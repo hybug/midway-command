@@ -29,6 +29,10 @@ def world_to_hex(lat: float, lon: float) -> tuple[int, int]:
     Returns:
         (q, r) hex coordinates
     """
+    if not (-90 <= lat <= 90):
+        raise ValueError(f"lat {lat} out of range [-90, 90]")
+    if not (-180 <= lon <= 180):
+        raise ValueError(f"lon {lon} out of range [-180, 180]")
     # Convert to nautical miles from reference point
     # 1 degree latitude ≈ 60 nm
     # 1 degree longitude ≈ 60 * cos(lat) nm

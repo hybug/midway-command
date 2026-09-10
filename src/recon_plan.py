@@ -145,7 +145,7 @@ def create_recon_plan(
         plan.notes += f"。参考上次接触: {last_contact.description}"
 
     # Calculate timeline
-    plan.calculate_timeline(datetime.now())
+    plan.calculate_timeline(datetime(1942, 6, 4, 4, 0))
 
     logger.info(f"[RECON] Created plan: {plan.aircraft_count} aircraft, "
                 f"sector {plan.sector_start}-{plan.sector_end}°, "

@@ -83,9 +83,9 @@ class TestInitialState:
 
     def test_hidden_enemy_exists(self):
         state = build_initial_state()
-        assert state._hidden_actual_enemy is not None
-        assert len(state._hidden_actual_enemy) == 1
-        assert state._hidden_actual_enemy[0]["name"] == "Kido Butai"
+        assert state.actual_enemy is not None
+        assert len(state.actual_enemy) == 1
+        assert state.actual_enemy[0]["name"] == "Kido Butai"
 
 
 class TestSerialization:
@@ -97,11 +97,16 @@ class TestSerialization:
         assert "Task Force 16" in json_str
         assert "USS Enterprise" in json_str
 
-    def test_hidden_enemy_excluded_from_json(self):
+    def test_model_dump_includes_public_actual_enemy(self):
+        """STATE-007: actual_enemy 公开化后包含在 model_dump 中。
+
+        敌情防泄漏边界在 NPC 查询过滤层（STATE-005/NPC-007，
+        由 test_npc 的 test_no_actual_enemy 等测试把守），不在序列化层。
+        """
         state = build_initial_state()
-        json_str = state.model_dump_json()
-        assert "Kido Butai" not in json_str
-        assert "_hidden_actual_enemy" not in json_str
+        data = state.model_dump()
+        assert "actual_enemy" in data
+        assert "enemy_fleet" in data
 
     def test_round_trip(self):
         state = build_initial_state()

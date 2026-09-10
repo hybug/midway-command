@@ -25,8 +25,11 @@ from src.agents.mitscher import MitscherNPC
 from src.agents.radio_officer import RadioOfficerNPC
 from src.agents.intel_officer import IntelOfficerNPC
 from src.npc_config import NPC_REGISTRY
-from src.events import create_midway_events
-from src.ap import consume_ap, has_ap, reset_ap, get_ap_status
+from src.pipeline import build_default_pipeline
+from src.ap import consume_ap, has_ap, get_ap_status
+from src.mission import plan_mission, confirm_mission, reject_mission
+from src.aircraft import recall_air_group
+from src.state import GamePhase
 from src.tools import handle_execute_action
 
 logging.basicConfig(level=logging.INFO)
@@ -37,7 +40,7 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 
 # ── Global game state (single-user prototype) ──
 game_state = build_initial_state()
-scheduler = create_midway_events()
+pipeline = build_default_pipeline()
 npcs: dict = {
     "browning": BrowningNPC(),
     "murray": MurrayNPC(),
@@ -172,6 +175,7 @@ async def get_state():
         ],
         "incoming_messages": game_state.incoming_messages,
         "ap": ap,
+        "game_phase": game_state.game_phase.value,
     }
 
 
@@ -233,12 +237,18 @@ async def chat(req: ChatRequest):
 
 @app.post("/advance")
 async def advance(req: AdvanceRequest):
-    """Advance the game clock by N minutes."""
-    notifications = scheduler.tick(game_state, req.minutes)
-    reset_ap(game_state)
+    """Advance the game clock by N minutes via the Pipeline."""
+    if game_state.game_phase == GamePhase.GAME_OVER:
+        return {
+            "notifications": ["Game is already over."],
+            "ap": get_ap_status(game_state),
+            "game_over": True,
+        }
+    notifications = pipeline.execute(game_state, req.minutes)
     return {
         "notifications": notifications,
         "ap": get_ap_status(game_state),
+        "game_over": game_state.game_phase == GamePhase.GAME_OVER,
     }
 
 
@@ -262,3 +272,64 @@ async def reject_suggestion(index: int):
 
     game_state.pending_suggestions.pop(index)
     return {"result": "方案已驳回。"}
+
+
+
+@app.post("/plan-strike")
+async def plan_strike_endpoint(enemy_report_id: int = 0):
+    """Create a strike plan from a known enemy report."""
+    if enemy_report_id < 0 or enemy_report_id >= len(game_state.known_enemy):
+        raise HTTPException(404, "Enemy report not found.")
+    enemy = game_state.known_enemy[enemy_report_id]
+    enemy_report = {
+        "position": {"lat": enemy.position.lat, "lon": enemy.position.lon},
+        "course": 110,
+        "speed": 20,
+        "description": enemy.description,
+        "confidence": enemy.confidence,
+    }
+    plan = plan_mission(game_state, enemy_report)
+    return {
+        "plan_id": plan.id,
+        "feasible": plan.feasible,
+        "npc_briefing_data": plan.npc_briefing_data,
+        "warnings": plan.warnings,
+    }
+
+
+@app.post("/confirm-strike")
+async def confirm_strike_endpoint(plan_id: str):
+    """Confirm a strike plan and create an AirGroup."""
+    ag = confirm_mission(game_state, plan_id)
+    if not ag:
+        raise HTTPException(400, "Cannot confirm strike (no ready aircraft or plan not feasible).")
+    return {"group_id": ag.id, "status": ag.status.value}
+
+
+@app.post("/reject-strike")
+async def reject_strike_endpoint(plan_id: str):
+    """Reject a strike plan."""
+    reject_mission(game_state, plan_id)
+    return {"status": "cancelled"}
+
+
+@app.post("/recall")
+async def recall_endpoint(group_id: str):
+    """Recall an airborne air group."""
+    notifications = recall_air_group(game_state, group_id)
+    if not notifications:
+        raise HTTPException(404, "Air group not found or not airborne.")
+    return {"status": "returning", "notifications": notifications}
+
+
+@app.post("/confirm-contact/{index}")
+async def confirm_contact(index: int):
+    """确认待确认的敌军标记（海图圈出确认）。
+
+    将 pending_reports 中的指定报告转为 known_enemy。
+    """
+    from src.render.chart import confirm_contact as chart_confirm
+    success = chart_confirm(game_state, index)
+    if not success:
+        raise HTTPException(404, "报告不存在或已确认。")
+    return {"success": True, "message": "敌情已确认"}

@@ -164,14 +164,14 @@ def update_all_positions(state, minutes: int):
         update_entity_position(tf, minutes)
 
     # Update enemy fleet (if structured)
-    if hasattr(state, '_enemy_fleet') and state._enemy_fleet:
-        update_entity_position(state._enemy_fleet, minutes)
+    if hasattr(state, 'enemy_fleet') and state.enemy_fleet:
+        update_entity_position(state.enemy_fleet, minutes)
 
-        # Sync _hidden_actual_enemy positions from _enemy_fleet
-        if state._hidden_actual_enemy and state._enemy_fleet.carriers:
-            for i, carrier in enumerate(state._enemy_fleet.carriers):
-                if i < len(state._hidden_actual_enemy):
-                    state._hidden_actual_enemy[i]["position"] = {
+        # Sync actual_enemy positions from enemy_fleet
+        if state.actual_enemy and state.enemy_fleet.carriers:
+            for i, carrier in enumerate(state.enemy_fleet.carriers):
+                if i < len(state.actual_enemy):
+                    state.actual_enemy[i]["position"] = {
                         "lat": carrier.position.lat,
                         "lon": carrier.position.lon,
                     }

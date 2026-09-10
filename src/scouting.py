@@ -246,7 +246,7 @@ def check_detection(
     from src.render.coordinate import hex_distance, world_to_hex
 
     detections = []
-    hidden = state._hidden_actual_enemy or []
+    hidden = state.actual_enemy or []
 
     for i, enemy in enumerate(hidden):
         epos = enemy.get("position", {})
@@ -345,7 +345,7 @@ def _update_aircraft_on_landing(state: GameState, scout: ScoutMission, new_statu
 
 def _check_enemy_proximity(state: GameState, scout: ScoutMission) -> bool:
     """Check if scout is near hidden enemy fleet."""
-    hidden = state._hidden_actual_enemy or []
+    hidden = state.actual_enemy or []
     fleet_pos = _get_fleet_pos(state)
     for enemy in hidden:
         epos = enemy.get("position", {})
@@ -476,7 +476,7 @@ def _process_searching(scout: ScoutMission, state: GameState) -> list[str]:
 
     # Detection check (at end of search)
     if elapsed_search >= SEARCH_TIME_MIN:
-        hidden = state._hidden_actual_enemy or []
+        hidden = state.actual_enemy or []
         fleet_pos = _get_fleet_pos(state)
 
         # Get NPC config for dice modifiers (Browning as default)
