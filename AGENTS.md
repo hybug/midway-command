@@ -52,7 +52,7 @@ source .venv/bin/activate
 - **Framework**: pytest.
 - **Naming**: Test files are `test_<module>.py`. Test functions are `test_<behavior_description>`.
 - **Test-first**: Write a test that reproduces the bug or validates the feature, then make it pass.
-- **Coverage**: 230 tests currently. New features require tests. Bug fixes require a regression test.
+- **Coverage**: 253 tests currently (includes UI replication guard tests in `tests/test_ui_assets.py`, `tests/test_raster_assets.py`, `tests/test_quality_gate.py`). New features require tests. Bug fixes require a regression test.
 - **Frontend has no JS test runner**: guard `static/` changes with static-analysis pytest tests (parse CSS/SVG/JS for required tokens, assets, and markup) plus browser screenshot verification.
 - **Run**: `pytest tests/` for the full suite, `pytest tests/test_state.py::test_name -v` for a single test.
 
