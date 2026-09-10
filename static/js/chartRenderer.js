@@ -187,11 +187,34 @@ function drawAtoll(ctx, w, h) {
   ctx.textAlign = 'left';
 }
 
+// Task 7.6：20/40/60nm 距离环——虚线圆 + 沿水平半径右侧标注 + 中心 0nm 刻度短线
+function drawRangeRings(ctx, w, h) {
+  const c = latLonToChartPx(CHART_CENTER.lat, CHART_CENTER.lon, w, h);
+  ctx.save();
+  ctx.strokeStyle = CHART_STYLE.inkFade;
+  ctx.fillStyle = CHART_STYLE.inkFade;
+  ctx.font = `9px ${CHART_STYLE.fontTypewriter}`;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6, 5]);
+  for (const [label, nm] of RING_NM) {
+    const r = chartNmToPx(nm, w, h);
+    ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillText(label, c.x + r + 4, c.y - 4);
+    ctx.setLineDash([6, 5]);
+  }
+  // 中心 0nm 刻度短线（设计图中心右侧）
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(c.x + 14, c.y - 6); ctx.lineTo(c.x + 26, c.y - 6); ctx.stroke();
+  ctx.restore();
+}
+
 const ChartRenderer = {
   drawAll(ctx, w, h) {
     drawChartBase(ctx, w, h);
     drawLatLonGrid(ctx, w, h);
     drawAtoll(ctx, w, h);
+    drawRangeRings(ctx, w, h);
   },
   chartNmToPx,
   latLonToChartPx,
