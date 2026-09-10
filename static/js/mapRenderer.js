@@ -610,27 +610,34 @@ class MapRenderer {
       const [px, py] = this._hexToPixel(q, r);
       const short = c.name.includes('Enterprise') ? 'ENT' : 'HOR';
 
-      // Try SVG icon first
-      const icon = getIcon('carrier_us');
-      if (icon) {
-        const iconW = 30, iconH = 16;
-        ctx.drawImage(icon, px - iconW/2, py - iconH/2, iconW, iconH);
-      } else {
-        // Fallback: circle + cross
-        ctx.strokeStyle = COL.inkMain;
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(px, py, 10, 0, Math.PI * 2); ctx.stroke();
-        ctx.lineWidth = 1.2;
-        ctx.beginPath(); ctx.moveTo(px - 6, py); ctx.lineTo(px + 6, py); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(px, py - 6); ctx.lineTo(px, py + 6); ctx.stroke();
-      }
+      // Task 7.9：舰队标记改由 ChartRenderer.drawTaskForceMarker 绘制
+      // （光栅计数牌 ENT/HOR + CSE 航向线 + 虚线引导线）。
+      // 字段映射：数据模型无 callsign 字段，沿用既有 name→ENT/HOR 推导；
+      // courseDeg 取 TaskForce.course（与旧航向箭头同源）。
+      ChartRenderer.drawTaskForceMarker(ctx, { x: px, y: py, callsign: short, courseDeg: tf.course });
 
-      // Label (priority: high — fleet is important)
-      this._tryPlaceLabel(ctx, short, px, py - 16, 'bold 13px Caveat, cursive', COL.inkMain,
-        [[0, -16], [16, -10], [-16, -10], [0, 18]], 3);
-
-      // Course arrow for this carrier
-      this._drawSingleCourseArrow(ctx, px, py, tf.course);
+      // Task 7.9：旧航母图标/标签/航向箭头由舰队标记取代（保留代码备查）
+      // // Try SVG icon first
+      // const icon = getIcon('carrier_us');
+      // if (icon) {
+      //   const iconW = 30, iconH = 16;
+      //   ctx.drawImage(icon, px - iconW/2, py - iconH/2, iconW, iconH);
+      // } else {
+      //   // Fallback: circle + cross
+      //   ctx.strokeStyle = COL.inkMain;
+      //   ctx.lineWidth = 2;
+      //   ctx.beginPath(); ctx.arc(px, py, 10, 0, Math.PI * 2); ctx.stroke();
+      //   ctx.lineWidth = 1.2;
+      //   ctx.beginPath(); ctx.moveTo(px - 6, py); ctx.lineTo(px + 6, py); ctx.stroke();
+      //   ctx.beginPath(); ctx.moveTo(px, py - 6); ctx.lineTo(px, py + 6); ctx.stroke();
+      // }
+      //
+      // // Label (priority: high — fleet is important)
+      // this._tryPlaceLabel(ctx, short, px, py - 16, 'bold 13px Caveat, cursive', COL.inkMain,
+      //   [[0, -16], [16, -10], [-16, -10], [0, 18]], 3);
+      //
+      // // Course arrow for this carrier
+      // this._drawSingleCourseArrow(ctx, px, py, tf.course);
     });
   }
 
@@ -677,7 +684,7 @@ class MapRenderer {
       const [q, r] = this._worldToHex(e.position.lat, e.position.lon);
       const [px, py] = this._hexToPixel(q, r);
 
-      // 脉冲光晕
+      // 脉冲光晕（保留既有动画）
       ctx.save();
       ctx.globalAlpha = pulseAlpha;
       ctx.fillStyle = COL.enemyRed;
@@ -686,26 +693,32 @@ class MapRenderer {
       ctx.fill();
       ctx.restore();
 
-      // 手绘感虚线圈（Perlin noise 抖动）
-      this._drawHandDrawnCircle(ctx, px, py, 12, COL.enemyRed, 1.5);
+      // Task 7.9：敌情标记改由 ChartRenderer.drawEnemyContact 绘制
+      // （enemy_tag_q 光栅优先，大小随置信度 high 46 / medium 34 / low 26）。
+      // 字段映射：known_enemy[].confidence 即置信档字段（'high'|'medium'|'low'，缺省 'medium'）。
+      ChartRenderer.drawEnemyContact(ctx, { x: px, y: py, confidence: e.confidence || 'medium' });
 
-      // 问号
-      ctx.fillStyle = COL.enemyRed;
-      ctx.font = 'bold 18px Caveat, cursive';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('?', px, py);
-
-      // 置信度指示
-      const conf = e.confidence || 'medium';
-      const confColor = conf === 'high' ? COL.enemyRed : conf === 'medium' ? '#a04000' : COL.inkFaint;
-      ctx.fillStyle = confColor;
-      ctx.font = '8px Caveat, cursive';
-      ctx.fillText(conf.toUpperCase(), px, py + 16);
-
-      // Label
-      this._tryPlaceLabel(ctx, 'ENEMY', px, py + 24, '10px Caveat, cursive', COL.enemyRed,
-        [[0, 24], [16, 18], [-16, 18], [0, -26]], 2);
+      // Task 7.9：旧手绘圈/问号/置信度文字/ENEMY 标签由标记资产取代（ENEMY 字样已内嵌素材，保留代码备查）
+      // // 手绘感虚线圈（Perlin noise 抖动）
+      // this._drawHandDrawnCircle(ctx, px, py, 12, COL.enemyRed, 1.5);
+      //
+      // // 问号
+      // ctx.fillStyle = COL.enemyRed;
+      // ctx.font = 'bold 18px Caveat, cursive';
+      // ctx.textAlign = 'center';
+      // ctx.textBaseline = 'middle';
+      // ctx.fillText('?', px, py);
+      //
+      // // 置信度指示
+      // const conf = e.confidence || 'medium';
+      // const confColor = conf === 'high' ? COL.enemyRed : conf === 'medium' ? '#a04000' : COL.inkFaint;
+      // ctx.fillStyle = confColor;
+      // ctx.font = '8px Caveat, cursive';
+      // ctx.fillText(conf.toUpperCase(), px, py + 16);
+      //
+      // // Label
+      // this._tryPlaceLabel(ctx, 'ENEMY', px, py + 24, '10px Caveat, cursive', COL.enemyRed,
+      //   [[0, 24], [16, 18], [-16, 18], [0, -26]], 2);
     });
   }
 

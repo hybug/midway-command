@@ -236,6 +236,56 @@ function drawScaleBar(ctx, w, h) {
   ctx.restore();
 }
 
+// Task 7.9：ENT/HOR 舰队标记——光栅计数牌优先（Phase 6 治理产物），缺失时矢量回退；
+// CSE 航向线与虚线引导线两模式共用（设计图：CSE 270° + 指向环礁的双虚线）
+function drawTaskForceMarker(ctx, tf) {
+  const tag = getIcon(tf.callsign === 'ENT' ? 'fleet_tag_ent'
+                    : tf.callsign === 'HOR' ? 'fleet_tag_hor' : 'fleet_counter');
+  ctx.save();
+  if (tag) {
+    // 光栅计数牌（绿幕抠图素材，Phase 6 治理产物）
+    ctx.drawImage(tag, tf.x - tag.width / 2, tf.y - tag.height / 2);
+  } else {
+    // 矢量回退：圆圈标记（设计图 A1 基础样式）
+    ctx.strokeStyle = CHART_STYLE.ink;
+    ctx.fillStyle = CHART_STYLE.paper;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(tf.x, tf.y, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+  // 航向矢量 + CSE 标注（两模式共用，设计图：CSE 270°）
+  const rad = (tf.courseDeg * Math.PI) / 180;
+  ctx.strokeStyle = CHART_STYLE.ink;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(tf.x, tf.y);
+  ctx.lineTo(tf.x + Math.cos(rad) * 34, tf.y + Math.sin(rad) * 34);
+  ctx.stroke();
+  ctx.fillStyle = CHART_STYLE.ink;
+  ctx.font = `9px ${CHART_STYLE.fontTypewriter}`;
+  ctx.fillText(`CSE ${Math.round(tf.courseDeg)}°`, tf.x + Math.cos(rad) * 38, tf.y + Math.sin(rad) * 38);
+  // 指向环礁方向的虚线引导线（设计图双虚线）
+  ctx.setLineDash([3, 4]);
+  ctx.strokeStyle = CHART_STYLE.inkFade;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(tf.x, tf.y); ctx.lineTo(tf.x - 60, tf.y + 18); ctx.stroke();
+  ctx.restore();
+}
+
+// Task 7.9：敌情接触标记——红圈 ENEMY 标记，大小随置信度（high 46 / medium 34 / low 26）
+function drawEnemyContact(ctx, contact) {
+  const size = { high: 46, medium: 34, low: 26 }[contact.confidence] || 26;
+  // 优先 Phase 6 光栅 enemy_tag_q（近方形，按素材纵横比绘制防拉伸）
+  const raster = getIcon('enemy_tag_q');
+  if (raster) {
+    const rh = size * (raster.height / raster.width);
+    ctx.drawImage(raster, contact.x - size / 2, contact.y - rh / 2, size, rh);
+    return;
+  }
+  // 回退：enemy_marker.svg（120x150，任务书原尺寸 1:1.25）
+  const icon = getIcon('enemy_marker');
+  if (icon) ctx.drawImage(icon, contact.x - size / 2, contact.y - size / 2, size, size * 1.25);
+}
+
 const ChartRenderer = {
   drawAll(ctx, w, h) {
     drawChartBase(ctx, w, h);
@@ -245,6 +295,8 @@ const ChartRenderer = {
     drawCompassRose(ctx, w, h);
     drawScaleBar(ctx, w, h);
   },
+  drawTaskForceMarker,
+  drawEnemyContact,
   chartNmToPx,
   latLonToChartPx,
 };
