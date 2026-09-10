@@ -265,8 +265,13 @@ class MapRenderer {
     const ctx = this.ctx;
     const W = this.width, H = this.height;
 
-    this._drawPaper(ctx, W, H);
-    this._drawChartBorder(ctx, W, H);
+    // Task 7.8：渲染入口最前部——A1 旧海图底图（纸底/经纬网/环礁/距离环/罗盘/比例尺）
+    // 注：传 CSS 像素 W/H（ctx 已按 dpr setTransform，传 canvas.width 设备像素会放大 dpr 倍）
+    ChartRenderer.drawAll(ctx, W, H);
+
+    // Task 7.8：旧底图层已被 ChartRenderer.drawAll 取代（保留代码备查）
+    // this._drawPaper(ctx, W, H);
+    // this._drawChartBorder(ctx, W, H);
 
     if (state) {
       const tf = state.task_forces[0];
@@ -280,13 +285,14 @@ class MapRenderer {
       ctx.translate(ox, oy);
 
       // Draw layers in order (back to front)
-      this._drawDepthContours(ctx, fpx, fpy);
-      this._drawGrid(ctx, W, H, ox, oy);
-      this._drawDistanceRings(ctx, fpx, fpy, 8);
+      // Task 7.8：旧地形/六边形网格/距离环/环礁已被 ChartRenderer.drawAll 取代（保留代码备查）
+      // this._drawDepthContours(ctx, fpx, fpy);
+      // this._drawGrid(ctx, W, H, ox, oy);
+      // this._drawDistanceRings(ctx, fpx, fpy, 8);
       this._drawPendingRecon(ctx, state, fqr, frr);
       this._drawSearchSectors(ctx, state, fqr, frr);
       this._drawScoutAircraft(ctx, state, fqr, frr);
-      this._drawMidway(ctx, 0, 0, 1.5);
+      // this._drawMidway(ctx, 0, 0, 1.5);
       this._drawOwnFleet(ctx, tf);
       this._drawEnemyContacts(ctx, state);
 
@@ -295,12 +301,14 @@ class MapRenderer {
 
       ctx.restore();
     } else {
-      this._drawGrid(ctx, W, H, 0, 0);
-      this._drawMidway(ctx, this.centerX, this.centerY, 1.5);
+      // Task 7.8：旧底图层已被 ChartRenderer.drawAll 取代（保留代码备查）
+      // this._drawGrid(ctx, W, H, 0, 0);
+      // this._drawMidway(ctx, this.centerX, this.centerY, 1.5);
     }
 
-    this._drawCompass(ctx, W - 50, 50, 28);
-    this._drawScaleBar(ctx, W, H);
+    // Task 7.8：旧罗盘/比例尺已被 ChartRenderer.drawCompassRose/drawScaleBar 取代（保留代码备查）
+    // this._drawCompass(ctx, W - 50, 50, 28);
+    // this._drawScaleBar(ctx, W, H);
     this._drawSecretStamp(ctx);
 
     // 绘制悬停提示
