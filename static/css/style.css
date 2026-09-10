@@ -500,3 +500,11 @@ html, body {
 ::-webkit-scrollbar-track { background: var(--color-paper-dark); }
 ::-webkit-scrollbar-thumb { background: var(--color-ink-faint); }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-ink-fade); }
+
+/* ═══════════════════════════════════════════════════════
+   Phase 8a — A11 顶栏纸带 + 48 星旗
+   ═══════════════════════════════════════════════════════ */
+#topbar.paper-topbar {
+  background: url('/static/assets/ui/topbar_bg.svg') center / cover no-repeat;
+}
+.topbar-flag-img { height: 26px; width: auto; image-rendering: pixelated; }

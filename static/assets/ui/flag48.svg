@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="76" height="40" viewBox="0 0 76 40">
+  <defs>
+    <pattern id="stars" width="8" height="8" patternUnits="userSpaceOnUse">
+      <circle cx="4" cy="4" r="1.4" fill="#f5edd6"/>
+    </pattern>
+  </defs>
+  <rect width="76" height="40" fill="#b22234"/>
+  <g fill="#f5edd6">
+    <rect y="3.1" width="76" height="3.1"/><rect y="9.2" width="76" height="3.1"/>
+    <rect y="15.4" width="76" height="3.1"/><rect y="21.5" width="76" height="3.1"/>
+    <rect y="27.7" width="76" height="3.1"/><rect y="33.8" width="76" height="3.1"/>
+  </g>
+  <rect width="30" height="21.5" fill="#3c3b6e"/>
+  <rect x="3" y="2.5" width="24" height="16.5" fill="url(#stars)"/>
+</svg>

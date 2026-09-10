@@ -55,7 +55,6 @@ CSS_TOKENS = {
 }
 
 
-@pytest.mark.skip(reason="前瞻守卫：Phase 5 落地时摘除")
 def test_asset_manifest_complete():
     missing = [name for name, (f, _) in ASSET_MANIFEST.items() if not (UI / f).exists()]
     assert missing == [], f"缺少资产文件: {missing}"
