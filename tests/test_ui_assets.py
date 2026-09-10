@@ -86,3 +86,31 @@ def test_index_html_structure():
                   "vignette-overlay", "noise-overlay"]:
         assert f'id="{el_id}"' in html, f"index.html 缺少 #{el_id}"
     assert 'http-equiv="Cache-Control"' in html, "meta 缓存标签未修复"
+
+
+# 批准色板：设计 token + 批准衍生色（登记时注明用于哪个资产什么部位）
+SVG_PALETTE = {
+    # 设计 token（docs/design/UI_DESIGN.md）
+    "#f5edd6", "#e8dcc8", "#d4c8a8", "#2a2218", "#6b5d4a", "#a89878",
+    "#8b2500", "#c0392b", "#b8d4c8", "#8aaa98", "#d4c4a0", "#c8b890", "#3a2518",
+    # 批准衍生色
+    "#1e120a",  # vignette 最外圈暗角
+    "#efe6cd",  # paper_note 第二层叠纸
+    "#4a3f30",  # intel_card_dark 卡底
+    "#fff4d6", "#ffedc4",  # light_falloff 光晕端点
+    "#c9a76a", "#b08d52", "#8a6b3a", "#4a3820",  # ruler 木尺
+    "#e8a33d", "#c8871f", "#b8b8c0", "#8f8f9a", "#d88a7c", "#d4b890", "#3a3228",  # pencil
+    "#b22234", "#3c3b6e",  # flag48 旗
+}
+
+SVG_COLOR_RE = re.compile(r'(?:fill|stroke|stop-color)="(#[0-9a-fA-F]{6})"')
+
+
+def test_svg_colors_within_approved_palette():
+    """SVG 色板纯度：只允许批准色值，防止凭空造色偏离设计。"""
+    for name, (fname, _) in ASSET_MANIFEST.items():
+        p = UI / fname
+        if not p.exists():
+            continue
+        for color in SVG_COLOR_RE.findall(p.read_text()):
+            assert color.lower() in SVG_PALETTE, f"{fname} 使用了未批准色值 {color}"
