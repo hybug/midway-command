@@ -1,4 +1,6 @@
 """Tests for §5 航空参谋系统 — AIR-001~016"""
+import random
+
 import pytest
 from datetime import datetime, timezone
 
@@ -121,6 +123,8 @@ class TestLandingCheck:
 
     def test_landing_check_basic(self):
         """着舰检定基本功能"""
+        # 播种使着舰检定走确定的成功路径（原测试未播种，全量跑间歇失败）
+        random.seed(0)
         state = _make_state_with_aircraft()
         aircraft = state.task_forces[0].carriers[0].aircraft[0]
         aircraft.status = AircraftStatus.LANDING
