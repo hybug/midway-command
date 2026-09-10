@@ -20,6 +20,7 @@
 - **色彩 token 逐字采用** `docs/design/UI_DESIGN.md`：`--color-desk:#3a2518`、`--color-desk-light:#4a3528`、`--color-paper-base:#f5edd6`、`--color-paper-dark:#e8dcc8`、`--color-paper-edge:#d4c8a8`、`--color-ink-main:#2a2218`、`--color-ink-fade:#6b5d4a`、`--color-ink-faint:#a89878`、`--color-enemy-red:#8b2500`、`--color-secret-red:#c0392b`、`--color-grid-line:rgba(160,140,110,0.35)`、`--color-lagoon:#b8d4c8`、`--color-reef:#8aaa98`、`--color-sand:#d4c4a0`、`--color-eastern:#c8b890`。
 - **字体**：沿用既有 Google Fonts link——`'Special Elite', monospace`（打字机/仪表/标注）、`'Caveat', cursive`（手写/签名/印章点缀）。
 - **资产目录**：SVG 一律 `static/assets/ui/<name>.svg`，治理后的光栅图标一律 `static/assets/ui/icons/<name>.png`（浏览器路径 `/static/assets/ui/...`）。改动 CSS/JS 后必须递增 `static/index.html` 中的 `?v=` 缓存参数。
+- **光栅图标质量门**：任何抠图产物（存量复用或新增）入库前必须通过 `docs/assets/quality_gate.py`（PASS，或 MANUAL 人工分拆复审通过）；源池评审结论见 `docs/reports/raster-icon-review.md`（usable 6 / repair 5 / 备用 1 / reject 35）。
 - **TDD**：每个任务先写 `tests/test_ui_assets.py`（或 `tests/test_raster_assets.py`）中的失败断言，再实现。运行单测：`pytest tests/test_ui_assets.py::<test_name> -v`；全量：`pytest tests/`（230 个既有测试必须始终全绿）。
 - **视觉验证**：`source .venv/bin/activate && uvicorn server:app --reload` 后打开 http://localhost:8000，截图与设计图逐项对照（浏览器截图工具即可）。每个 Phase 结束做一次对照。
 - **外科手术式修改**：只改本计划列出的文件；不碰 `src/` 游戏逻辑；不破坏现有功能（聊天、建议审批、推进回合、侦察显示）。
@@ -660,8 +661,10 @@ git commit -m "feat: A2 纸张底纹资产（feTurbulence 渍斑）"
 
 ### Task 6.1: 源池盘点与质量门评审
 
+> **状态：已完成（2026-09-10，主会话执行）**——报告见 `docs/reports/raster-icon-review.md`：47 枚中 usable 6 / repair 5 / 备用 1 / reject 35（大部分 reject 是素材表标题文字被误抠为图标，如 "COMPASS ROSE"、"切图资产 SPRITESHEET"）。质量门脚本 `docs/assets/quality_gate.py` 与守卫测试 `tests/test_quality_gate.py` 已入库。**执行者勿重复执行本任务**，从 Task 6.2 开始；同参重切与存量逐字节一致（已验证），改善只能来自 6.2 的分拆/裁剪工序。
+
 **Files:**
-- Create: `docs/reports/raster-icon-review.md`
+- Create: `docs/reports/raster-icon-review.md`（已入库）
 
 - [ ] **Step 1: 盘点统计**
 
@@ -739,7 +742,7 @@ split_icon("docs/assets/icons_extracted/aircraft_14_232x161.png", {
 })
 ```
 
-分拆后逐张目检：透明背景完整、无绿边（`extract_icons.py` 已做溢出抑制，手工分拆不会引入新绿边）。
+分拆后逐张目检：透明背景完整、无绿边（`extract_icons.py` 已做溢出抑制，手工分拆不会引入新绿边）；并跑质量门复检 `.venv/bin/python docs/assets/quality_gate.py /tmp/icons_fixed`——全部 PASS（或 MANUAL 经人工分拆复审通过）才可进入 6.3。
 
 - [ ] **Step 4: 回写报告** — repair 档逐条标注「已修复（方式）/仍失败（由 SVG 顶替）」。
 - [ ] **Step 5: Commit**
@@ -839,6 +842,7 @@ for src_name, out_name, max_edge in TARGETS:
 
 ```bash
 .venv/bin/python docs/assets/curate_icons.py
+.venv/bin/python docs/assets/quality_gate.py static/assets/ui/icons   # 必须全部 PASS
 pytest tests/test_raster_assets.py -v   # PASS
 ```
 
