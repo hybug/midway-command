@@ -508,3 +508,23 @@ html, body {
   background: url('/static/assets/ui/topbar_bg.svg') center / cover no-repeat;
 }
 .topbar-flag-img { height: 26px; width: auto; image-rendering: pixelated; }
+
+/* ═══════════════════════════════════════════════════════
+   Phase 8a — A9 NPC 文件夹标签页
+   ═══════════════════════════════════════════════════════ */
+#npc-tabs {
+  background: url('/static/assets/ui/tab_bg.svg') bottom / 100% 100% no-repeat;
+  padding: 8px 8px 0;
+  gap: 2px;
+  align-items: flex-end;
+}
+.npc-tab {
+  clip-path: polygon(0 100%, 0 6px, 6px 0, calc(100% - 6px) 0, 100% 6px, 100% 100%);
+  background: var(--color-paper-dark);
+  border-bottom: none;
+}
+.npc-tab.active {
+  background: var(--color-paper-base);
+  transform: translateY(-3px);
+  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.2);
+}

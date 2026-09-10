@@ -3,16 +3,21 @@
  * Phase 4: 通信面板、军事命令文档、仪表盘、交互逻辑
  */
 
+// NPC 标签页缩写（A9 文件夹标签样式）— 键与 /npcs 接口返回的真实 id 一致
+const NPC_TAB_ABBR = {
+  browning: 'COS', murray: 'TF16 CAPT', mitscher: 'HOR CAPT',
+  radio_officer: 'COMM', intel_officer: 'INTEL',
+};
+// 接口数据缺省时回退到默认缩写映射
+function tabLabel(npc) {
+  if (typeof npc === 'string') npc = { id: npc };
+  const key = (npc.id || npc.name || '').toString().toLowerCase();
+  return NPC_TAB_ABBR[key] || (npc.name || '').slice(0, 8).toUpperCase();
+}
+
 class UIController {
   constructor() {
     this.npcIds = ['browning', 'murray', 'mitscher', 'radio_officer', 'intel_officer'];
-    this.npcLabels = {
-      browning: 'COS',
-      murray: 'TF16 CAPT',
-      mitscher: 'COMM',
-      radio_officer: 'INTEL',
-      intel_officer: 'ADML',
-    };
     this.npcSenders = {
       browning: '布朗宁（BROWNING）· 参谋长',
       murray: '默里（MURRAY）· 企业号舰长',
@@ -38,7 +43,7 @@ class UIController {
     this.npcIds.forEach(id => {
       const tab = document.createElement('button');
       tab.className = 'npc-tab' + (id === activeNpc ? ' active' : '');
-      tab.textContent = this.npcLabels[id];
+      tab.textContent = tabLabel(id);
       tab.dataset.npc = id;
       tab.addEventListener('click', () => onSwitch(id));
       container.appendChild(tab);

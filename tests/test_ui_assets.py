@@ -122,3 +122,9 @@ def test_chart_renderer_constants_match_css():
     for label in ["MIDWAY ATOLL", "28°12'N 177°21'W", "SAND ISLAND", "EASTERN ISLAND",
                   "20nm", "40nm", "60nm"]:
         assert label in js, f"chartRenderer.js 缺少标注 {label}"
+
+
+def test_npc_tab_labels():
+    js = (BASE / "static" / "js" / "uiController.js").read_text()
+    for label in ["COS", "TF16 CAPT", "HOR CAPT", "COMM", "INTEL"]:
+        assert label in js, f"uiController.js 缺少标签缩写 {label}"
