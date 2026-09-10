@@ -40,8 +40,18 @@ function latLonToChartPx(lat, lon, w, h) {
   };
 }
 
+// Task 7.3：纸张底图——米黄底色 + 水渍纹理 + 噪点颗粒（资产由 svgLoader 提供）
+function drawChartBase(ctx, w, h) {
+  ctx.fillStyle = CHART_STYLE.paper;
+  ctx.fillRect(0, 0, w, h);
+  const stains = getIcon('paper_base');
+  const grain = getIcon('noise');
+  if (stains) ctx.drawImage(stains, 0, 0, w, h);
+  if (grain) { ctx.globalAlpha = 0.3; ctx.drawImage(grain, 0, 0, w, h); ctx.globalAlpha = 1; }
+}
+
 const ChartRenderer = {
-  drawAll(ctx, w, h) {}, // Phase 7 后续任务逐个填充
+  drawAll(ctx, w, h) { drawChartBase(ctx, w, h); },
   chartNmToPx,
   latLonToChartPx,
 };
