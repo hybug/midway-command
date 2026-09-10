@@ -549,3 +549,28 @@ html, body {
 .desk-prop { position: fixed; z-index: 5; pointer-events: none; filter: drop-shadow(2px 3px 3px rgba(0,0,0,0.4)); }
 .desk-ruler  { right: 12px; bottom: 62px; width: 300px; transform: rotate(-2deg); }
 .desk-pencil { left: 20px; bottom: 60px; width: 220px; transform: rotate(4deg); }
+
+/* ═══════════════════════════════════════════════════════
+   Phase 8c — A8 军令纸卡（SECRET – INTERCEPTION PLAN）
+   ═══════════════════════════════════════════════════════ */
+.order-note {
+  position: relative;
+  background: url('/static/assets/ui/paper_note.svg') center / 100% 100% no-repeat;
+  margin: 10px; padding: 12px 14px;
+  box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.25);
+}
+.order-note-head { display: flex; align-items: baseline; gap: 8px; border-bottom: 1px solid var(--color-ink-main); padding-bottom: 4px; }
+.order-stamp-word { font-family: var(--font-handwriting); font-weight: bold; font-size: 18px; color: var(--color-secret-red); letter-spacing: 2px; }
+.order-note-subtitle { font-size: 11px; color: var(--color-ink-main); letter-spacing: 1px; }
+.order-note-body { padding: 8px 2px; }
+.order-kw { font-size: 10px; font-weight: bold; letter-spacing: 1px; color: var(--color-ink-main); margin: 6px 0 2px; }
+.order-line, .order-steps li { font-size: 11px; color: var(--color-ink-fade); line-height: 1.5; }
+.order-steps { margin-left: 16px; }
+.order-note-foot { border-top: 1px solid var(--color-ink-faint); padding-top: 8px; display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; }
+.order-sig-label { font-size: 9px; letter-spacing: 1px; color: var(--color-ink-fade); }
+.sig-scrawl { display: block; margin-top: 2px; }
+.order-actions { display: flex; flex-direction: column; gap: 5px; }
+.btn-execute { background: var(--color-ink-main); color: var(--color-paper-base); border: 1px solid var(--color-ink-main); font-weight: bold; padding: 6px 14px; }
+.btn-execute:hover { background: #3a3228; }
+.btn-revise { background: transparent; color: var(--color-secret-red); border: 1px solid var(--color-secret-red); padding: 6px 14px; }
+.btn-revise:hover { background: #f0d0c0; }

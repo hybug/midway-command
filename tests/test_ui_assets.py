@@ -128,3 +128,9 @@ def test_npc_tab_labels():
     js = (BASE / "static" / "js" / "uiController.js").read_text()
     for label in ["COS", "TF16 CAPT", "HOR CAPT", "COMM", "INTEL"]:
         assert label in js, f"uiController.js 缺少标签缩写 {label}"
+
+
+def test_ui_controller_design_copy():
+    js = (BASE / "static" / "js" / "uiController.js").read_text()
+    for kw in ["EXECUTE ORDER", "REVISE PLAN", "COMMANDER SIGNATURE", "SECRET", "MISSION", "EXECUTION"]:
+        assert kw in js, f"uiController.js 缺少军令纸文案 {kw}"

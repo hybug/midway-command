@@ -190,49 +190,50 @@ class UIController {
       return;
     }
 
-    let html = '';
-    state.pending_suggestions.forEach(sug => {
-      const detailStr = Object.entries(sug.details).map(([k, v]) => `${k}=${v}`).join(', ');
-      html += this._renderMilitaryOrder(sug, detailStr);
-    });
-    container.innerHTML = html;
+    container.innerHTML = state.pending_suggestions
+      .map((sug, i) => this.renderOrderNote(sug, i))
+      .join('');
 
-    // Bind buttons
-    container.querySelectorAll('.btn-approve').forEach(btn => {
-      btn.addEventListener('click', () => onApprove(parseInt(btn.dataset.idx)));
-    });
-    container.querySelectorAll('.btn-reject').forEach(btn => {
-      btn.addEventListener('click', () => onReject(parseInt(btn.dataset.idx)));
+    // Bind buttons: data-act="approve|reject" → 原有 onApprove/onReject 回调
+    // （main.js 的 approveSuggestion/rejectSuggestion 仍走 /suggestion/{i}/approve|reject）
+    container.querySelectorAll('.order-actions .btn[data-act]').forEach(btn => {
+      const idx = parseInt(btn.dataset.index, 10);
+      if (btn.dataset.act === 'approve') btn.addEventListener('click', () => onApprove(idx));
+      else if (btn.dataset.act === 'reject') btn.addEventListener('click', () => onReject(idx));
     });
   }
 
-  _renderMilitaryOrder(sug, detailStr) {
+  // A8 军令纸卡（SECRET – INTERCEPTION PLAN）
+  // 字段映射：action_type → MISSION 行；details（k=v 列表）→ EXECUTION 步骤；index → data-index
+  renderOrderNote(s, i) {
+    const mission = (s.action_type || '').replace(/_/g, ' ').toUpperCase();
+    const steps = Object.entries(s.details || {}).map(([k, v]) => `${k}=${v}`);
     return `
-    <div class="mil-order">
-      <div class="mil-order-header">
-        <span class="mil-order-title">SECRET — INTERCEPTION PLAN</span>
+    <article class="order-note" data-suggestion="${i}">
+      <header class="order-note-head">
+        <span class="order-stamp-word">SECRET</span>
+        <span class="order-note-subtitle">– INTERCEPTION PLAN –</span>
+      </header>
+      <div class="order-note-body">
+        <p class="order-kw">MISSION:</p>
+        <p class="order-line">${mission}</p>
+        <p class="order-kw">EXECUTION:</p>
+        <ol class="order-steps">${steps.map((t) => `<li>${t}</li>`).join('')}</ol>
       </div>
-      <div class="mil-order-body">
-        <div class="mil-order-section">
-          <div class="mil-section-title">MISSION:</div>
-          <div class="mil-section-body">${sug.action_type.replace(/_/g, ' ').toUpperCase()}</div>
+      <footer class="order-note-foot">
+        <div class="order-sig">
+          <span class="order-sig-label">COMMANDER SIGNATURE:</span>
+          <svg class="sig-scrawl" viewBox="0 0 100 32" width="90" height="26" aria-hidden="true">
+            <path d="M4,26 C14,6 20,30 30,14 C36,6 38,22 48,16 C58,10 60,24 72,14 C80,8 86,20 96,12"
+                  fill="none" stroke="#2a2218" stroke-width="2" stroke-linecap="round"/>
+          </svg>
         </div>
-        <div class="mil-order-section">
-          <div class="mil-section-title">EXECUTION:</div>
-          <div class="mil-section-body mil-detail">${detailStr}</div>
+        <div class="order-actions">
+          <button class="btn btn-execute" data-act="approve" data-index="${i}">EXECUTE ORDER</button>
+          <button class="btn btn-revise" data-act="reject" data-index="${i}">REVISE PLAN</button>
         </div>
-      </div>
-      <div class="mil-order-footer">
-        <div class="mil-signature">
-          <div class="mil-label">COMMANDER SIGNATURE:</div>
-          <div class="mil-sig-line"></div>
-        </div>
-        <div class="mil-order-actions">
-          <button class="btn btn-approve" data-idx="${sug.index}">EXECUTE ORDER</button>
-          <button class="btn btn-reject" data-idx="${sug.index}">REVISE PLAN</button>
-        </div>
-      </div>
-    </div>`;
+      </footer>
+    </article>`;
   }
 
   // ═══════════════════════════════════════════════════════
