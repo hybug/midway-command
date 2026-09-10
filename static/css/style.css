@@ -528,3 +528,17 @@ html, body {
   transform: translateY(-3px);
   box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.2);
 }
+
+/* ═══════════════════════════════════════════════════════
+   Phase 8b — A12/A13 海图区台灯光晕 + 划痕
+   ═══════════════════════════════════════════════════════ */
+.chart-light {
+  position: absolute; top: -60px; left: -40px; width: 60%; height: 70%;
+  background: url('/static/assets/ui/light_falloff.svg') center / 100% 100% no-repeat;
+  mix-blend-mode: soft-light; pointer-events: none; z-index: 1;
+}
+.chart-scratches {
+  position: absolute; inset: 0;
+  background: url('/static/assets/ui/scratches.svg') center / cover no-repeat;
+  opacity: 0.5; mix-blend-mode: multiply; pointer-events: none; z-index: 1;
+}
