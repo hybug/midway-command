@@ -23,6 +23,15 @@ const ICON_FILES = {
   enemy_tag_q: '/static/assets/ui/icons/enemy_tag_q.png',
   aircraft_topdown_raster: '/static/assets/ui/icons/aircraft_topdown.png',
   compass_raster: '/static/assets/ui/icons/compass_raster.png',
+  // 设计图资产文件（docs/plans/ui-replication-plan.md Phase 2–5）
+  paper_base: '/static/assets/ui/paper_base.svg',
+  noise: '/static/assets/ui/noise.svg',
+  vignette: '/static/assets/ui/vignette.svg',
+  light_falloff: '/static/assets/ui/light_falloff.svg',
+  scratches: '/static/assets/ui/scratches.svg',
+  compass: '/static/assets/ui/compass.svg',
+  enemy_marker: '/static/assets/ui/enemy_marker.svg',
+  secret_stamp: '/static/assets/ui/secret_stamp.svg',
 };
 
 let iconsLoaded = false;
@@ -31,11 +40,19 @@ const loadedIcons = {};
 async function loadSVGIcons() {
   if (iconsLoaded) return;
   const jobs = [];
+  const failSoft = (name, err) => {
+    console.warn(`svgLoader: ${name} 加载失败`, err);
+    return null; // 不写入 loadedIcons，整体不 reject
+  };
   for (const [name, svgString] of Object.entries(SVG_ICONS)) {
-    jobs.push(svgToImage(svgString).then((img) => { loadedIcons[name] = img; }));
+    jobs.push(svgToImage(svgString)
+      .then((img) => { loadedIcons[name] = img; })
+      .catch((err) => failSoft(name, err)));
   }
   for (const [name, url] of Object.entries(ICON_FILES)) {
-    jobs.push(loadIconFromUrl(name, url).then((img) => { loadedIcons[name] = img; }));
+    jobs.push(loadIconFromUrl(name, url)
+      .then((img) => { loadedIcons[name] = img; })
+      .catch((err) => failSoft(name, err)));
   }
   await Promise.all(jobs);
   iconsLoaded = true;
