@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="150" viewBox="0 0 120 150">
+  <g fill="none" stroke="#8b2500" stroke-linecap="round">
+    <circle cx="60" cy="56" r="42" stroke-width="5"/>
+    <circle cx="61" cy="54" r="39" stroke-width="2" opacity="0.75"/>
+  </g>
+  <text x="60" y="80" text-anchor="middle" font-family="'Caveat', cursive"
+        font-size="64" font-weight="bold" fill="#8b2500">?</text>
+  <text x="60" y="138" text-anchor="middle" font-family="'Special Elite', monospace"
+        font-size="20" letter-spacing="4" fill="#8b2500">ENEMY</text>
+</svg>
