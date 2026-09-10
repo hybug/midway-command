@@ -172,11 +172,11 @@ def test_input_bar_and_button_focus_styles():
 
 
 def test_index_html_cache_version_consistent():
-    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（9.2 动效 → 1780997986）。"""
+    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（9.3 交互态 → 1780997987）。"""
     html = (BASE / "static" / "index.html").read_text()
     versions = set(re.findall(r'\?v=(\d+)', html))
     assert len(versions) == 1, f"index.html 缓存号不一致: {versions}"
-    assert versions == {"1780997986"}, f"index.html 缓存号未递增到 1780997986: {versions}"
+    assert versions == {"1780997987"}, f"index.html 缓存号未递增到 1780997987: {versions}"
 
 
 # ── Phase 9 · Task 9.2：电传打字 + 盖章动效 ──
@@ -201,3 +201,20 @@ def test_ui_controller_typewriter():
         "typewrite 调用点应在 appendMessage 内"
     render_body = js[js.index("renderChat("):js.index("appendMessage(")]
     assert "typewrite" not in render_body, "renderChat 重绘路径不应触发打字机"
+
+
+# ── Phase 9 · Task 9.3：交互态打磨 ──
+
+def test_tab_hover_lift_style():
+    """NPC 标签 hover 上浮 1px，且不覆盖 active 态既有的 -3px 上浮。"""
+    css = (BASE / "static" / "css" / "style.css").read_text()
+    assert ".npc-tab:hover:not(.active) { transform: translateY(-1px); }" in css, \
+        "标签 hover 应上浮 1px（:not(.active) 防 -3px 被覆盖）"
+    assert "transform: translateY(-3px);" in css, "active 态 -3px 上浮必须保留"
+
+
+def test_map_renderer_hover_scale_redraw():
+    """敌情标记悬停：复用既有 _hoverTarget 命中机制，命中时 1.1 倍缩放重绘。"""
+    js = (BASE / "static" / "js" / "mapRenderer.js").read_text()
+    assert "scale(1.1, 1.1)" in js, "悬停命中时应以 1.1 倍缩放重绘标记"
+    assert "this._hoverTarget.type === 'enemy'" in js, "放大重绘应挂在既有 _hoverTarget enemy 分支内"

@@ -532,6 +532,8 @@ html, body {
   transform: translateY(-3px);
   box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.2);
 }
+/* Phase 9.3：标签 hover 上浮 1px（:not(.active) 保证 active 态 -3px 上浮不被覆盖） */
+.npc-tab:hover:not(.active) { transform: translateY(-1px); }
 
 /* ═══════════════════════════════════════════════════════
    Phase 8b — A12/A13 海图区台灯光晕 + 划痕
