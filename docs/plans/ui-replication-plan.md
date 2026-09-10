@@ -21,6 +21,7 @@
 - **字体**：沿用既有 Google Fonts link——`'Special Elite', monospace`（打字机/仪表/标注）、`'Caveat', cursive`（手写/签名/印章点缀）。
 - **资产目录**：SVG 一律 `static/assets/ui/<name>.svg`，治理后的光栅图标一律 `static/assets/ui/icons/<name>.png`（浏览器路径 `/static/assets/ui/...`）。改动 CSS/JS 后必须递增 `static/index.html` 中的 `?v=` 缓存参数。
 - **光栅图标质量门**：任何抠图产物（存量复用或新增）入库前必须通过 `docs/assets/quality_gate.py`（PASS，或 MANUAL 人工分拆复审通过）；源池评审结论见 `docs/reports/raster-icon-review.md`（usable 6 / repair 5 / 备用 1 / reject 35）。
+- **两层把关**：客观门 + 目检缺一不可，全部资产类型与三级流程闸门见「质量把关体系」章节；任何资产没有目检记录不得进入 Phase 10 验收。
 - **TDD**：每个任务先写 `tests/test_ui_assets.py`（或 `tests/test_raster_assets.py`）中的失败断言，再实现。运行单测：`pytest tests/test_ui_assets.py::<test_name> -v`；全量：`pytest tests/`（230 个既有测试必须始终全绿）。
 - **视觉验证**：`source .venv/bin/activate && uvicorn server:app --reload` 后打开 http://localhost:8000，截图与设计图逐项对照（浏览器截图工具即可）。每个 Phase 结束做一次对照。
 - **外科手术式修改**：只改本计划列出的文件；不碰 `src/` 游戏逻辑；不破坏现有功能（聊天、建议审批、推进回合、侦察显示）。
@@ -30,7 +31,26 @@
 
 ## 工作量说明
 
-本计划共 **44 个任务**、约 220 个执行步骤。按执行模型（GLM 5.3 Flash）每任务含「写失败测试→实现→测试转绿→浏览器截图对照→提交」的完整循环，单任务约 8–20 分钟（含视觉修正回环），总工作量约 **6–11 小时**，满足「连续 5 小时以上」的要求。任务按 Phase 顺序执行，Phase 内任务相互独立、可分别提交。
+本计划共 **45 个任务**、约 230 个执行步骤。按执行模型（GLM 5.3 Flash）每任务含「写失败测试→实现→测试转绿→浏览器截图对照→提交」的完整循环，单任务约 8–20 分钟（含视觉修正回环），总工作量约 **6–11 小时**，满足「连续 5 小时以上」的要求。任务按 Phase 顺序执行，Phase 内任务相互独立、可分别提交。
+
+## 质量把关体系（Quality Gates）
+
+所有资产（光栅 / SVG / 样式代码 / 渲染交互）入库都要过**两层把关**：客观门给数据，目检做裁决。客观门是**必要条件**，目检是最终裁决——实证：源池中「图」字碎片通过了全部客观判据，靠目检否决（见 `docs/reports/raster-icon-review.md` §3.4）。
+
+| 资产类型 | 客观门（自动化） | 目检（裁决） | 验收记录 |
+|---------|-----------------|-------------|---------|
+| 光栅图标（PNG） | `docs/assets/quality_gate.py`：G1 非空 / G2 内容占比 3–98% / G3 绿边 ≤2% / G4 主体完整 ≥0.5 / G5 尺寸 ≥24px；≥2 个 >20% 连通域 → MANUAL（合并切割嫌疑，人工分拆复审） | `--sheets` 生成拼图（纸张底色模拟使用场景）逐枚裁决 | `docs/reports/raster-icon-review.md`（47 枚三档分类 + 入库白名单） |
+| SVG 资产 | `tests/test_ui_assets.py`：清单齐全 / XML 合法 / 必含关键字 / **色板纯度**（只允许 `SVG_PALETTE` 批准色值，Task 0.4） | 浏览器逐枚打开对照设计图（各资产任务 Step 内） | pytest 输出 + Phase 10 验收表 |
+| 样式/结构代码 | `tests/test_ui_assets.py`：token 精确值、页面结构、渲染器常量与 CSS 同步、文案关键字 | 截图对照设计图（任务内 + Phase 收尾） | 同上 |
+| 渲染与交互（Canvas/JS） | `pytest tests/` 全量回归（235+，含 `tests/test_quality_gate.py`） | 1280/1440/1920 三档截图 + 玩法链路实操（Task 10.3） | `docs/reports/ui-replication-report.md` |
+
+**流程闸门（三级，缺一不可）：**
+
+1. **任务级**：每任务提交前「红测→实现→转绿→目检→提交」五步全走，缺目检记录不得提交；
+2. **Phase 级**：每个 Phase 收尾做一次与设计图的对照（Phase 7 收尾对 A1 逐要素核对；其余 Phase 对照「设计图 → 实现映射表」对应行），偏差回对应任务修正后重截；
+3. **终验级**：Task 10.2 的 15 行验收表逐项打分，目检拼图与分区截图随报告归档至 `docs/reports/`。
+
+**新增抠图专项要求**：调参重切、手工分拆的产物必须重新过 `quality_gate.py`（PASS，或 MANUAL 经人工分拆复审通过），并更新 `raster-icon-review.md` 后，才可进 Task 6.3 入库。同参重切无增益（已实测与存量逐字节一致），质量改善只能来自分拆/裁剪工序；绿边指标全量 0.000，纯 Pillow crop 不引入新绿边。
 
 ## 文件结构总览
 
@@ -235,6 +255,54 @@ git commit -m "test: UI 复刻守卫测试骨架（资产清单/token/页面结�
 ```bash
 git add docs/reports/
 git commit -m "docs: UI 复刻基线截图与验收报告骨架"
+```
+
+### Task 0.4: SVG 资产色板纯度守卫（客观门）
+
+**Files:**
+- Modify: `tests/test_ui_assets.py`（追加 `SVG_PALETTE` 与 `test_svg_colors_within_approved_palette`）
+
+**Interfaces:**
+- Consumes: `ASSET_MANIFEST`（Task 0.2）。
+- Produces: SVG 色板白名单 `SVG_PALETTE`——后续任何 SVG 任务要新增颜色，必须先在此登记并注明用途，否则守卫测试 FAIL。
+
+- [ ] **Step 1: 追加测试**
+
+```python
+# 批准色板：设计 token + 批准衍生色（登记时注明用于哪个资产什么部位）
+SVG_PALETTE = {
+    # 设计 token（docs/design/UI_DESIGN.md）
+    "#f5edd6", "#e8dcc8", "#d4c8a8", "#2a2218", "#6b5d4a", "#a89878",
+    "#8b2500", "#c0392b", "#b8d4c8", "#8aaa98", "#d4c4a0", "#c8b890", "#3a2518",
+    # 批准衍生色
+    "#1e120a",  # vignette 最外圈暗角
+    "#efe6cd",  # paper_note 第二层叠纸
+    "#4a3f30",  # intel_card_dark 卡底
+    "#fff4d6", "#ffedc4",  # light_falloff 光晕端点
+    "#c9a76a", "#b08d52", "#8a6b3a", "#4a3820",  # ruler 木尺
+    "#e8a33d", "#c8871f", "#b8b8c0", "#8f8f9a", "#d88a7c", "#d4b890", "#3a3228",  # pencil
+    "#b22234", "#3c3b6e",  # flag48 旗
+}
+
+SVG_COLOR_RE = re.compile(r'(?:fill|stroke|stop-color)="(#[0-9a-fA-F]{6})"')
+
+
+def test_svg_colors_within_approved_palette():
+    """SVG 色板纯度：只允许批准色值，防止凭空造色偏离设计。"""
+    for name, (fname, _) in ASSET_MANIFEST.items():
+        p = UI / fname
+        if not p.exists():
+            continue
+        for color in SVG_COLOR_RE.findall(p.read_text()):
+            assert color.lower() in SVG_PALETTE, f"{fname} 使用了未批准色值 {color}"
+```
+
+- [ ] **Step 2: 运行** — `pytest tests/test_ui_assets.py::test_svg_colors_within_approved_palette -v` → 本阶段资产未落盘时空跳过（PASS）；Phase 2 起每个 SVG 落地时实时把关，出现白名单外色值即 FAIL，届时要么改色回 token，要么在 `SVG_PALETTE` 登记并说明理由。
+- [ ] **Step 3: Commit**
+
+```bash
+git add tests/test_ui_assets.py
+git commit -m "test: SVG 资产色板纯度守卫"
 ```
 
 ---
@@ -1685,7 +1753,7 @@ function typewrite(el, text, cps = 40) {
 ### Task 10.2: 15 项逐条像素对照
 
 - [ ] **Step 1:** 启动服务器，截整页 + 分区截图（顶栏/海图/侧栏/军令卡/桌面）。
-- [ ] **Step 2:** 打开设计图，把 `docs/reports/ui-replication-report.md` 的 15 行验收表逐项打分（复刻/偏差+原因）。对照要点：色调、纸纹、暗角、印章红、图标几何、字体（Special Elite/Caveat）、布局位置、标注文字。光栅图标按 Phase 6 评审报告核对「入库档无绿边/无合并切割」。
+- [ ] **Step 2:** 打开设计图，把 `docs/reports/ui-replication-report.md` 的 15 行验收表逐项打分（复刻/偏差+原因）。对照要点：色调、纸纹、暗角、印章红、图标几何、字体（Special Elite/Caveat）、布局位置、标注文字。光栅图标按 Phase 6 评审报告核对「入库档无绿边/无合并切割」。目检拼图与分区截图一并归档至 `docs/reports/`（三级闸门之终验级要求）。
 - [ ] **Step 3:** 对每条「偏差」回对应 Phase 的任务修正后重截（修正环，直到 15/15 复刻；token 级色差允许 ±一次校准，改 token 必须同步 tests/test_ui_assets.py 的 `CSS_TOKENS` 与 chartRenderer 常量）。
 - [ ] **Step 4: Commit** `docs: UI 复刻验收报告（15/15）`
 
@@ -1701,4 +1769,5 @@ function typewrite(el, text, cps = 40) {
 
 - **Spec 覆盖**：设计图 15 项全部映射到任务（A1→Phase 7，A2–A15→Phase 2–5，组装→Phase 8，氛围→Phase 9，验收→Phase 10）；补加 flag48（顶栏 emoji 替换，复刻所需）；仓库光栅素材（绿幕表/抠图脚本/47 枚产物）治理与接入→Phase 6，与设计图资产双轨并存。
 - **占位符扫描**：所有代码块均为完整实现；依赖执行者现场确定的只有两类**数据**（分拆坐标、NPC id 键名），均给出获取程序（放大目检、`grep npc_config.py`）与示例值，不需要执行者猜接口。
-- **类型/命名一致性**：`ChartRenderer.drawAll/drawTaskForceMarker/drawEnemyContact/chartNmToPx/latLonToChartPx`、`getIcon(name)`、`loadIconFromUrl`、`ASSET_MANIFEST`/`CSS_TOKENS`/`RASTER_ICONS` 在定义与引用处名称一致；色值 token 与 `docs/design/UI_DESIGN.md` 逐字一致；Phase 顺序满足依赖（光栅治理 6 → svgLoader 7.2 → 地图标记 7.9）。
+- **类型/命名一致性**：`ChartRenderer.drawAll/drawTaskForceMarker/drawEnemyContact/chartNmToPx/latLonToChartPx`、`getIcon(name)`、`loadIconFromUrl`、`ASSET_MANIFEST`/`CSS_TOKENS`/`RASTER_ICONS`/`SVG_PALETTE` 在定义与引用处名称一致；色值 token 与 `docs/design/UI_DESIGN.md` 逐字一致；Phase 顺序满足依赖（光栅治理 6 → svgLoader 7.2 → 地图标记 7.9）。
+- **质量把关覆盖**：光栅（quality_gate 5 判据 + MANUAL）、SVG（manifest/XML/关键字/色板纯度）、样式与结构（token/结构/常量同步）、渲染交互（全量回归 + 三档截图）四类资产均有客观门与目检要求，三级流程闸门写入「质量把关体系」章节。
