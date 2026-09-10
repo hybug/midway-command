@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <g stroke="#2a2218" fill="none">
+    <circle cx="100" cy="100" r="92" stroke-width="2"/>
+    <circle cx="100" cy="100" r="64" stroke-width="1"/>
+    <circle cx="100" cy="100" r="6" stroke-width="1.5"/>
+  </g>
+  <!-- 主方位（长）菱形针：明暗两半 -->
+  <g id="cardinal">
+    <polygon points="100,10 108,100 100,100" fill="#2a2218"/>
+    <polygon points="100,10 92,100 100,100" fill="#f5edd6" stroke="#2a2218" stroke-width="1"/>
+    <polygon points="100,190 108,100 100,100" fill="#2a2218"/>
+    <polygon points="100,190 92,100 100,100" fill="#f5edd6" stroke="#2a2218" stroke-width="1"/>
+    <polygon points="10,100 100,92 100,100" fill="#f5edd6" stroke="#2a2218" stroke-width="1"/>
+    <polygon points="10,100 100,108 100,100" fill="#2a2218"/>
+    <polygon points="190,100 100,92 100,100" fill="#2a2218"/>
+    <polygon points="190,100 100,108 100,100" fill="#f5edd6" stroke="#2a2218" stroke-width="1"/>
+  </g>
+  <use href="#cardinal" transform="rotate(45 100 100)"/>
+  <!-- 方位字母 -->
+  <g font-family="'Special Elite', monospace" font-size="16" fill="#2a2218" text-anchor="middle">
+    <text x="100" y="30">N</text>
+    <text x="176" y="106">E</text>
+    <text x="100" y="184">S</text>
+    <text x="24" y="106">W</text>
+  </g>
+</svg>
