@@ -231,7 +231,8 @@ class MapRenderer {
       const sx = ox + epx;
       const sy = oy + epy;
 
-      if (Math.hypot(mx - sx, my - sy) < 15) {
+      // 命中半径 24：覆盖 medium 34px 敌情标记的可点域
+      if (Math.hypot(mx - sx, my - sy) < 24) {
         this._hoverTarget = { type: 'enemy', index: i, x: sx, y: sy };
         this.canvas.style.cursor = 'pointer';
         break;

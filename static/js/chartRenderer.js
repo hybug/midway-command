@@ -31,6 +31,11 @@ function chartNmToPx(nm, w, h) {
   return (nm / 65) * (Math.min(w, h) / 2 - 40);
 }
 
+// 环礁图面中心——环礁、双岛与距离环共享的绘制基准（fix: 距离环与环礁共心）
+function atollCenter(w, h) {
+  return { x: w * 0.44, y: h * 0.46 };
+}
+
 function latLonToChartPx(lat, lon, w, h) {
   const pxPerDegLat = chartNmToPx(60, w, h); // 1° 纬度 ≈ 60nm
   const pxPerDegLon = pxPerDegLat * Math.cos(28.2 * Math.PI / 180);
@@ -147,7 +152,7 @@ function drawIslands(ctx, c, rx, ry) {
 
 // Task 7.5：中途岛环礁——礁环沙色 + 泻湖 + SW 斜线阴影 + 双岛 + 中心标注
 function drawAtoll(ctx, w, h) {
-  const c = { x: w * 0.44, y: h * 0.46 };
+  const c = atollCenter(w, h);
   const rx = chartNmToPx(23, w, h), ry = chartNmToPx(17, w, h);
   const outer = atollOutline(c.x, c.y, rx, ry);
   const rim = atollOutline(c.x, c.y, rx * 0.94, ry * 0.90);
@@ -189,8 +194,9 @@ function drawAtoll(ctx, w, h) {
 }
 
 // Task 7.6：20/40/60nm 距离环——虚线圆 + 沿水平半径右侧标注 + 中心 0nm 刻度短线
+// 以环礁为圆心（atollCenter 与 drawAtoll 共心，设计图亦如此）
 function drawRangeRings(ctx, w, h) {
-  const c = latLonToChartPx(CHART_CENTER.lat, CHART_CENTER.lon, w, h);
+  const c = atollCenter(w, h);
   ctx.save();
   ctx.strokeStyle = CHART_STYLE.inkFade;
   ctx.fillStyle = CHART_STYLE.inkFade;

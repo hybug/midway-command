@@ -19,6 +19,17 @@ function tabLabel(npc) {
 // 暗色情报卡（.msg-classified）+ SECRET 印章（.msg-stamp）
 const CLASSIFIED_MSG_RE = /机密|secret|密级/i;
 
+// HTML 转义（最小助手）：NPC 生成的文本（action_type / details 等）先转义再插值，
+// 防止 <、>、"、'、& 破坏 DOM 结构（军令卡 renderOrderNote 使用）
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // 电传打字机（Phase 9.2）：逐字显示，40 字/秒；done 为可选完成回调
 // （打字期间用 textContent 安全逐字显示，完成后恢复带 <br> 换行的完整 HTML）
 function typewrite(el, text, cps = 40, done) {
@@ -239,8 +250,9 @@ class UIController {
   // A8 军令纸卡（SECRET – INTERCEPTION PLAN）
   // 字段映射：action_type → MISSION 行；details（k=v 列表）→ EXECUTION 步骤；index → data-index
   renderOrderNote(s, i) {
-    const mission = (s.action_type || '').replace(/_/g, ' ').toUpperCase();
-    const steps = Object.entries(s.details || {}).map(([k, v]) => `${k}=${v}`);
+    // NPC 文本统一转义后再插值，防止注入标记
+    const mission = escapeHtml((s.action_type || '').replace(/_/g, ' ').toUpperCase());
+    const steps = Object.entries(s.details || {}).map(([k, v]) => `${escapeHtml(k)}=${escapeHtml(v)}`);
     return `
     <article class="order-note" data-suggestion="${i}">
       <header class="order-note-head">

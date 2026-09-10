@@ -172,11 +172,11 @@ def test_input_bar_and_button_focus_styles():
 
 
 def test_index_html_cache_version_consistent():
-    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（9.3 交互态 → 1780997987）。"""
+    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（终审修复 → 1780997988）。"""
     html = (BASE / "static" / "index.html").read_text()
     versions = set(re.findall(r'\?v=(\d+)', html))
     assert len(versions) == 1, f"index.html 缓存号不一致: {versions}"
-    assert versions == {"1780997987"}, f"index.html 缓存号未递增到 1780997987: {versions}"
+    assert versions == {"1780997988"}, f"index.html 缓存号未递增到 1780997988: {versions}"
 
 
 # ── Phase 9 · Task 9.2：电传打字 + 盖章动效 ──
