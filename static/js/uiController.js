@@ -15,6 +15,10 @@ function tabLabel(npc) {
   return NPC_TAB_ABBR[key] || (npc.name || '').slice(0, 8).toUpperCase();
 }
 
+// 机密消息判定（Phase 8d）：消息数据无密级字段，按内容关键词判定 →
+// 暗色情报卡（.msg-classified）+ SECRET 印章（.msg-stamp）
+const CLASSIFIED_MSG_RE = /机密|secret|密级/i;
+
 class UIController {
   constructor() {
     this.npcIds = ['browning', 'murray', 'mitscher', 'radio_officer', 'intel_officer'];
@@ -74,7 +78,11 @@ class UIController {
       const borderClass = isPlayer ? '' : ' msg-sender-npc';
       const safeText = msg.content.replace(/</g, '&lt;').replace(/\n/g, '<br>');
       const zTime = timeStr + ' Z';
-      html += `<div class="msg${borderClass}">
+      const classified = CLASSIFIED_MSG_RE.test(msg.content);
+      const cardClass = (isPlayer || classified ? ' msg-classified' : '') + borderClass;
+      const stamp = classified ? '<img class="msg-stamp" src="/static/assets/ui/secret_stamp.svg" alt="">' : '';
+      html += `<div class="msg${cardClass}">
+        ${stamp}
         <div class="msg-header">
           <span>${zTime}</span>
         </div>
@@ -96,10 +104,14 @@ class UIController {
     const borderClass = isPlayer ? '' : ' msg-sender-npc';
     const safeText = content.replace(/</g, '&lt;').replace(/\n/g, '<br>');
     const zTime = timeStr + ' Z';
+    const classified = CLASSIFIED_MSG_RE.test(content);
+    const cardClass = (isPlayer || classified ? ' msg-classified' : '') + borderClass;
+    const stamp = classified ? '<img class="msg-stamp" src="/static/assets/ui/secret_stamp.svg" alt="">' : '';
 
     const div = document.createElement('div');
-    div.className = `msg${borderClass}`;
+    div.className = `msg${cardClass}`;
     div.innerHTML = `
+      ${stamp}
       <div class="msg-header">
         <span>${zTime}</span>
       </div>

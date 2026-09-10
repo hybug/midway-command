@@ -134,3 +134,27 @@ def test_ui_controller_design_copy():
     js = (BASE / "static" / "js" / "uiController.js").read_text()
     for kw in ["EXECUTE ORDER", "REVISE PLAN", "COMMANDER SIGNATURE", "SECRET", "MISSION", "EXECUTION"]:
         assert kw in js, f"uiController.js 缺少军令纸文案 {kw}"
+
+
+# ── Phase 8d · Task 8.6：聊天消息 → A10 情报卡 + SECRET 印章 ──
+
+def test_msg_intel_card_styles():
+    """聊天卡复刻：.msg 亮色情报卡背景、.msg-classified 暗色卡 + 暗色正文、.msg-stamp 印章。"""
+    css = (BASE / "static" / "css" / "style.css").read_text()
+    assert "url('/static/assets/ui/intel_card_light.svg')" in css, \
+        "style.css 缺少 .msg 亮色情报卡背景"
+    assert "url('/static/assets/ui/intel_card_dark.svg')" in css, \
+        "style.css 缺少 .msg-classified 暗色情报卡背景"
+    assert ".msg-classified .msg-text" in css, "style.css 缺少暗色卡正文覆盖规则"
+    assert ".msg-stamp" in css, "style.css 缺少 SECRET 印章样式"
+    assert "mix-blend-mode: multiply" in css, "印章需做旧正片叠底混合"
+    assert "rotate(-8deg)" in css, "印章需 -8° 倾斜"
+
+
+def test_ui_controller_classified_message_stamp():
+    """机密消息判定（内容含「机密/SECRET/密级」→ msg-classified + secret_stamp 印章 img）。"""
+    js = (BASE / "static" / "js" / "uiController.js").read_text()
+    for kw in ["msg-classified", "msg-stamp", "/static/assets/ui/secret_stamp.svg"]:
+        assert kw in js, f"uiController.js 缺少 {kw}"
+    for kw in ["机密", "密级", "secret"]:
+        assert kw.lower() in js.lower(), f"uiController.js 缺少机密判定关键词 {kw}"

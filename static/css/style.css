@@ -574,3 +574,23 @@ html, body {
 .btn-execute:hover { background: #3a3228; }
 .btn-revise { background: transparent; color: var(--color-secret-red); border: 1px solid var(--color-secret-red); padding: 6px 14px; }
 .btn-revise:hover { background: #f0d0c0; }
+
+/* ═══════════════════════════════════════════════════════
+   Phase 8d — A10 聊天情报卡（亮/暗）+ SECRET 印章
+   ═══════════════════════════════════════════════════════ */
+.msg {
+  position: relative;
+  border: none;
+  background: url('/static/assets/ui/intel_card_light.svg') center / 100% 100% no-repeat;
+  padding: 10px 12px; margin: 6px 8px;
+  filter: drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.18));
+}
+.msg-classified {
+  background: url('/static/assets/ui/intel_card_dark.svg') center / 100% 100% no-repeat;
+}
+.msg-classified .msg-text { color: var(--color-paper-dark); }
+.msg-stamp {
+  position: absolute; right: 8px; top: 6px; width: 64px;
+  transform: rotate(-8deg); mix-blend-mode: multiply; opacity: 0.9;
+  pointer-events: none;
+}
