@@ -13,14 +13,31 @@ const SVG_ICONS = {
   </svg>`,
 };
 
+// 光栅图标（Phase 6 治理产物，docs/plans/ui-replication-plan.md）
+// 注：内联 SVG_ICONS 已有矢量 aircraft_topdown，光栅版改名 _raster 避免覆盖
+const ICON_FILES = {
+  fleet_tag_ent: '/static/assets/ui/icons/fleet_tag_ent.png',
+  fleet_tag_hor: '/static/assets/ui/icons/fleet_tag_hor.png',
+  fleet_tag_cv: '/static/assets/ui/icons/fleet_tag_cv.png',
+  fleet_tag_bb: '/static/assets/ui/icons/fleet_tag_bb.png',
+  enemy_tag_q: '/static/assets/ui/icons/enemy_tag_q.png',
+  aircraft_topdown_raster: '/static/assets/ui/icons/aircraft_topdown.png',
+  compass_raster: '/static/assets/ui/icons/compass_raster.png',
+};
+
 let iconsLoaded = false;
 const loadedIcons = {};
 
 async function loadSVGIcons() {
   if (iconsLoaded) return;
+  const jobs = [];
   for (const [name, svgString] of Object.entries(SVG_ICONS)) {
-    loadedIcons[name] = await svgToImage(svgString);
+    jobs.push(svgToImage(svgString).then((img) => { loadedIcons[name] = img; }));
   }
+  for (const [name, url] of Object.entries(ICON_FILES)) {
+    jobs.push(loadIconFromUrl(name, url).then((img) => { loadedIcons[name] = img; }));
+  }
+  await Promise.all(jobs);
   iconsLoaded = true;
 }
 
@@ -30,6 +47,23 @@ function svgToImage(svgString) {
     img.onload = () => resolve(img);
     img.onerror = reject;
     img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
+  });
+}
+
+async function svgFromUrl(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`icon load failed: ${url} -> ${res.status}`);
+  return svgToImage(await res.text());
+}
+
+async function loadIconFromUrl(name, url) {
+  if (url.endsWith('.svg')) return svgFromUrl(url);
+  // PNG：直接用 URL 作为 Image src
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = url;
   });
 }
 
