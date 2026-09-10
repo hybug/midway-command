@@ -375,65 +375,6 @@ html, body {
   overflow-y: auto;
 }
 
-.mil-order {
-  background: linear-gradient(135deg, #f5edd6, #ede5d0);
-  border: 1px solid var(--color-ink-faint);
-  margin: 8px;
-  box-shadow: 1px 1px 4px rgba(0,0,0,0.15);
-}
-.mil-order-header {
-  background: var(--color-secret-red);
-  padding: 6px 12px;
-}
-.mil-order-title {
-  color: var(--color-paper-base);
-  font-size: 12px;
-  letter-spacing: 2px;
-  font-weight: bold;
-}
-.mil-order-body {
-  padding: 10px 12px;
-}
-.mil-order-section { margin-bottom: 8px; }
-.mil-section-title {
-  font-size: 10px;
-  letter-spacing: 1px;
-  color: var(--color-ink-main);
-  margin-bottom: 2px;
-  font-weight: bold;
-}
-.mil-section-body {
-  font-size: 11px;
-  color: var(--color-ink-fade);
-  line-height: 1.5;
-}
-.mil-detail {
-  font-family: var(--font-typewriter);
-}
-.mil-order-footer {
-  border-top: 1px solid var(--color-ink-faint);
-  padding: 8px 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-}
-.mil-signature {}
-.mil-sig-line {
-  width: 120px;
-  border-bottom: 1px solid var(--color-ink-main);
-  height: 20px;
-  margin: 2px 0;
-}
-.mil-order-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.mil-order-actions .btn {
-  font-size: 10px;
-  padding: 4px 10px;
-}
-
 /* ── Input Bar ── */
 #input-bar {
   display: flex;
@@ -482,20 +423,6 @@ html, body {
   outline-offset: 2px;
 }
 .btn-send { min-width: 52px; }
-
-.btn-approve {
-  background: var(--color-ink-main);
-  color: var(--color-paper-base);
-  border-color: var(--color-ink-main);
-  font-weight: bold;
-}
-.btn-approve:hover { background: #3a3228; }
-
-.btn-reject {
-  color: var(--color-secret-red);
-  border-color: var(--color-secret-red);
-}
-.btn-reject:hover { background: #f0d0c0; }
 
 /* ═══════════════════════════════════════════════════════
    Scrollbar
