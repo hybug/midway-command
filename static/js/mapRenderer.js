@@ -1,10 +1,14 @@
 /**
  * 中途岛指挥官 — Canvas 海图渲染器
  * 参考：1942年美军太平洋海图风格
+ *
+ * 动画系统：requestAnimationFrame 循环 + lerp 平滑过渡
+ * 交互系统：点击确认敌军标记、悬停提示
+ * 视觉效果：Perlin noise 手绘线条、脉冲动画
  */
 
 // ── Constants ──
-const HEX_SIZE = 12;  // Reduced to fit 400nm battlefield in canvas
+const HEX_SIZE = 12;
 const SQRT3 = Math.sqrt(3);
 const CELL_NM = 10;
 const REF_LAT = 28.2;
@@ -25,7 +29,41 @@ const COL = {
   runway: '#5a4d3a',
   depth: 'rgba(80,120,160,0.25)',
   secretRed: '#c0392b',
+  confirmGold: '#c8a020',
 };
+
+// ── Perlin Noise (简化版) ──
+class PerlinNoise {
+  constructor(seed = 0) {
+    this.seed = seed;
+    this.p = [];
+    for (let i = 0; i < 256; i++) this.p[i] = i;
+    // Fisher-Yates shuffle with seed
+    let s = seed;
+    for (let i = 255; i > 0; i--) {
+      s = (s * 16807 + 0) % 2147483647;
+      const j = s % (i + 1);
+      [this.p[i], this.p[j]] = [this.p[j], this.p[i]];
+    }
+    this.p = this.p.concat(this.p);
+  }
+  noise2d(x, y) {
+    const X = Math.floor(x) & 255, Y = Math.floor(y) & 255;
+    x -= Math.floor(x); y -= Math.floor(y);
+    const u = x * x * (3 - 2 * x), v = y * y * (3 - 2 * y);
+    const A = this.p[X] + Y, B = this.p[X + 1] + Y;
+    const lerp = (t, a, b) => a + t * (b - a);
+    return lerp(v,
+      lerp(u, this._grad(this.p[A], x, y), this._grad(this.p[B], x - 1, y)),
+      lerp(u, this._grad(this.p[A + 1], x, y - 1), this._grad(this.p[B + 1], x - 1, y - 1))
+    );
+  }
+  _grad(hash, x, y) {
+    return (hash & 1) === 0 ? x + y : -x + y;
+  }
+}
+
+const perlin = new PerlinNoise(42);
 
 class MapRenderer {
   constructor(canvasId) {
@@ -37,7 +75,23 @@ class MapRenderer {
     this.centerX = 0;
     this.centerY = 0;
     // Label collision detection
-    this.labelBounds = [];  // [{x, y, w, h}]
+    this.labelBounds = [];
+
+    // ── 动画状态 ──
+    this._animState = {
+      fleetPositions: {},      // {name: {x, y, targetX, targetY}}
+      enemyPulse: 0,           // 0-1 脉冲周期
+      scoutPositions: {},      // {id: {x, y, targetX, targetY}}
+      confirmAnimations: [],   // [{x, y, progress, startTime}]
+      sectorProgress: {},      // {id: 0-1 扩展进度}
+    };
+    this._lastTime = 0;
+    this._running = false;
+
+    // ── 交互状态 ──
+    this._hoverTarget = null;  // {type, data, x, y}
+    this._clickHandlers = [];
+    this._setupInteraction();
   }
 
   resize() {
@@ -53,9 +107,161 @@ class MapRenderer {
     this.centerY = this.height / 2;
   }
 
+  // ═══════════════════════════════════════════════════════
+  // 动画系统
+  // ═══════════════════════════════════════════════════════
+
+  startAnimationLoop() {
+    if (this._running) return;
+    this._running = true;
+    this._lastTime = performance.now();
+    this._animLoop();
+  }
+
+  stopAnimationLoop() {
+    this._running = false;
+  }
+
+  _animLoop() {
+    if (!this._running) return;
+    const now = performance.now();
+    const dt = (now - this._lastTime) / 1000; // 秒
+    this._lastTime = now;
+
+    // 更新动画状态
+    this._updateAnimations(dt);
+
+    // 渲染
+    if (this._currentState) {
+      this.render(this._currentState);
+    }
+
+    requestAnimationFrame(() => this._animLoop());
+  }
+
+  _updateAnimations(dt) {
+    // 敌军标记脉冲（0.5Hz）
+    this._animState.enemyPulse = (this._animState.enemyPulse + dt * 0.5) % 1;
+
+    // 确认动画
+    this._animState.confirmAnimations = this._animState.confirmAnimations.filter(a => {
+      a.progress += dt / 0.7; // 0.7秒完成
+      return a.progress < 1;
+    });
+
+    // 搜索扇面扩展
+    for (const id in this._animState.sectorProgress) {
+      const p = this._animState.sectorProgress[id];
+      if (p < 1) {
+        this._animState.sectorProgress[id] = Math.min(1, p + dt * 0.3);
+      }
+    }
+  }
+
+  _lerp(a, b, t) {
+    return a + (b - a) * Math.min(1, t);
+  }
+
+  _lerpPos(pos, targetX, targetY, dt, speed = 3) {
+    const t = 1 - Math.exp(-speed * dt);
+    pos.x = this._lerp(pos.x, targetX, t);
+    pos.y = this._lerp(pos.y, targetY, t);
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // 交互系统
+  // ═══════════════════════════════════════════════════════
+
+  _setupInteraction() {
+    this.canvas.addEventListener('mousemove', (e) => this._onMouseMove(e));
+    this.canvas.addEventListener('click', (e) => this._onClick(e));
+    this.canvas.style.cursor = 'default';
+  }
+
+  _onMouseMove(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    this._hoverTarget = null;
+    this.canvas.style.cursor = 'default';
+
+    if (!this._currentState) return;
+
+    // 检查是否悬停在待确认敌军标记上
+    const pending = this._currentState.pending_suggestions || [];
+    for (let i = 0; i < pending.length; i++) {
+      const sug = pending[i];
+      if (sug.action_type !== 'launch_scout') continue;
+      const d = sug.details || {};
+      const sectorStart = d.sector_start || 280;
+      const sectorEnd = d.sector_end || 340;
+      const rangeNm = d.range_nm || 200;
+
+      // 计算扇面中心位置
+      const midAngle = ((sectorStart + sectorEnd) / 2 - 90) * Math.PI / 180;
+      const sectorRadius = rangeNm / CELL_NM * HEX_SIZE * SQRT3 * 0.8;
+      const tf = this._currentState.task_forces[0];
+      const c1 = tf.carriers[0];
+      const [fqr, frr] = this._worldToHex(c1.position.lat, c1.position.lon);
+      const [fpx, fpy] = this._hexToPixel(fqr, frr);
+      const ox = this.centerX - fpx;
+      const oy = this.centerY - fpy;
+      const lx = ox + fpx + sectorRadius * 0.6 * Math.cos(midAngle);
+      const ly = oy + fpy + sectorRadius * 0.6 * Math.sin(midAngle);
+
+      if (Math.hypot(mx - lx, my - ly) < 20) {
+        this._hoverTarget = { type: 'pending_scout', index: i, x: lx, y: ly };
+        this.canvas.style.cursor = 'pointer';
+        break;
+      }
+    }
+
+    // 检查是否悬停在已确认敌军标记上
+    const enemies = this._currentState.known_enemy || [];
+    for (let i = 0; i < enemies.length; i++) {
+      const e = enemies[i];
+      const [eq, er] = this._worldToHex(e.position.lat, e.position.lon);
+      const [epx, epy] = this._hexToPixel(eq, er);
+      const tf = this._currentState.task_forces[0];
+      const c1 = tf.carriers[0];
+      const [fqr, frr] = this._worldToHex(c1.position.lat, c1.position.lon);
+      const ox = this.centerX - this._hexToPixel(fqr, frr)[0];
+      const oy = this.centerY - this._hexToPixel(fqr, frr)[1];
+      const sx = ox + epx;
+      const sy = oy + epy;
+
+      if (Math.hypot(mx - sx, my - sy) < 15) {
+        this._hoverTarget = { type: 'enemy', index: i, x: sx, y: sy };
+        this.canvas.style.cursor = 'pointer';
+        break;
+      }
+    }
+  }
+
+  _onClick(e) {
+    if (!this._hoverTarget) return;
+
+    if (this._hoverTarget.type === 'pending_scout') {
+      // 触发确认回调
+      if (this._onConfirmContact) {
+        this._onConfirmContact(this._hoverTarget.index);
+      }
+    }
+  }
+
+  onConfirmContact(callback) {
+    this._onConfirmContact = callback;
+  }
+
+  triggerConfirmAnimation(x, y) {
+    this._animState.confirmAnimations.push({ x, y, progress: 0, startTime: performance.now() });
+  }
+
   render(state) {
+    this._currentState = state;
     this.resize();
-    this.labelBounds = [];  // Reset label collision tracker
+    this.labelBounds = [];
     const ctx = this.ctx;
     const W = this.width, H = this.height;
 
@@ -84,6 +290,9 @@ class MapRenderer {
       this._drawOwnFleet(ctx, tf);
       this._drawEnemyContacts(ctx, state);
 
+      // 绘制确认动画
+      this._drawConfirmAnimations(ctx, ox, oy);
+
       ctx.restore();
     } else {
       this._drawGrid(ctx, W, H, 0, 0);
@@ -93,6 +302,9 @@ class MapRenderer {
     this._drawCompass(ctx, W - 50, 50, 28);
     this._drawScaleBar(ctx, W, H);
     this._drawSecretStamp(ctx);
+
+    // 绘制悬停提示
+    this._drawTooltip(ctx);
   }
 
   // ═══════════════════════════════════════════════════════
@@ -447,31 +659,139 @@ class MapRenderer {
   }
 
   // ═══════════════════════════════════════════════════════
-  // Enemy Contacts (improved)
+  // Enemy Contacts (脉冲动画 + 手绘线条)
   // ═══════════════════════════════════════════════════════
   _drawEnemyContacts(ctx, state) {
+    const pulse = this._animState.enemyPulse;
+    const pulseAlpha = 0.3 + 0.2 * Math.sin(pulse * Math.PI * 2);
+
     state.known_enemy.forEach((e, i) => {
       const [q, r] = this._worldToHex(e.position.lat, e.position.lon);
       const [px, py] = this._hexToPixel(q, r);
 
-      // Dashed circle
-      ctx.strokeStyle = COL.enemyRed;
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 3]);
-      ctx.beginPath(); ctx.arc(px, py, 12, 0, Math.PI * 2); ctx.stroke();
-      ctx.setLineDash([]);
+      // 脉冲光晕
+      ctx.save();
+      ctx.globalAlpha = pulseAlpha;
+      ctx.fillStyle = COL.enemyRed;
+      ctx.beginPath();
+      ctx.arc(px, py, 18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
 
-      // Question mark
+      // 手绘感虚线圈（Perlin noise 抖动）
+      this._drawHandDrawnCircle(ctx, px, py, 12, COL.enemyRed, 1.5);
+
+      // 问号
       ctx.fillStyle = COL.enemyRed;
       ctx.font = 'bold 18px Caveat, cursive';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('?', px, py);
 
-      // Label (priority: medium — enemy is important but "?" is primary)
-      this._tryPlaceLabel(ctx, 'ENEMY', px, py + 20, '10px Caveat, cursive', COL.enemyRed,
-        [[0, 20], [16, 14], [-16, 14], [0, -22]], 2);
+      // 置信度指示
+      const conf = e.confidence || 'medium';
+      const confColor = conf === 'high' ? COL.enemyRed : conf === 'medium' ? '#a04000' : COL.inkFaint;
+      ctx.fillStyle = confColor;
+      ctx.font = '8px Caveat, cursive';
+      ctx.fillText(conf.toUpperCase(), px, py + 16);
+
+      // Label
+      this._tryPlaceLabel(ctx, 'ENEMY', px, py + 24, '10px Caveat, cursive', COL.enemyRed,
+        [[0, 24], [16, 18], [-16, 18], [0, -26]], 2);
     });
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // 手绘感圆形（Perlin noise 抖动）
+  // ═══════════════════════════════════════════════════════
+  _drawHandDrawnCircle(ctx, cx, cy, radius, color, lineWidth) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.beginPath();
+    const steps = 36;
+    for (let i = 0; i <= steps; i++) {
+      const angle = (i / steps) * Math.PI * 2;
+      const noise = perlin.noise2d(cx * 0.01 + Math.cos(angle) * 2, cy * 0.01 + Math.sin(angle) * 2);
+      const r = radius + noise * 2;
+      const x = cx + Math.cos(angle) * r;
+      const y = cy + Math.sin(angle) * r;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.setLineDash([4, 3]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // 确认动画（画圈效果）
+  // ═══════════════════════════════════════════════════════
+  _drawConfirmAnimations(ctx, ox, oy) {
+    this._animState.confirmAnimations.forEach(anim => {
+      const progress = anim.progress;
+      const endAngle = progress * Math.PI * 2;
+      const radius = 15;
+
+      ctx.save();
+      ctx.strokeStyle = COL.confirmGold;
+      ctx.lineWidth = 3;
+      ctx.globalAlpha = 1 - progress * 0.5;
+      ctx.beginPath();
+      ctx.arc(anim.x - ox, anim.y - oy, radius, -Math.PI / 2, -Math.PI / 2 + endAngle);
+      ctx.stroke();
+
+      // 闪光效果
+      if (progress < 0.3) {
+        ctx.globalAlpha = (0.3 - progress) * 2;
+        ctx.fillStyle = COL.confirmGold;
+        ctx.beginPath();
+        ctx.arc(anim.x - ox, anim.y - oy, radius * (1 + progress), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // 悬停提示
+  // ═══════════════════════════════════════════════════════
+  _drawTooltip(ctx) {
+    if (!this._hoverTarget) return;
+
+    const { type, x, y } = this._hoverTarget;
+    let text = '';
+    if (type === 'pending_scout') {
+      text = '点击确认敌情';
+    } else if (type === 'enemy') {
+      text = '已确认敌军';
+    }
+
+    if (!text) return;
+
+    ctx.save();
+    ctx.font = '11px "Special Elite", monospace';
+    const metrics = ctx.measureText(text);
+    const tw = metrics.width + 12;
+    const th = 20;
+    const tx = x - tw / 2;
+    const ty = y - th - 10;
+
+    // 背景
+    ctx.fillStyle = 'rgba(42, 34, 24, 0.85)';
+    ctx.fillRect(tx, ty, tw, th);
+    ctx.strokeStyle = COL.confirmGold;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(tx, ty, tw, th);
+
+    // 文字
+    ctx.fillStyle = '#f5edd6';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, ty + th / 2);
+    ctx.restore();
   }
 
   // ═══════════════════════════════════════════════════════

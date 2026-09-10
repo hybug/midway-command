@@ -38,12 +38,34 @@ async function init() {
   mapRenderer = new MapRenderer('tacticalMap');
   ui = new UIController();
 
+  // 设置确认敌情回调
+  mapRenderer.onConfirmContact(async (index) => {
+    try {
+      const data = await api(`/confirm-contact/${index}`, { method: 'POST' });
+      if (data.success) {
+        // 触发画圈动画
+        const pending = gameState.pending_suggestions || [];
+        if (index < pending.length) {
+          // 计算动画位置（简化：使用屏幕中心附近）
+          mapRenderer.triggerConfirmAnimation(mapRenderer.centerX, mapRenderer.centerY);
+        }
+        ui.showNotification('✅ 敌情已确认，更新到海图');
+        await loadState();
+      }
+    } catch (e) {
+      ui.showNotification('❌ 确认失败: ' + e.message);
+    }
+  });
+
   ui.renderNpcTabs(activeNpc, switchNpc);
   await loadState();
   await loadHistory(activeNpc);
   ui.renderChat(activeNpc, histories[activeNpc], gameState?.clock?.game_time);
   bindEvents();
-  mapRenderer.render(gameState);
+
+  // 启动动画循环
+  mapRenderer.startAnimationLoop();
+
   console.log('[MAIN] 中途岛指挥官 · 初始化完成');
 }
 
@@ -54,7 +76,7 @@ async function loadState() {
   gameState = await api('/state');
   ui.renderDashboard(gameState);
   ui.renderSuggestions(gameState, approveSuggestion, rejectSuggestion);
-  if (mapRenderer) mapRenderer.render(gameState);
+  // 动画循环会自动渲染，无需手动调用 render
 }
 
 async function loadHistory(npcId) {
@@ -162,7 +184,7 @@ function bindEvents() {
   const sitrepBtn = document.getElementById('btn-sitrep');
   if (sitrepBtn) sitrepBtn.addEventListener('click', sitrep);
 
-  window.addEventListener('resize', () => { if (mapRenderer) mapRenderer.render(gameState); });
+  window.addEventListener('resize', () => { /* 动画循环会自动处理 */ });
 }
 
 // ═══════════════════════════════════════════════════════
