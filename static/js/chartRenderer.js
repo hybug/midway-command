@@ -50,8 +50,46 @@ function drawChartBase(ctx, w, h) {
   if (grain) { ctx.globalAlpha = 0.3; ctx.drawImage(grain, 0, 0, w, h); ctx.globalAlpha = 1; }
 }
 
+// Task 7.4：度分格式化（北纬 / 西经，如 28°30'N、177°30'W）
+function fmtLat(lat) {
+  const d = Math.floor(lat), m = Math.round((lat - d) * 60);
+  return `${d}°${m}'N`;
+}
+function fmtLon(lon) {
+  const a = Math.abs(lon), d = Math.floor(a), m = Math.round((a - d) * 60);
+  return `${d}°${m}'W`;
+}
+
+// Task 7.4：0.5° 虚线经纬网 + 纬度（左）/经度（顶）度分标注
+function drawLatLonGrid(ctx, w, h) {
+  ctx.save();
+  ctx.strokeStyle = CHART_STYLE.gridLine;
+  ctx.fillStyle = CHART_STYLE.inkFade;
+  ctx.font = `9px ${CHART_STYLE.fontTypewriter}`;
+  ctx.lineWidth = 1;
+  for (let lat = 26.0; lat <= 30.01; lat += 0.5) {
+    const y = latLonToChartPx(lat, CHART_CENTER.lon, w, h).y;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillText(fmtLat(lat), 6, y - 3);
+  }
+  for (let lon = -183; lon <= -172; lon += 0.5) {
+    if (lon < -180) continue;
+    const x = latLonToChartPx(CHART_CENTER.lat, lon, w, h).x;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillText(fmtLon(lon), x + 3, 14);
+  }
+  ctx.restore();
+}
+
 const ChartRenderer = {
-  drawAll(ctx, w, h) { drawChartBase(ctx, w, h); },
+  drawAll(ctx, w, h) {
+    drawChartBase(ctx, w, h);
+    drawLatLonGrid(ctx, w, h);
+  },
   chartNmToPx,
   latLonToChartPx,
 };
