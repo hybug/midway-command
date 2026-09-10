@@ -76,7 +76,7 @@ async function loadState() {
   gameState = await api('/state');
   ui.renderDashboard(gameState);
   ui.renderSuggestions(gameState, approveSuggestion, rejectSuggestion);
-  // 动画循环会自动渲染，无需手动调用 render
+  if (mapRenderer) mapRenderer.render(gameState); // 首帧渲染并置 _currentState，此后动画循环接管
 }
 
 async function loadHistory(npcId) {
