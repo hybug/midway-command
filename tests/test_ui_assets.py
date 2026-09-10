@@ -76,7 +76,6 @@ def test_style_css_has_exact_design_tokens():
         assert f"{token}: {value};" in css, f"token {token} 必须精确为 {value}"
 
 
-@pytest.mark.skip(reason="前瞻守卫：Phase 9 落地时摘除")
 def test_index_html_structure():
     html = (BASE / "static" / "index.html").read_text()
     for el_id in ["topbar", "chart-area", "tacticalMap", "bottom", "dashboard",
@@ -173,8 +172,8 @@ def test_input_bar_and_button_focus_styles():
 
 
 def test_index_html_cache_version_consistent():
-    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（8b fix → 1780997984）。"""
+    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（9.1 氛围层 → 1780997985）。"""
     html = (BASE / "static" / "index.html").read_text()
     versions = set(re.findall(r'\?v=(\d+)', html))
     assert len(versions) == 1, f"index.html 缓存号不一致: {versions}"
-    assert versions == {"1780997984"}, f"index.html 缓存号未递增到 1780997984: {versions}"
+    assert versions == {"1780997985"}, f"index.html 缓存号未递增到 1780997985: {versions}"
