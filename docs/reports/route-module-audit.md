@@ -8,17 +8,17 @@
 
 | 函数 | 现有测试 | 缺口 | 计划用例（C1/C2） |
 |---|---|---|---|
-| `entities.calculate_new_position` | `test_move_north/south/east/west`（60nm 方向性）、`test_zero_distance`、`test_15_minutes_at_25_knots`（斜航向） | ①经度 ±180° 包裹零覆盖（现有用例均在 lon=-175 附近，不跨日界线）；②纯象限（0°/90°）在日界线附近位置未验证 | C1 `test_due_north_increases_lat`、`test_due_east_increases_lon_wrapped`、`test_zero_speed_stays` |
-| `entities.update_entity_position` | `test_carrier_moves`、`test_task_force_moves` | `distance_nm<=0` 不动分支（L141 `if distance_nm > 0`）未测；TF 级 `course/speed` 不参与运动（递归用 carrier 自身值）仅为实现事实，无断言 | 本轮不加（低危：上层 `test_zero_speed_stays` 覆盖运动学层；分支逻辑简单） |
-| `entities.update_all_positions` | `test_both_fleets_move_after_tick`（仅 TF16.carriers[0] + 敌 carriers[0]）、`test_fleets_diverge_over_time` | ⑤多舰队同 tick 一致性：TF16 两艘、敌舰队 4 艘未逐一验证；`actual_enemy[i]["position"] ← enemy_fleet.carriers[i]` 同步（L171-177）零覆盖 | C1 `test_update_all_positions_moves_both_fleets`（全部 TF + 敌方 + actual_enemy 同步断言） |
-| `mission.calculate_intercept` | `test_intercept_basic`（快机有解，断言 distance/flight_time/heading 区间）、`test_intercept_no_solution`（**零断言**，仅"不抛异常"） | ②不可拦截分支（敌速≥机速 → None）完全未断言；`t<=0` 负时间拒判未测 | C2 `test_intercept_solvable_when_aircraft_faster`、`test_intercept_unsolvable_when_too_slow` |
-| `scouting.calculate_bearing` | `test_bearing_north`（≈180°）、`test_bearing_southwest`（≈233°） | ④四象限正交方位（0°/90°/270°）未测，现有仅斜方位近似区间 | C2 `test_bearing_four_quadrants` |
-| `scouting.calculate_distance_nm` | `test_distance_short`、`test_distance_midway` | 与 bearing 的往返一致性（bearing+distance→位置→反算回原值）未测 | C2 `test_bearing_distance_roundtrip` |
+| `entities.calculate_new_position` | `test_move_north/south/east/west`（60nm 方向性）、`test_zero_distance`、`test_15_minutes_at_25_knots`（斜航向） | ①经度 ±180° 包裹零覆盖（现有用例均在 lon=-175 附近，不跨日界线）；②纯象限（0°/90°）在日界线附近位置未验证 | 已覆盖（loop1 收口） |
+| `entities.update_entity_position` | `test_carrier_moves`、`test_task_force_moves` | `distance_nm<=0` 不动分支（L141 `if distance_nm > 0`）未测；TF 级 `course/speed` 不参与运动（递归用 carrier 自身值）仅为实现事实，无断言 | 本轮不加（低危：上层 `test_zero_speed_stays` 覆盖运动学层；分支逻辑简单）——后续批次 |
+| `entities.update_all_positions` | `test_both_fleets_move_after_tick`（仅 TF16.carriers[0] + 敌 carriers[0]）、`test_fleets_diverge_over_time` | ⑤多舰队同 tick 一致性：TF16 两艘、敌舰队 4 艘未逐一验证；`actual_enemy[i]["position"] ← enemy_fleet.carriers[i]` 同步（L171-177）零覆盖 | 已覆盖（loop1 收口） |
+| `mission.calculate_intercept` | `test_intercept_basic`（快机有解，断言 distance/flight_time/heading 区间）、`test_intercept_no_solution`（**零断言**，仅"不抛异常"） | ②不可拦截分支（敌速≥机速 → None）完全未断言；`t<=0` 负时间拒判未测 | 已覆盖（loop1 收口） |
+| `scouting.calculate_bearing` | `test_bearing_north`（≈180°）、`test_bearing_southwest`（≈233°） | ④四象限正交方位（0°/90°/270°）未测，现有仅斜方位近似区间 | 已覆盖（loop1 收口） |
+| `scouting.calculate_distance_nm` | `test_distance_short`、`test_distance_midway` | 与 bearing 的往返一致性（bearing+distance→位置→反算回原值）未测 | 已覆盖（loop1 收口） |
 | `scouting.in_sector` | 5 断言：普通包含、外部、360° 环绕（350-10） | 覆盖充分 | 无新增 |
-| `scouting.generate_sector_route` | `test_sector_route_basic`（len≥5）、`test_sector_route_wrap_360`（len>0） | ③扇区约束（航点方位落在扇面内）未测；出航+弧线点数与半径的关系未测 | C2 `test_sector_route_stays_within_sector` |
-| `scouting.generate_expanding_square_route` | `test_expanding_square_route`（len≥10） | ③环带约束/回闭合性、起点为舰队位置未测 | C2 `test_expanding_square_route_closes_and_counts` |
-| `scouting.generate_parallel_route` | `test_parallel_track_route`（len>0） | ③平行线束性质（行数=width//spacing、行距、往复）未测 | 本轮不加（低危：仅渲染用途；缺口记台账，后续如触碰再补） |
-| `scouting._bearing_distance_to_position` | 无直接测试（经 generate_* 间接） | bearing+distance→Position 正确性未直接断言 | C2 `test_bearing_distance_roundtrip`（间接覆盖） |
+| `scouting.generate_sector_route` | `test_sector_route_basic`（len≥5）、`test_sector_route_wrap_360`（len>0） | ③扇区约束（航点方位落在扇面内）未测；出航+弧线点数与半径的关系未测 | 已覆盖（loop1 收口） |
+| `scouting.generate_expanding_square_route` | `test_expanding_square_route`（len≥10） | ③环带约束/回闭合性、起点为舰队位置未测 | 已覆盖（loop1 收口） |
+| `scouting.generate_parallel_route` | `test_parallel_track_route`（len>0） | ③平行线束性质（行数=width//spacing、行距、往复）未测 | 本轮不加（低危：仅渲染用途；缺口记台账，后续如触碰再补）——后续批次 |
+| `scouting._bearing_distance_to_position` | 无直接测试（经 generate_* 间接） | bearing+distance→Position 正确性未直接断言 | 已覆盖（loop1 收口，`test_bearing_distance_roundtrip` 间接覆盖） |
 
 ## 二、五类高危缺口逐项结论
 
