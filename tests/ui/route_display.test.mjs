@@ -75,22 +75,25 @@ const toCanvas = (lx, ly) => [lx + ox, ly + oy];
 
 // 锚点 1：drawTaskForceMarker 的 CSE 标注画在航向线末端（本地系 args[1]/args[2]）。
 // 独立期望：标注在标记投影点沿航向（course 240°，航海 -90° 修正）前 38px（源码常量）处。
+// fix L4-F2: i=0 舰队标记整体上移 16px（ENT/HOR 同位防重叠，mapRenderer._drawOwnFleet
+// `i === 0 ? py - 16 : py`），CSE 标注与引导线随之整体偏移——本套件只有 i=0 一艘，期望值含此偏移。
+const F2_LEADER_DY = -16;
 const cseCalls = canvas.__ctx.__calls.filter((c) => c.name === "fillText" && String(c.args[0]).startsWith("CSE "));
 assert.ok(cseCalls.length >= 1, "未找到 drawTaskForceMarker 的 CSE 标注 fillText 调用");
 const [, cseLx, cseLy] = cseCalls[0].args;
 const rad = ((makeState(0, 0).task_forces[0].course - 90) * Math.PI) / 180;
 const expectedCseX = centerX + Math.cos(rad) * 38;
-const expectedCseY = centerY + Math.sin(rad) * 38;
+const expectedCseY = centerY + Math.sin(rad) * 38 + F2_LEADER_DY;
 const [drawnCseX, drawnCseY] = toCanvas(cseLx, cseLy);
 assert.ok(Math.abs(drawnCseX - expectedCseX) < 2 && Math.abs(drawnCseY - expectedCseY) < 2,
   `CSE 标注画布位置 (${drawnCseX.toFixed(1)},${drawnCseY.toFixed(1)}) 偏离逻辑坐标投影 (${expectedCseX.toFixed(1)},${expectedCseY.toFixed(1)}) 超过 2px`);
 
-// 锚点 2：标记本体（矢量回退圆 r=7）应恰好画在投影点 = 图面中心（舰队居中平移下）
+// 锚点 2：标记本体（矢量回退圆 r=7）应画在投影点 + F2 首舰 y 偏移处（舰队居中平移下 x 投影=图面中心）
 const markerArc = drawn.find((c) => c.name === "arc" && Math.abs(c.args[2] - 7) < 0.5);
 assert.ok(markerArc, "未找到舰队标记矢量回退圆（arc r≈7）调用");
 const [drawnMx, drawnMy] = toCanvas(markerArc.args[0], markerArc.args[1]);
-assert.ok(Math.abs(drawnMx - centerX) < 2 && Math.abs(drawnMy - centerY) < 2,
-  `舰队标记画布位置 (${drawnMx.toFixed(1)},${drawnMy.toFixed(1)}) 偏离投影点 (${centerX},${centerY}) 超过 2px`);
+assert.ok(Math.abs(drawnMx - centerX) < 2 && Math.abs(drawnMy - (centerY + F2_LEADER_DY)) < 2,
+  `舰队标记画布位置 (${drawnMx.toFixed(1)},${drawnMy.toFixed(1)}) 偏离投影点 (${centerX},${centerY + F2_LEADER_DY}) 超过 2px`);
 
 // 松界（任务书原断言，经 translate 修正）：标记相关调用落在投影点 60px 邻域
 const hit = drawn.some((c) => Math.hypot((c.args[0] ?? 999) + ox - centerX, (c.args[1] ?? 999) + oy - centerY) < 60);
@@ -127,12 +130,12 @@ if (entry) {
           && Math.abs(entry.targetY - (renderer.centerY - ny)) < 2,
     "舰队动画目标未跟随新逻辑位置（刷新链路断裂）");
 }
-// 当前实现断言：stateB 渲染帧的标记必须画在 stateB 投影处（新逻辑位置成为绘制目标）
+// 当前实现断言：stateB 渲染帧的标记必须画在 stateB 投影 + F2 首舰偏移处（新逻辑位置成为绘制目标）
 const bArcs = arcR7();
 assert.ok(bArcs.length > beforeCount, "render(sB) 未产生新的舰队标记帧");
 const [bx, by] = bArcs[bArcs.length - 1].args;
-assert.ok(Math.abs(bx - nx) < 2 && Math.abs(by - ny) < 2,
-  `sB 帧标记 (${bx.toFixed(1)},${by.toFixed(1)}) 偏离 sB 投影 (${nx.toFixed(1)},${ny.toFixed(1)})——刷新链路断裂（显示落后于逻辑）`);
+assert.ok(Math.abs(bx - nx) < 2 && Math.abs(by - (ny + F2_LEADER_DY)) < 2,
+  `sB 帧标记 (${bx.toFixed(1)},${by.toFixed(1)}) 偏离 sB 投影 (${nx.toFixed(1)},${(ny + F2_LEADER_DY).toFixed(1)})——刷新链路断裂（显示落后于逻辑）`);
 // 位移必须精确等于两次逻辑位置的投影差值（重绘位置精确移动投影差）
 const [qA, rA] = renderer._worldToHex(31.5, -176.0);
 const [axp, ayp] = renderer._hexToPixel(qA, rA);

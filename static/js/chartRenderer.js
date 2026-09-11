@@ -134,8 +134,8 @@ function drawIslands(ctx, c, rx, ry) {
   roundRect(ctx, sx, sy, rx * 0.34, ry * 0.16, 3);
   ctx.fill(); ctx.stroke();
   ctx.fillStyle = CHART_STYLE.ink;
-  // 标签置于矩形下方，避让环礁中心标注（fix round 3）
-  ctx.fillText(CHART_LABELS.sandIsland, sx + 4, sy + ry * 0.16 + 10);
+  // fix L4-F7: 标签基线对回胶囊内（垂直居中于圆角矩形；原画在框外下方成空框）
+  ctx.fillText(CHART_LABELS.sandIsland, sx + 4, sy + ry * 0.16 * 0.72);
   // EASTERN ISLAND — 东南侧三角形 + 三条交叉跑道
   const ex = c.x + rx * 0.28, ey = c.y + ry * 0.52, s = rx * 0.26;
   ctx.beginPath();
@@ -153,7 +153,8 @@ function drawIslands(ctx, c, rx, ry) {
     ctx.beginPath(); ctx.moveTo(ex + x1, ey + y1); ctx.lineTo(ex + x2, ey + y2); ctx.stroke();
   });
   ctx.lineWidth = 1;
-  ctx.fillText(CHART_LABELS.easternIsland, ex - s, ey + s * 0.9);
+  // fix L4-F7: 标注移到三角形右下侧（原坐标被 HOR 计数牌常态遮挡）
+  ctx.fillText(CHART_LABELS.easternIsland, ex + s * 0.6, ey + s * 0.8);
 }
 
 // Task 7.5：中途岛环礁——礁环沙色 + 泻湖 + SW 斜线阴影 + 双岛 + 中心标注
@@ -184,8 +185,8 @@ function drawAtoll(ctx, w, h) {
   ctx.save();
   ctx.translate(2, 3);
   tracePath(ctx, outer);
-  ctx.strokeStyle = 'rgba(42, 34, 24, 0.35)';
-  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = 'rgba(42, 34, 24, 0.5)'; // fix L4-F4: 投影加深（0.35→0.5）
+  ctx.lineWidth = 3.5; // fix L4-F4: 投影加粗（2.5→3.5）
   ctx.stroke();
   ctx.restore();
   // 泻湖
@@ -224,7 +225,10 @@ function drawRangeRings(ctx, w, h) {
     ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI * 2); ctx.stroke();
     ctx.setLineDash([]);
     // fix: 20/25nm 环间距仅 ~27px，25nm 标注移右上 45°（与设计图一致）防重叠
-    if (label === '25nm') ctx.fillText(label, c.x + r * 0.71, c.y - r * 0.71); else ctx.fillText(label, c.x + r + 4, c.y - 4);
+    // fix L4-F1: 20nm 标注改画环内下方位（原水平右侧被环礁右缘遮成 "2nm"）；40/60nm 维持右侧
+    if (label === '25nm') ctx.fillText(label, c.x + r * 0.71, c.y - r * 0.71);
+    else if (label === '20nm') ctx.fillText(label, c.x + r * 0.72, c.y + r * 0.72 + 12);
+    else ctx.fillText(label, c.x + r + 4, c.y - 4);
     ctx.setLineDash([6, 5]);
   }
   // 中心 0nm 刻度短线（设计图中心右侧）
