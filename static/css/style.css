@@ -208,7 +208,10 @@ html, body {
   text-align: center;
   padding: 4px 8px;
   border-right: 1px solid var(--color-grid-line);
+  white-space: nowrap; /* fix L4-F9: 底栏读数不换行 */
 }
+/* fix L4-F9: 甲板读数最长，占 1.6 份宽，保证 1440/1280 均不裁切 */
+.dash-item:has(#d-deck) { flex: 1.6; }
 .dash-item:last-child { border-right: none; }
 
 .dash-label {
@@ -424,6 +427,16 @@ html, body {
 }
 .btn-send { min-width: 52px; }
 
+/* fix L4-F6: ADVANCE 主操作提权——复用 .btn-execute 墨色主操作样式（对齐设计图 EXECUTE ORDER 黑块）；
+   SITUATION REPORT 维持 .btn 次级样式 */
+#btn-advance {
+  background: var(--color-ink-main);
+  color: var(--color-paper-base);
+  border-color: var(--color-ink-main);
+  font-weight: bold;
+}
+#btn-advance:hover { background: #3a3228; }
+
 /* ═══════════════════════════════════════════════════════
    Scrollbar
    ═══════════════════════════════════════════════════════ */
@@ -438,6 +451,8 @@ html, body {
 #topbar.paper-topbar {
   /* 保真度修正 B1：AI 旧纸纹理平铺（SVG 回退：background: url('/static/assets/ui/topbar_bg.svg') center / cover no-repeat;） */
   background: url('/static/assets/textures/paper_tex.jpg') repeat;
+  /* fix L4-F3: 暖色调层压亮（sepia 压黄提旧、brightness 降一档），向海图陈旧纸靠拢 */
+  filter: sepia(0.14) brightness(0.96);
 }
 .topbar-flag-img { height: 26px; width: auto; image-rendering: pixelated; }
 
@@ -535,7 +550,12 @@ html, body {
    ═══════════════════════════════════════════════════════ */
 #vignette-overlay {
   position: fixed; inset: 0; z-index: 90; pointer-events: none;
-  background: url('/static/assets/ui/vignette.svg') center / 100% 100% no-repeat;
+  /* fix L4-F5 根因：vignette.svg 为 1200×900（4:3），background-size 100% 100% 下默认
+     preserveAspectRatio="xMidYMid meet" 使内容在 16:9 视口内信箱化（1200×900 居中），
+     左右缘 x≈120/1320 形成贯通全高的硬竖缝。改用等效 CSS 径向渐变（随视口自适应，无缝）。 */
+  background: radial-gradient(75% 75% at 50% 46%,
+    rgba(58, 37, 24, 0) 0%, rgba(58, 37, 24, 0) 55%,
+    rgba(58, 37, 24, 0.28) 85%, rgba(30, 18, 10, 0.6) 100%);
   mix-blend-mode: multiply;
 }
 #noise-overlay {

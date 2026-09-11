@@ -178,12 +178,13 @@ class UIController {
     this._setText('d-dmg', `企业:${dmgMap[c1.damage_level] || '?'} 大黄蜂:${dmgMap[c2.damage_level] || '?'}`);
 
     // Deck info
+    // fix L4-F9: 读数缩短为「企 80/80·0」格式（去「备/飞」字），配合 .dash-item nowrap/flex 1.6 防底栏裁切
     const deckParts = tf.carriers.map(c => {
-      const short = c.name.includes('Enterprise') ? '企业' : '大黄蜂';
+      const short = c.name.includes('Enterprise') ? '企' : '蜂';
       const total = c.air_groups.reduce((s, a) => s + a.count, 0);
       const ready = c.air_groups.filter(a => a.status === 'ready').reduce((s, a) => s + a.count, 0);
       const airborne = c.air_groups.filter(a => ['launched', 'in_flight', 'returning'].includes(a.status)).reduce((s, a) => s + a.count, 0);
-      return `${short} ${total}/${ready}备/${airborne}飞`;
+      return `${short} ${total}/${ready}·${airborne}`;
     });
     this._setText('d-deck', deckParts.join(' '));
 
