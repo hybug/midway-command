@@ -213,6 +213,60 @@ class TestInitialState:
             assert carrier.faction == "japan"
 
 
+class TestRouteKinematics:
+    """批次 C1：舰队航线运动学（docs/plans/ui-fidelity-fix-plan.md）。
+
+    签名校正：calculate_new_position 第三参为 distance_nm（非 speed/minutes），
+    按语义换算 distance_nm = speed × minutes / 60，断言意图不变。
+    """
+
+    @staticmethod
+    def _pos(lat: float, lon: float) -> Position:
+        return Position(lat=lat, lon=lon)
+
+    def test_due_north_increases_lat(self):
+        """航向 0°（北）：纬度增、经度不变。24 节 × 60 分钟 = 24 nm。"""
+        pos = calculate_new_position(self._pos(28.0, -177.4), course=0,
+                                     distance_nm=24 * 60 / 60)
+        assert pos.lat > 28.0
+        assert abs(pos.lon - (-177.4)) < 0.5
+
+    def test_due_east_increases_lon_wrapped(self):
+        """航向 90°（东）：经度跨 ±180° 包裹到 [-180, 180]。
+
+        600 节 × 60 分钟 = 600 nm，自 179.5°E 东向跨日界线后
+        数值上必落在西经（负值），故断言 pos.lon < 0。
+        """
+        pos = calculate_new_position(self._pos(28.0, 179.5), course=90,
+                                     distance_nm=600 * 60 / 60)
+        assert -180 <= pos.lon <= 180, f"经度未包裹: {pos.lon}"
+        assert pos.lon < 0, f"跨 180° 后应落在西经（负值）: {pos.lon}"
+
+    def test_zero_speed_stays(self):
+        pos = calculate_new_position(self._pos(28.0, -177.4), course=135,
+                                     distance_nm=0 * 60 / 60)
+        assert (pos.lat, pos.lon) == (28.0, -177.4)
+
+    def test_update_all_positions_moves_both_fleets(self):
+        """⑤多舰队同 tick 一致性：全部 TF、敌舰队均移动，且 actual_enemy 同步。"""
+        state = build_initial_state()
+        before = [(tf.carriers[0].position.lat, tf.carriers[0].position.lon)
+                  for tf in state.task_forces]
+        enemy_before = [(c.position.lat, c.position.lon)
+                        for c in state.enemy_fleet.carriers]
+        update_all_positions(state, minutes=15)
+        after = [(tf.carriers[0].position.lat, tf.carriers[0].position.lon)
+                 for tf in state.task_forces]
+        enemy_after = [(c.position.lat, c.position.lon)
+                       for c in state.enemy_fleet.carriers]
+        assert before != after and enemy_before != enemy_after
+        # actual_enemy[0] 应与敌首舰移动后的位置精确同步
+        assert state.actual_enemy[0]["position"] == {
+            "lat": state.enemy_fleet.carriers[0].position.lat,
+            "lon": state.enemy_fleet.carriers[0].position.lon,
+        }
+
+
 class TestPositionUpdateIntegration:
     """Test position updates integrated with game state."""
 
