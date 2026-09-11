@@ -615,10 +615,16 @@ class MapRenderer {
       const short = c.name.includes('Enterprise') ? 'ENT' : 'HOR';
 
       // fix Loop2-F1: 两航母同位时标记仍大面积重叠（16px 垂直错位对 63×64 计数牌不足）——
-      // 对角错开加大：i=0 偏移 (x-14, y-28)、i=1 偏移 (x+14, y+0)。
+      // 对角错开加大：i=1 偏移 (x+14, y+0)。
+      // fix Loop3-F1: ENT（i=0）让开 MIDWAY ATOLL 标题与坐标行（标题居环礁中心，
+      // 舰队居中下标题带 x ∈ [atollCx-45, atollCx+45]，ENT 旧位 (x-14,y-28) 计数牌盖住标题右端 ~26px）。
+      // 控制清单改法 (x-56,y-30) 经几何验证反向恶化（左移 42px 使计数牌压住标题中部 ~63px）——
+      // 按目标「让开标题与坐标行」改横向右移：ENT (x+80, y-64)，计数牌落在环礁东侧开阔纸面
+      // （tag 左缘 atollCx+0.06w+48.5 > 标题右缘；y 带 [cy-96,cy-32] 避开 25/40nm 环标注），
+      // 与 HOR (x+14,y) 对角错开保留（角接触，矩形不相交）。
       // x/y 进入标记对象，计数牌、CSE 标注与引导线随之整体偏移（与 Loop1 y 偏移同位置实现）
-      const mx = i === 0 ? px - 14 : px + 14;
-      const my = i === 0 ? py - 28 : py;
+      const mx = i === 0 ? px + 80 : px + 14;
+      const my = i === 0 ? py - 64 : py;
 
       // Task 7.9：舰队标记改由 ChartRenderer.drawTaskForceMarker 绘制
       // （光栅计数牌 ENT/HOR + CSE 航向线 + 虚线引导线）。

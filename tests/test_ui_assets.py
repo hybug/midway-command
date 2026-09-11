@@ -177,11 +177,11 @@ def test_input_bar_and_button_focus_styles():
 
 
 def test_index_html_cache_version_consistent():
-    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（保真度修正 T4 → 1780997990，B1 → 1780997991，B3 → 1780997992，C4 → 1780997993，loop1 L4 → 1780997994，loop2 L4 → 1780997995）。"""
+    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（保真度修正 T4 → 1780997990，B1 → 1780997991，B3 → 1780997992，C4 → 1780997993，loop1 L4 → 1780997994，loop2 L4 → 1780997995，loop3 F1-F5 → 1780997996）。"""
     html = (BASE / "static" / "index.html").read_text()
     versions = set(re.findall(r'\?v=(\d+)', html))
     assert len(versions) == 1, f"index.html 缓存号不一致: {versions}"
-    assert versions == {"1780997995"}, f"index.html 缓存号未递增到 1780997995: {versions}"
+    assert versions == {"1780997996"}, f"index.html 缓存号未递增到 1780997996: {versions}"
 
 
 # ── 保真度修正 · B2：木纹接入木尺（data-URI 内嵌） ──
@@ -294,8 +294,8 @@ def test_loop2_fidelity_fix_markers():
     assert "lat += 0.25" in chart and "lon += 0.25" in chart, "经纬网未加 0.25° 细网"
     assert "lat += 0.5" in chart and "lon += 0.5" in chart, "0.5° 主网须保留"
     map_js = (BASE / "static" / "js" / "mapRenderer.js").read_text()
-    # F1: 舰队标记对角错开（i=0: x-14/y-28，i=1: x+14/y+0）
-    assert "px - 14 : px + 14" in map_js and "py - 28 : py" in map_js, "舰队标记未对角错开"
+    # F1: 舰队标记错开防重叠（fix Loop3-F1: i=0 横向右移让位 MIDWAY ATOLL 标题带 x+80/y-64，i=1: x+14/y+0）
+    assert "px + 80 : px + 14" in map_js and "py - 64 : py" in map_js, "舰队标记未错开让位标题带"
     ui = (BASE / "static" / "js" / "uiController.js").read_text()
     # F5: 空态包 intel_card 纸卡；F6: 空态读数 dash-empty
     assert 'class="empty-card"' in ui, "空态未包 intel_card 纸卡"

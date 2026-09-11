@@ -73,32 +73,36 @@ const ox = centerX - ex, oy = centerY - ey;
 // 录制器记录的是 translate(ox,oy) 本地系坐标；画布位置 = 本地坐标 + (ox,oy)
 const toCanvas = (lx, ly) => [lx + ox, ly + oy];
 
-// 锚点 1：drawTaskForceMarker 的 CSE 标注画在航向线末端（本地系 args[1]/args[2]）。
-// 独立期望：标注在标记投影点沿航向（course 240°，航海 -90° 修正）前 38px（源码常量）处。
-// fix Loop2-F1: 首舰（i=0）标记对角错开 (x-14, y-28)（ENT/HOR 同位防重叠，
-// mapRenderer._drawOwnFleet `i === 0 ? px-14/py-28 : px+14/py`），
+// 锚点 1：drawTaskForceMarker 的 CSE 标注画在标记外侧、背离引导线方向（fix Loop3-F4）。
+// 独立期望：标注 = 标记投影点 − 44px × û（û 为本地系内指向环礁的单位向量；
+// 本地系环礁中心 = atollCenter(w,h) − translate(ox,oy)，44px 与引导线起距 24px 同批源码常量）。
+// fix Loop3-F1: 首舰（i=0）标记横向右移让位 MIDWAY ATOLL 标题带 (x+80, y-64)
+// （mapRenderer._drawOwnFleet `i === 0 ? px+80/py-64 : px+14/py`），
 // CSE 标注与引导线随之整体偏移——本套件只有 i=0 一艘，期望值含此偏移。
-const F2_LEADER_DX = -14;
-const F2_LEADER_DY = -28;
+const F2_LEADER_DX = 80;
+const F2_LEADER_DY = -64;
 const cseCalls = canvas.__ctx.__calls.filter((c) => c.name === "fillText" && String(c.args[0]).startsWith("CSE "));
 assert.ok(cseCalls.length >= 1, "未找到 drawTaskForceMarker 的 CSE 标注 fillText 调用");
 const [, cseLx, cseLy] = cseCalls[0].args;
-const rad = ((makeState(0, 0).task_forces[0].course - 90) * Math.PI) / 180;
-const expectedCseX = centerX + F2_LEADER_DX + Math.cos(rad) * 38;
-const expectedCseY = centerY + F2_LEADER_DY + Math.sin(rad) * 38;
+const acLx = 1440 * 0.44 - ox, acLy = 900 * 0.46 - oy; // atollCenter(1440,900) 换算到本地系（源码同源）
+const glen = Math.hypot(acLx - (ex + F2_LEADER_DX), acLy - (ey + F2_LEADER_DY)) || 1;
+const gux = (acLx - (ex + F2_LEADER_DX)) / glen, guy = (acLy - (ey + F2_LEADER_DY)) / glen;
+const expectedCseX = centerX + F2_LEADER_DX - gux * 44;
+const expectedCseY = centerY + F2_LEADER_DY - guy * 44;
 const [drawnCseX, drawnCseY] = toCanvas(cseLx, cseLy);
 assert.ok(Math.abs(drawnCseX - expectedCseX) < 2 && Math.abs(drawnCseY - expectedCseY) < 2,
   `CSE 标注画布位置 (${drawnCseX.toFixed(1)},${drawnCseY.toFixed(1)}) 偏离逻辑坐标投影 (${expectedCseX.toFixed(1)},${expectedCseY.toFixed(1)}) 超过 2px`);
 
-// 锚点 2：标记本体（矢量回退圆 r=7）应画在投影点 + F1 首舰对角偏移处（舰队居中平移下 x 投影=图面中心）
+// 锚点 2：标记本体（矢量回退圆 r=7）应画在投影点 + Loop3-F1 首舰偏移处（舰队居中平移下 x 投影=图面中心）
 const markerArc = drawn.find((c) => c.name === "arc" && Math.abs(c.args[2] - 7) < 0.5);
 assert.ok(markerArc, "未找到舰队标记矢量回退圆（arc r≈7）调用");
 const [drawnMx, drawnMy] = toCanvas(markerArc.args[0], markerArc.args[1]);
 assert.ok(Math.abs(drawnMx - (centerX + F2_LEADER_DX)) < 2 && Math.abs(drawnMy - (centerY + F2_LEADER_DY)) < 2,
   `舰队标记画布位置 (${drawnMx.toFixed(1)},${drawnMy.toFixed(1)}) 偏离投影点 (${centerX + F2_LEADER_DX},${centerY + F2_LEADER_DY}) 超过 2px`);
 
-// 松界（任务书原断言，经 translate 修正）：标记相关调用落在投影点 60px 邻域
-const hit = drawn.some((c) => Math.hypot((c.args[0] ?? 999) + ox - centerX, (c.args[1] ?? 999) + oy - centerY) < 60);
+// 松界（任务书原断言，经 translate 修正）：标记相关调用落在投影点邻域
+// fix Loop3-F1: 首舰偏移改为 (x+80, y-64)（让位 MIDWAY ATOLL 标题带），邻域 60→115px 覆盖
+const hit = drawn.some((c) => Math.hypot((c.args[0] ?? 999) + ox - centerX, (c.args[1] ?? 999) + oy - centerY) < 115);
 assert.ok(hit, "舰队标记未绘制在其逻辑投影（图面中心附近）处");
 
 // 回归（fix: 缺省列表防御）：render 是公开入口，缺省 active_scouts/known_enemy 的

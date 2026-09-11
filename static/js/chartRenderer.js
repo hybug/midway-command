@@ -101,7 +101,8 @@ function drawLatLonGrid(ctx, w, h) {
     ctx.setLineDash([4, 4]);
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillText(fmtLat(lat), 6, y - 3);
+    // fix Loop3-F5: 纬度标注（均在左缘列 x=6）上移避左下木尺（y-3 → y-8）
+    ctx.fillText(fmtLat(lat), 6, y - 8);
   }
   for (let lon = -183; lon <= -172; lon += 0.5) {
     if (lon < -180) continue;
@@ -314,9 +315,6 @@ function drawTaskForceMarker(ctx, tf, w, h, ox = 0, oy = 0) {
   ctx.moveTo(tf.x, tf.y);
   ctx.lineTo(tf.x + Math.cos(rad) * 34, tf.y + Math.sin(rad) * 34);
   ctx.stroke();
-  ctx.fillStyle = CHART_STYLE.ink;
-  ctx.font = `9px ${CHART_STYLE.fontTypewriter}`;
-  ctx.fillText(`CSE ${Math.round(tf.courseDeg)}°`, tf.x + Math.cos(rad) * 38, tf.y + Math.sin(rad) * 38);
   // 指向环礁的虚线引导线 + 箭头（保真度修正 T3：方向由 atollCenter 计算，替代写死偏移）
   // fix: atollCenter 返回屏幕系坐标，而本函数在 mapRenderer 的 ctx.translate(ox,oy)
   // 舰队本地系内绘制——先减去平移量换算到本地系，否则方向反向（S 级缺陷修复）
@@ -324,11 +322,18 @@ function drawTaskForceMarker(ctx, tf, w, h, ox = 0, oy = 0) {
   const dx = ac.x - tf.x, dy = ac.y - tf.y;
   const len = Math.hypot(dx, dy) || 1;
   const ux = dx / len, uy = dy / len;
+  // fix Loop3-F4: CSE 标注锚到标记外侧、背离引导线方向（-u 侧 44px，避开 63×64 计数牌）。
+  // 控制清单最小改法（背向航向 20px）经几何验证落在光栅计数牌内部（20 < 31.5 半宽），
+  // 与「标记外侧」语义冲突——按清单预案改走「背离方向」方案，此处取背离引导线（=背离环礁）侧。
+  ctx.fillStyle = CHART_STYLE.ink;
+  ctx.font = `9px ${CHART_STYLE.fontTypewriter}`;
+  ctx.fillText(`CSE ${Math.round(tf.courseDeg)}°`, tf.x - ux * 44, tf.y - uy * 44);
+  // fix Loop3-F4: 引导线首段起距 12→24px（缩近标记，留出 CSE 标注空间）
   ctx.setLineDash([3, 4]);
   ctx.strokeStyle = CHART_STYLE.inkFade;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(tf.x + ux * 12, tf.y + uy * 12);
+  ctx.moveTo(tf.x + ux * 24, tf.y + uy * 24);
   ctx.lineTo(tf.x + ux * 64, tf.y + uy * 64);
   ctx.stroke();
   ctx.setLineDash([]);

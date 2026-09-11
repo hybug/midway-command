@@ -368,7 +368,18 @@ html, body {
   width: 88%;
   margin: auto;
   padding: 38px 16px 30px;
-  filter: drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.18));
+  /* fix Loop3-F2: 空态文字「横穿纸卡」根因——intel_card SVG 默认 preserveAspectRatio
+     xMidYMid meet，background-size 100% 100% 拉伸元素画布后画稿在内部等比缩放再居中
+     （315px 元素只画出 ~196px 卡），文字行随之左右穿出画稿边框。aspect-ratio 对齐画稿
+     比例 320:140 后画稿铺满元素；flex 使文字在卡内垂直水平居中（DOM 已嵌套无需调整，
+     SECRET 章仍 absolute 卡右上不受影响） */
+  aspect-ratio: 320 / 140;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* fix Loop3-F3: 纸卡物件感加深一档（设计评审 D-A#1）：投影加强 + brightness 压暗 */
+  box-shadow: 0 2px 6px rgba(60, 45, 20, .25);
+  filter: brightness(.97) drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.18));
 }
 .empty-card .chat-empty { padding: 0; }
 
