@@ -235,7 +235,8 @@ function drawRangeRings(ctx, w, h) {
 
 // Task 7.7：罗盘——右上角光栅罗盘（compass.svg 资产由 svgLoader 提供）
 function drawCompassRose(ctx, w, h) {
-  const raster = getIcon('compass_raster');
+  // 保真度修正 B3：AI 雕刻罗盘（亮度反转抠图）优先，compass_raster 回退
+  const raster = getIcon('compass_engraved') || getIcon('compass_raster');
   if (raster) { ctx.drawImage(raster, w - 150, 20, 110, 110 * (raster.height / raster.width)); return; }
   const icon = getIcon('compass');
   if (icon) ctx.drawImage(icon, w - 150, 24, 110, 110);

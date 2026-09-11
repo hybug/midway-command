@@ -23,6 +23,8 @@ const ICON_FILES = {
   enemy_tag_q: '/static/assets/ui/icons/enemy_tag_q.png',
   aircraft_topdown_raster: '/static/assets/ui/icons/aircraft_topdown.png',
   compass_raster: '/static/assets/ui/icons/compass_raster.png',
+  // 保真度修正 B3：AI 雕刻罗盘（docs/assets/cut_compass.py 亮度反转抠图，细阴线完整）
+  compass_engraved: '/static/assets/ui/icons/compass_engraved.png',
   // 设计图资产文件（docs/plans/ui-replication-plan.md Phase 2–5）
   paper_base: '/static/assets/ui/paper_base.svg',
   noise: '/static/assets/ui/noise.svg',
@@ -33,7 +35,7 @@ const ICON_FILES = {
   enemy_marker: '/static/assets/ui/enemy_marker.svg',
   secret_stamp: '/static/assets/ui/secret_stamp.svg',
   // 保真度修正 B1：AI 旧纸纹理（docs/assets/normalize_texture.py 归一产物，Canvas repeat 平铺）
-  paper_tex: '/static/assets/textures/paper_tex.jpg?v=1780997991',
+  paper_tex: '/static/assets/textures/paper_tex.jpg?v=1780997992',
 };
 
 let iconsLoaded = false;
