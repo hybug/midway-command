@@ -119,7 +119,7 @@ def test_chart_renderer_constants_match_css():
                   "#8b2500", "#6b5d4a", "#a89878", "#e8dcc8", "#d4c8a8"]:
         assert value in js, f"chartRenderer.js 缺少色值 {value}"
     for label in ["MIDWAY ATOLL", "28°12'N 177°21'W", "SAND ISLAND", "EASTERN ISLAND",
-                  "20nm", "40nm", "60nm"]:
+                  "20nm", "25nm", "40nm", "60nm"]:
         assert label in js, f"chartRenderer.js 缺少标注 {label}"
 
 
@@ -172,11 +172,11 @@ def test_input_bar_and_button_focus_styles():
 
 
 def test_index_html_cache_version_consistent():
-    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（终审修复 → 1780997988）。"""
+    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（保真度修正 A1 → 1780997989）。"""
     html = (BASE / "static" / "index.html").read_text()
     versions = set(re.findall(r'\?v=(\d+)', html))
     assert len(versions) == 1, f"index.html 缓存号不一致: {versions}"
-    assert versions == {"1780997988"}, f"index.html 缓存号未递增到 1780997988: {versions}"
+    assert versions == {"1780997989"}, f"index.html 缓存号未递增到 1780997989: {versions}"
 
 
 # ── Phase 9 · Task 9.2：电传打字 + 盖章动效 ──

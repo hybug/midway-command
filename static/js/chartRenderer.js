@@ -16,7 +16,7 @@ const CHART_STYLE = {
 // 图面中心 = 环礁中心（与 mapRenderer.js 的 REF_LAT/REF_LON 一致）
 const CHART_CENTER = { lat: 28.2, lon: -177.4 };
 // 距离环用 [标签, 数值] 对——标签字面量受 tests/test_ui_assets.py 守卫（控制裁定 R1）
-const RING_NM = [["20nm", 20], ["40nm", 40], ["60nm", 60]];
+const RING_NM = [["20nm", 20], ["25nm", 25], ["40nm", 40], ["60nm", 60]];
 
 // 图面标注字面量（同受测试守卫；Task 7.5/7.6 绘制环礁与距离环标注时取用）
 const CHART_LABELS = {
@@ -203,7 +203,7 @@ function drawAtoll(ctx, w, h) {
   ctx.textAlign = 'left';
 }
 
-// Task 7.6：20/40/60nm 距离环——虚线圆 + 沿水平半径右侧标注 + 中心 0nm 刻度短线
+// Task 7.6：20/25/40/60nm 距离环——虚线圆 + 沿水平半径右侧标注 + 中心 0nm 刻度短线
 // 以环礁为圆心（atollCenter 与 drawAtoll 共心，设计图亦如此）
 function drawRangeRings(ctx, w, h) {
   const c = atollCenter(w, h);
