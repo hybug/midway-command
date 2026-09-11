@@ -181,6 +181,14 @@ def test_index_html_cache_version_consistent():
     assert versions == {"1780997991"}, f"index.html 缓存号未递增到 1780997991: {versions}"
 
 
+# ── 保真度修正 · B2：木纹接入木尺（data-URI 内嵌） ──
+
+def test_ruler_wood_embeds_wood_texture():
+    """ruler_wood.svg 必须以 data-URI 内嵌木纹（<img> 引用的 SVG 禁外部资源，必须内嵌）。"""
+    svg = (BASE / "static" / "assets" / "ui" / "ruler_wood.svg").read_text()
+    assert "data:image/png;base64" in svg, "ruler_wood.svg 缺少 data-URI 木纹内嵌"
+
+
 # ── Phase 9 · Task 9.2：电传打字 + 盖章动效 ──
 
 def test_stamp_and_paper_animations():
