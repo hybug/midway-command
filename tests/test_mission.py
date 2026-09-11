@@ -150,3 +150,24 @@ class TestConfirmReject:
         plan = plan_mission(state, enemy_report)
         reject_mission(state, plan.id)
         assert plan.feasible is False
+
+
+class TestInterceptKinematics:
+    """批次 C2：打击拦截解算（docs/plans/ui-fidelity-fix-plan.md）。
+
+    键名校正（以源码为准）：结果键为 flight_time_min（src/mission.py），非任务书的 time_to_intercept。
+    """
+
+    def test_intercept_solvable_when_aircraft_faster(self):
+        result = calculate_intercept(enemy_lat=30.0, enemy_lon=-178.0, enemy_course=90,
+                                     enemy_speed=20, launch_lat=28.2, launch_lon=-177.4,
+                                     aircraft_speed=180)
+        assert result is not None
+        assert result["flight_time_min"] >= 0
+
+    def test_intercept_unsolvable_when_too_slow(self):
+        """敌速 ≥ 机速且背向航行：无解应返回 None（补上旧 test_intercept_no_solution 缺失的真值断言）。"""
+        result = calculate_intercept(enemy_lat=30.0, enemy_lon=-178.0, enemy_course=0,
+                                     enemy_speed=200, launch_lat=28.2, launch_lon=-177.4,
+                                     aircraft_speed=100)
+        assert result is None

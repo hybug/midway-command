@@ -197,8 +197,10 @@ from src.scouting import (
     generate_sector_route,
     generate_expanding_square_route,
     generate_parallel_route,
+    _bearing_distance_to_position,
     check_detection,
 )
+from src.render.coordinate import hex_to_world
 
 
 class TestSectorRoute:
@@ -279,3 +281,47 @@ class TestSpatialEncounter:
         # 远处的 hex
         detections = check_detection((50, 50), state)
         assert len(detections) == 0
+
+
+class TestRouteGeneration:
+    """批次 C2：飞机搜索航线生成性质（docs/plans/ui-fidelity-fix-plan.md）。
+
+    签名校正（以源码为准）：generate_*_route 返回六边形 (q, r) 坐标（非 lat/lon），
+    断言前经 hex_to_world 还原；扇形参数为 (fleet_pos, center_bearing,
+    sector_width, radius_nm)，扩方参数为 (fleet_pos, max_radius_nm)。
+    """
+
+    ORIGIN = (28.2, -177.4)
+
+    def test_bearing_four_quadrants(self):
+        assert abs(calculate_bearing((0.0, 0.0), (1.0, 0.0)) - 0) < 1    # 北
+        assert abs(calculate_bearing((0.0, 0.0), (0.0, 1.0)) - 90) < 1   # 东
+        assert abs(calculate_bearing((0.0, 0.0), (-1.0, 0.0)) - 180) < 1  # 南
+        assert abs(calculate_bearing((0.0, 0.0), (0.0, -1.0)) - 270) < 1  # 西
+
+    def test_bearing_distance_roundtrip(self):
+        """bearing+distance → position → 反算 bearing/distance 应回到原值。"""
+        dest = _bearing_distance_to_position(self.ORIGIN, bearing_deg=45, distance_nm=60)
+        assert abs(calculate_bearing(self.ORIGIN, (dest.lat, dest.lon)) - 45) < 1
+        assert abs(calculate_distance_nm(self.ORIGIN, (dest.lat, dest.lon)) - 60) < 1
+
+    def test_expanding_square_route_closes_and_counts(self):
+        """3 环 × 30 nm（max_radius_nm=90）：点数充足且终点回到起点附近。"""
+        route = generate_expanding_square_route(self.ORIGIN, max_radius_nm=90)
+        assert len(route) >= 4
+        assert abs(calculate_distance_nm(hex_to_world(*route[0]),
+                                         hex_to_world(*route[-1]))) <= 30 * 3
+
+    def test_sector_route_stays_within_sector(self):
+        """扇面 [30°, 90°]（center 60 ± 30，半径 120nm）：航点方位均落扇区内。"""
+        route = generate_sector_route(self.ORIGIN, center_bearing=60,
+                                      sector_width=60, radius_nm=120)
+        checked = 0
+        for p in route:
+            world = hex_to_world(*p)
+            if calculate_distance_nm(self.ORIGIN, world) < 1:
+                continue  # 起点格（10nm 出航第一步量化回原格）方位退化，豁免
+            assert in_sector(calculate_bearing(self.ORIGIN, world), 30, 90), \
+                f"航点 {p} 方位越出扇区"
+            checked += 1
+        assert checked >= 10  # 绝大多数航点应参与扇区约束校验
