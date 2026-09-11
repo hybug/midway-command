@@ -93,6 +93,10 @@ def calculate_new_position(
     Returns:
         New position
     """
+    # Zero distance is identity: avoids asin(sin(x)) float round-trip drift.
+    if distance_nm == 0:
+        return Position(lat=current.lat, lon=current.lon)
+
     # Convert to radians
     lat1 = math.radians(current.lat)
     lon1 = math.radians(current.lon)
