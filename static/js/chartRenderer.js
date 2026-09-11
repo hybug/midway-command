@@ -121,8 +121,8 @@ function roundRect(ctx, x, y, w2, h2, r) {
 // Task 7.5：双岛——SAND ISLAND 圆角矩形 + EASTERN ISLAND 三角形与三条交叉跑道
 function drawIslands(ctx, c, rx, ry) {
   ctx.font = `8px ${CHART_STYLE.fontTypewriter}`;
-  // SAND ISLAND — 环礁西侧圆角矩形
-  const sx = c.x - rx * 0.52, sy = c.y + ry * 0.10;
+  // SAND ISLAND — 环礁西侧圆角矩形（下移避让坐标行）
+  const sx = c.x - rx * 0.60, sy = c.y + ry * 0.32;
   ctx.fillStyle = CHART_STYLE.paperDark;
   ctx.strokeStyle = CHART_STYLE.ink;
   roundRect(ctx, sx, sy, rx * 0.34, ry * 0.16, 3);
@@ -157,9 +157,31 @@ function drawAtoll(ctx, w, h) {
   const outer = atollOutline(c.x, c.y, rx, ry);
   const rim = atollOutline(c.x, c.y, rx * 0.94, ry * 0.90);
   const lagoon = atollOutline(c.x, c.y, rx * 0.80, ry * 0.74);
+  // 西南海面斜线（先铺后盖：铺在沙色填充之前的海面层）
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(c.x - rx * 1.5, c.y + ry * 0.15, rx * 1.9, ry * 1.35);
+  ctx.clip();
+  ctx.strokeStyle = CHART_STYLE.inkFaint;
+  ctx.lineWidth = 1;
+  for (let d = 0; d < rx * 2.2; d += 7) {
+    ctx.beginPath();
+    ctx.moveTo(c.x - rx * 1.4 + d, c.y + ry * 1.5);
+    ctx.lineTo(c.x - rx * 1.4 + d + ry * 1.2, c.y + ry * 0.15);
+    ctx.stroke();
+  }
+  ctx.restore();
   // 礁环沙色
   tracePath(ctx, outer);
   ctx.fillStyle = CHART_STYLE.sand; ctx.fill();
+  // 沙色填充后、泻湖填充前：外轮廓偏移描暗圈（立体投影）
+  ctx.save();
+  ctx.translate(2, 3);
+  tracePath(ctx, outer);
+  ctx.strokeStyle = 'rgba(42, 34, 24, 0.35)';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  ctx.restore();
   // 泻湖
   tracePath(ctx, lagoon);
   ctx.fillStyle = CHART_STYLE.lagoon; ctx.fill();
@@ -170,18 +192,6 @@ function drawAtoll(ctx, w, h) {
   // 环礁内缘墨线
   tracePath(ctx, rim);
   ctx.strokeStyle = CHART_STYLE.inkFade; ctx.lineWidth = 1; ctx.stroke();
-  // 西南侧礁外斜线阴影（clip 到放大轮廓内）
-  ctx.save();
-  tracePath(ctx, atollOutline(c.x, c.y, rx * 1.12, ry * 1.10));
-  ctx.clip();
-  ctx.strokeStyle = CHART_STYLE.inkFaint;
-  for (let d = -40; d < rx; d += 7) {
-    ctx.beginPath();
-    ctx.moveTo(c.x - rx + d, c.y + ry * 0.75);
-    ctx.lineTo(c.x - rx + d + 60, c.y + ry * 1.45);
-    ctx.stroke();
-  }
-  ctx.restore();
   drawIslands(ctx, c, rx, ry);
   // 中心标注
   ctx.fillStyle = CHART_STYLE.ink;

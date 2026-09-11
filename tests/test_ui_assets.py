@@ -218,3 +218,12 @@ def test_map_renderer_hover_scale_redraw():
     js = (BASE / "static" / "js" / "mapRenderer.js").read_text()
     assert "scale(1.1, 1.1)" in js, "悬停命中时应以 1.1 倍缩放重绘标记"
     assert "this._hoverTarget.type === 'enemy'" in js, "放大重绘应挂在既有 _hoverTarget enemy 分支内"
+
+
+# ── 保真度修正 · T1：环礁绘制三连修（岛体避让/SW 海面斜线/沙环投影）──
+
+def test_chart_atoll_fix_markers():
+    js = (BASE / "static" / "js" / "chartRenderer.js").read_text()
+    assert "ry * 0.32" in js, "沙岛未下移避让坐标行"
+    assert "rect(c.x - rx * 1.5" in js, "SW 海面斜线未铺开"
+    assert "translate(2, 3)" in js, "沙环投影缺失"
