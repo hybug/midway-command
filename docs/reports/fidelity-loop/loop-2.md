@@ -66,3 +66,9 @@
 ### 备注
 - 新增守卫测试 `test_loop2_fidelity_fix_markers`（静态断言 F1/F2/F4/F5/F6/F7/F8 关键 token），防回退
 - L2 表 #4（MIDWAY ATOLL 标题与 HOR 牌轻微重叠）按裁定记录不修；F1 对角错开后 HOR 牌东移 14px，重叠面进一步缩小
+
+## L6 验收（控制者）
+- loop-2-after-1440.png 目检：F1 舰队对角分离✓ F2 岛标签入胶囊✓ F4 标签纸舌✓ F5 空态纸卡+章✓ F6 底栏层次✓ F8 密网质感✓；F7 断点（1440 不可见，1280 图可验）✓；F3 守卫复活✓
+- Fidelity：13.5/15（持平）；DESIGN-SCORE 趋势待 Loop 3 复评（本轮多为设计建议落地）
+- 回归：批次 A 五项 + 批次 B 三质感 + Loop 1 七项保持 ✓；pytest 273 全绿
+- 提交：c7ad007 / 60ed0d2
