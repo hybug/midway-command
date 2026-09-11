@@ -358,6 +358,16 @@ html, body {
   font-size: 12px;
 }
 
+/* fix L4-F8: 侧栏空态 SECRET 红章（盖章语义：等待新指令） */
+.idle-stamp {
+  width: 96px;
+  transform: rotate(-8deg);
+  mix-blend-mode: multiply;
+  opacity: .85;
+  margin: 18px auto 4px;
+  display: block;
+}
+
 /* ── Notifications ── */
 .notification {
   background: var(--color-paper-dark);

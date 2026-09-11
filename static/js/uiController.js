@@ -92,6 +92,8 @@ class UIController {
     let html = `<div class="section-header section-${section.toLowerCase()}">${section}</div>`;
 
     if (!messages || messages.length === 0) {
+      // fix L4-F8: 空态叠 SECRET 红章（盖章语义：等待新指令）
+      html += '<img src="/static/assets/ui/secret_stamp.svg" class="idle-stamp" alt="">';
       html += '<div class="chat-empty">等待指令（AWAITING ORDERS）...</div>';
       container.innerHTML = html;
       return;
