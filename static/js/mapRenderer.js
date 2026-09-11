@@ -616,7 +616,9 @@ class MapRenderer {
       // （光栅计数牌 ENT/HOR + CSE 航向线 + 虚线引导线）。
       // 字段映射：数据模型无 callsign 字段，沿用既有 name→ENT/HOR 推导；
       // courseDeg 取 TaskForce.course（与旧航向箭头同源）。
-      ChartRenderer.drawTaskForceMarker(ctx, { x: px, y: py, callsign: short, courseDeg: tf.course });
+      // 保真度修正 T3：传 CSS 像素 W/H（= render() 里的 this.width/this.height），
+      // 引导线由此计算指向环礁（atollCenter）的方向。
+      ChartRenderer.drawTaskForceMarker(ctx, { x: px, y: py, callsign: short, courseDeg: tf.course }, this.width, this.height);
 
       // Task 7.9：旧航母图标/标签/航向箭头由舰队标记取代（保留代码备查）
       // // Try SVG icon first

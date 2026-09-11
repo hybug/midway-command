@@ -227,3 +227,11 @@ def test_chart_atoll_fix_markers():
     assert "ry * 0.32" in js, "沙岛未下移避让坐标行"
     assert "rect(c.x - rx * 1.5" in js, "SW 海面斜线未铺开"
     assert "translate(2, 3)" in js, "沙环投影缺失"
+
+
+# ── 保真度修正 · T3：舰队引导线指向环礁 + 箭头 ──
+
+def test_task_force_leader_arrow():
+    js = (BASE / "static" / "js" / "chartRenderer.js").read_text()
+    assert "atollCenter(w, h)" in js and "closePath" in js, "引导线未指向环礁或缺箭头"
+    assert "(tf.x - 60, tf.y + 18)" not in js, "写死方向未移除"

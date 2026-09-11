@@ -257,7 +257,7 @@ function drawScaleBar(ctx, w, h) {
 
 // Task 7.9：ENT/HOR 舰队标记——光栅计数牌优先（Phase 6 治理产物），缺失时矢量回退；
 // CSE 航向线与虚线引导线两模式共用（设计图：CSE 270° + 指向环礁的双虚线）
-function drawTaskForceMarker(ctx, tf) {
+function drawTaskForceMarker(ctx, tf, w, h) {
   const tag = getIcon(tf.callsign === 'ENT' ? 'fleet_tag_ent'
                     : tf.callsign === 'HOR' ? 'fleet_tag_hor' : 'fleet_counter');
   ctx.save();
@@ -283,11 +283,26 @@ function drawTaskForceMarker(ctx, tf) {
   ctx.fillStyle = CHART_STYLE.ink;
   ctx.font = `9px ${CHART_STYLE.fontTypewriter}`;
   ctx.fillText(`CSE ${Math.round(tf.courseDeg)}°`, tf.x + Math.cos(rad) * 38, tf.y + Math.sin(rad) * 38);
-  // 指向环礁方向的虚线引导线（设计图双虚线）
+  // 指向环礁的虚线引导线 + 箭头（保真度修正 T3：方向由 atollCenter 计算，替代写死偏移）
+  const ac = atollCenter(w, h);
+  const dx = ac.x - tf.x, dy = ac.y - tf.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len;
   ctx.setLineDash([3, 4]);
   ctx.strokeStyle = CHART_STYLE.inkFade;
   ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(tf.x, tf.y); ctx.lineTo(tf.x - 60, tf.y + 18); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(tf.x + ux * 12, tf.y + uy * 12);
+  ctx.lineTo(tf.x + ux * 64, tf.y + uy * 64);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(tf.x + ux * 68, tf.y + uy * 68);
+  ctx.lineTo(tf.x + ux * 58 - uy * 4, tf.y + uy * 58 + ux * 4);
+  ctx.lineTo(tf.x + ux * 58 + uy * 4, tf.y + uy * 58 - ux * 4);
+  ctx.closePath();
+  ctx.fillStyle = CHART_STYLE.inkFade;
+  ctx.fill();
   ctx.restore();
 }
 
