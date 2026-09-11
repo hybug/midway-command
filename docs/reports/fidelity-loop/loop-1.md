@@ -72,3 +72,14 @@
 - node --check：chartRenderer.js / mapRenderer.js / uiController.js / route_display.test.mjs 通过
 - pytest 全量：**272 passed 0 failed**（test_ui_assets.py 缓存 pin 同步 1780997993→1780997994；route_display 几何锚点按 F2 偏移同步）
 - 实拍：loop-1-after-1440.png / loop-1-after-1280.png（基线对照 loop-1-full-1440.png / loop-1-full-1280.png）；底栏接缝量化对比见 F5 行
+
+## L5 实施结果（实现者报告摘要）
+- F1–F10 全部实施；F5 根因推翻初判：竖缝系 vignette.svg 在 16:9 视口信箱化硬边（非 chart-light），改等效径向渐变，亮度台阶 67→10
+- 残留：F2 舰队标记 16px 错位对 63×64 牌不足（Loop 2 加大/横错）；F7 SAND ISLAND 文字 53px 溢出 42px 胶囊（Loop 2 缩字号/加宽）
+- 发现（未动）：绘制期 canvas 高度 ≈900 与布局高 776 的既有异常
+
+## L6 验收（控制者）
+- loop-1-after-1440.png 目检：F1/F3/F4/F5/F6/F8/F9 七项确认关闭；F2/F7 部分关闭（效果不足，转 Loop 2）
+- Fidelity：13.5/15（15 项表无级别变化；可读性/层次改善计入 DESIGN 维度，待 Loop 2 设计师复评）
+- 回归：批次 A 五项 + 批次 B 三质感保持 ✓；pytest 272 全绿
+- 提交：8df02c1 / add7a64 / c2b990b / 255c3f0 / 899d65f
