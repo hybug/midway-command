@@ -277,7 +277,7 @@ html, body {
 .npc-tab.active {
   color: var(--color-ink-main);
   border-bottom-color: var(--color-ink-main);
-  background: var(--color-paper-base);
+  /* 保真度修正 T4：底色移交 ::before 伪元素（Phase 8a 段），避免元素矩形底色从切角漏出 */
   font-weight: bold;
 }
 
@@ -449,17 +449,16 @@ html, body {
   gap: 2px;
   align-items: flex-end;
 }
-.npc-tab {
+/* 保真度修正 T4：底色移交 ::before 伪元素（isolation 隔免双底色），激活凸起增强 -6px + 投影加深 */
+.npc-tab { position: relative; isolation: isolate; background: transparent; border-bottom: none; }
+.npc-tab::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
   clip-path: polygon(0 100%, 0 6px, 6px 0, calc(100% - 6px) 0, 100% 6px, 100% 100%);
   background: var(--color-paper-dark);
-  border-bottom: none;
 }
-.npc-tab.active {
-  background: var(--color-paper-base);
-  transform: translateY(-3px);
-  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.2);
-}
-/* Phase 9.3：标签 hover 上浮 1px（:not(.active) 保证 active 态 -3px 上浮不被覆盖） */
+.npc-tab.active::before { background: var(--color-paper-base); }
+.npc-tab.active { transform: translateY(-6px); box-shadow: 0 -3px 6px rgba(0, 0, 0, 0.25); }
+/* Phase 9.3：标签 hover 上浮 1px（:not(.active) 保证 active 态 -6px 上浮不被覆盖） */
 .npc-tab:hover:not(.active) { transform: translateY(-1px); }
 
 /* ═══════════════════════════════════════════════════════

@@ -172,11 +172,11 @@ def test_input_bar_and_button_focus_styles():
 
 
 def test_index_html_cache_version_consistent():
-    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（保真度修正 A1 → 1780997989）。"""
+    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（保真度修正 A1 → 1780997989，T4 → 1780997990）。"""
     html = (BASE / "static" / "index.html").read_text()
     versions = set(re.findall(r'\?v=(\d+)', html))
     assert len(versions) == 1, f"index.html 缓存号不一致: {versions}"
-    assert versions == {"1780997989"}, f"index.html 缓存号未递增到 1780997989: {versions}"
+    assert versions == {"1780997990"}, f"index.html 缓存号未递增到 1780997990: {versions}"
 
 
 # ── Phase 9 · Task 9.2：电传打字 + 盖章动效 ──
@@ -206,11 +206,11 @@ def test_ui_controller_typewriter():
 # ── Phase 9 · Task 9.3：交互态打磨 ──
 
 def test_tab_hover_lift_style():
-    """NPC 标签 hover 上浮 1px，且不覆盖 active 态既有的 -3px 上浮。"""
+    """NPC 标签 hover 上浮 1px，且不覆盖 active 态既有的 -6px 上浮（保真度修正 T4 由 -3px 增强）。"""
     css = (BASE / "static" / "css" / "style.css").read_text()
     assert ".npc-tab:hover:not(.active) { transform: translateY(-1px); }" in css, \
-        "标签 hover 应上浮 1px（:not(.active) 防 -3px 被覆盖）"
-    assert "transform: translateY(-3px);" in css, "active 态 -3px 上浮必须保留"
+        "标签 hover 应上浮 1px（:not(.active) 防 -6px 被覆盖）"
+    assert "transform: translateY(-6px);" in css, "active 态 -6px 上浮必须保留（T4 凸起增强）"
 
 
 def test_map_renderer_hover_scale_redraw():
@@ -235,3 +235,12 @@ def test_task_force_leader_arrow():
     js = (BASE / "static" / "js" / "chartRenderer.js").read_text()
     assert "atollCenter(w, h)" in js and "closePath" in js, "引导线未指向环礁或缺箭头"
     assert "(tf.x - 60, tf.y + 18)" not in js, "写死方向未移除"
+
+
+# ── 保真度修正 · T4：标签激活凸起增强 ──
+
+def test_npc_tab_active_lift_enhanced():
+    """.npc-tab 段 isolation: isolate——底色移交 ::before 伪元素，激活凸起增强。"""
+    css = (BASE / "static" / "css" / "style.css").read_text()
+    npc_seg = css[css.rindex(".npc-tab {"):]
+    assert "isolation: isolate" in npc_seg, ".npc-tab 段缺 isolation: isolate（::before 双底色隔离）"
