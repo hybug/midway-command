@@ -26,18 +26,20 @@
 
 ## L4 修复清单（本轮实施）
 
-| # | 来源 | 条目 | 改法 |
-|---|------|------|------|
-| F1 | L2-A1 | 20nm 标注被环礁遮 | drawRangeRings：20nm 标注 y 移环下方 |
-| F2 | L2-A2 | 舰队标记重叠 | _drawOwnFleet 按索引 y 偏移 16px |
-| F3 | L2-A3 | 顶栏偏亮 | #topbar 叠暖色调层 |
-| F4 | L2-A4 | 沙环投影弱 | 投影 stroke 加深加粗 |
-| F5 | D-S-2 | 竖向接缝 x≈100 | 先诊断（chart-light 边缘 vs 纸纹接缝），对应羽化/遮罩 |
-| F6 | D-S-3 | ADVANCE 提权 | 墨色底反白，SITREP 维持次级 |
-| F7 | D-A-4 | 岛标签入胶囊 + EASTERN ISLAND 可见性 | drawIslands 文字基线对回胶囊内；EASTERN ISLAND 标注避开 HOR 遮挡位 |
-| F8 | D-A-5 | 空闲态红章 | 侧栏空态叠 secret_stamp（rotate -8°, multiply, .85） |
-| F9 | D-B-1 升 A | 底栏甲板读数裁切 | renderDashboard 缩短格式 + CSS flex/nowrap |
-| F10 | 批次C收口 | 审计表回填 | route-module-audit.md 缺口标记已覆盖 |
+| # | 来源 | 条目 | 改法 | 结果 |
+|---|------|------|------|------|
+| F1 | L2-A1 | 20nm 标注被环礁遮 | drawRangeRings：20nm 标注 y 移环下方 | ✅ 关闭（L5/L6） |
+| F2 | L2-A2 | 舰队标记重叠 | _drawOwnFleet 按索引 y 偏移 16px | 部分——16px 对 63×64 牌不足，转 Loop 2（Loop 2 对角错开收口，Loop 3 F1 再修 ENT 压标题） |
+| F3 | L2-A3 | 顶栏偏亮 | #topbar 叠暖色调层 | ✅ 关闭（L5/L6） |
+| F4 | L2-A4 | 沙环投影弱 | 投影 stroke 加深加粗 | ✅ 关闭（L5/L6） |
+| F5 | D-S-2 | 竖向接缝 x≈100 | 先诊断（chart-light 边缘 vs 纸纹接缝），对应羽化/遮罩 | ✅ 关闭（L5 根因推翻初判：vignette.svg 16:9 信箱化硬边，改 CSS 径向渐变） |
+| F6 | D-S-3 | ADVANCE 提权 | 墨色底反白，SITREP 维持次级 | ✅ 关闭（L5/L6） |
+| F7 | D-A-4 | 岛标签入胶囊 + EASTERN ISLAND 可见性 | drawIslands 文字基线对回胶囊内；EASTERN ISLAND 标注避开 HOR 遮挡位 | 部分——SAND ISLAND 字宽溢出胶囊，转 Loop 2 |
+| F8 | D-A-5 | 空闲态红章 | 侧栏空态叠 secret_stamp（rotate -8°, multiply, .85） | ✅ 关闭（L5/L6） |
+| F9 | D-B-1 升 A | 底栏甲板读数裁切 | renderDashboard 缩短格式 + CSS flex/nowrap | ✅ 关闭（L5/L6） |
+| F10 | 批次C收口 | 审计表回填 | route-module-audit.md 缺口标记已覆盖 | ✅ 关闭（L5） |
+
+> 结果列按 L5 实施与 L6 验收回填：8 项关闭，F2/F7 部分关闭转 Loop 2（F2 由 Loop 2 对角错开收口、Loop 3 F1 再修 ENT 压标题）。
 
 ## 前轮回归检查
 - Loop 前置：批次 A 五项修复复验（罗盘/岛体避让/SW斜线/25nm 错位/引导线方向）——loop-1 实拍全部保持 ✓；批次 B 三质感保持 ✓。

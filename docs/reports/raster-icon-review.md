@@ -117,3 +117,23 @@ MANUAL：≥2 个面积占比 >20% 的连通域 → 合并切割嫌疑，人工�
 - **Task 6.2**：优先处理 3.2 的 5 枚；`aircraft_14` 的分拆建议 x=110（名牌区约占左半）；`fleet_24` 玫瑰本体约在上部 0–40% 高度；`fleet_25` 尺子本体约在下部 8%–100%。（已完成：实测中缝为 x=103–126 / x=106–128，最终分割坐标见 3.2.1）
 - **Task 6.3**：`curate_icons.py` 的 TARGETS 建议在原 4 项基础上扩为：`fleet_tag_ent`（分拆）、`fleet_tag_hor`（aircraft_15）、`fleet_tag_cv`（aircraft_16）、`fleet_tag_bb`（aircraft_17）、`enemy_tag_q`（aircraft_18）、`aircraft_topdown`（分拆）、`compass_raster`（text_style_20）。（已完成，见 `docs/assets/curate_icons.py`）
 - **Task 7.9**：舰队标记的 callsign → 计数牌映射可升级为 ENT/HOR/CV/BB 四牌齐备。
+
+## 六、AI 生成素材登记（保真度修正批次 B，2026-09-12）
+
+### 6.1 来源
+
+| 素材 | 文件 | 用途 | 生成方式 |
+|------|------|------|---------|
+| P1 | `docs/assets/ai_textures/P1_paper.png` | 旧纸纹理 → `static/assets/textures/paper_tex.jpg`（B1，Canvas repeat 平铺） | 控制者用计划提示词（`docs/plans/ui-fidelity-fix-plan.md` 批次 B）交 AI 图像模型生成 |
+| P2 | `docs/assets/ai_textures/P2_wood.png` | 木纹 → `static/assets/textures/wood_tex.png`（B2，data-URI 内嵌木尺） | 同上 |
+| P3 | `docs/assets/ai_textures/P3_compass.png` | 雕刻罗盘 → `static/assets/ui/icons/compass_engraved.png`（B3，亮度反转 alpha 抠图，`cut_compass.py`） | 同上 |
+
+### 6.2 归一参数（`docs/assets/normalize_texture.py`，通道缩放法，可重复运行）
+
+- **paper**：通道缩放归一至目标色 (245, 237, 214)，实测 R/G/B scale **1.0284 / 1.0850 / 1.1860**；随后 `make_seamless`（band=100，边缘与对侧镜像平方衰减渐变缝补，wrap 接缝差 → 0）→ `paper_tex.jpg`（quality 85）。
+- **wood**：上下各裁边 **6%**（`crop=(0.0, 0.06, 0.0, 0.06)`，裁除源图边缘发暗/装裱痕）→ 通道缩放归一至目标色 (201, 167, 106)，实测 R/G/B scale **1.0285 / 1.3208 / 2.0567** → `wood_tex.png`。
+- **compass（P3）**：不走色温归一，走 `cut_compass.py` 亮度反转抠图（保留细阴线完整），入库前过 `quality_gate.py` 质量门。
+
+### 6.3 许可证结论
+
+- P1/P2/P3 均为**本项目委托 AI 模型按自拟提示词生成**的原创素材，非第三方版权图库/网图抓取，**无第三方许可问题**；按计划素材决策树（SVG → 库内光栅 → AI 生成 → 网图仅 CC0）属第 3 档合规路径。归一/抠图产物随之，仅入库 `static/assets/` 使用。
