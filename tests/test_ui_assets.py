@@ -177,11 +177,18 @@ def test_input_bar_and_button_focus_styles():
 
 
 def test_index_html_cache_version_consistent():
-    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（保真度修正 T4 → 1780997990，B1 → 1780997991，B3 → 1780997992，C4 → 1780997993，loop1 L4 → 1780997994，loop2 L4 → 1780997995，loop3 F1-F5 → 1780997996）。"""
+    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（保真度修正 T4 → 1780997990，B1 → 1780997991，B3 → 1780997992，C4 → 1780997993，loop1 L4 → 1780997994，loop2 L4 → 1780997995，loop3 F1-F5 → 1780997996，终审修复 → 1780997997）。"""
     html = (BASE / "static" / "index.html").read_text()
     versions = set(re.findall(r'\?v=(\d+)', html))
     assert len(versions) == 1, f"index.html 缓存号不一致: {versions}"
-    assert versions == {"1780997996"}, f"index.html 缓存号未递增到 1780997996: {versions}"
+    assert versions == {"1780997997"}, f"index.html 缓存号未递增到 1780997997: {versions}"
+    # 防再漂移：svgLoader.js 内全部带 ?v= 的资源 URL，版本号必须与 index.html 现值一致
+    # （历史漂移：paper_tex ?v=1780997995 与 index.html 1780997996 脱钩，见终审修复项 1）
+    loader = (BASE / "static" / "js" / "svgLoader.js").read_text()
+    loader_versions = set(re.findall(r'\?v=(\d+)', loader))
+    assert loader_versions, "svgLoader.js 未找到带 ?v= 的资源 URL"
+    assert loader_versions == versions, \
+        f"svgLoader.js 资源版本 {loader_versions} 与 index.html 缓存号 {versions} 不一致（漂移）"
 
 
 # ── 保真度修正 · B2：木纹接入木尺（data-URI 内嵌） ──

@@ -28,14 +28,14 @@ const ICON_FILES = {
   // 设计图资产文件（docs/plans/ui-replication-plan.md Phase 2–5）
   paper_base: '/static/assets/ui/paper_base.svg',
   noise: '/static/assets/ui/noise.svg',
-  vignette: '/static/assets/ui/vignette.svg',
+  vignette: '/static/assets/ui/vignette.svg', // 已由 Loop1 CSS 渐变取代，保留为回退
   light_falloff: '/static/assets/ui/light_falloff.svg',
   scratches: '/static/assets/ui/scratches.svg',
   compass: '/static/assets/ui/compass.svg',
   enemy_marker: '/static/assets/ui/enemy_marker.svg',
   secret_stamp: '/static/assets/ui/secret_stamp.svg',
   // 保真度修正 B1：AI 旧纸纹理（docs/assets/normalize_texture.py 归一产物，Canvas repeat 平铺）
-  paper_tex: '/static/assets/textures/paper_tex.jpg?v=1780997995',
+  paper_tex: '/static/assets/textures/paper_tex.jpg?v=1780997997',
 };
 
 let iconsLoaded = false;

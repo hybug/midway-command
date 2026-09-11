@@ -17,7 +17,13 @@ export function makeRecorderCtx(width = 1440, height = 900) {
       t[prop] = (...args) => { calls.push({ name: String(prop), args }); return undefined; };
       return t[prop];
     },
-    set(t, prop, value) { calls.push({ name: `set:${String(prop)}`, args: [value] }); t[`set:${String(prop)}`] = value; return true; },
+    set(t, prop, value) {
+      calls.push({ name: `set:${String(prop)}`, args: [value] });
+      // 值同时存 t[prop]：get 陷阱 `prop in t` 命中后原样回读（ctx.fillStyle 等属性赋值可读回）；
+      // 旧实现存 t[`set:${prop}`] 键名错位，回读永远 undefined。calls 记录行为不变。
+      t[prop] = value;
+      return true;
+    },
   });
 }
 

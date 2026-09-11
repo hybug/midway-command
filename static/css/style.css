@@ -378,7 +378,7 @@ html, body {
   align-items: center;
   justify-content: center;
   /* fix Loop3-F3: 纸卡物件感加深一档（设计评审 D-A#1）：投影加强 + brightness 压暗 */
-  box-shadow: 0 2px 6px rgba(60, 45, 20, .25);
+  box-shadow: 0 2px 6px rgba(42, 34, 24, .25);
   filter: brightness(.97) drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.18));
 }
 .empty-card .chat-empty { padding: 0; }
