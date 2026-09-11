@@ -614,9 +614,11 @@ class MapRenderer {
       const [px, py] = this._hexToPixel(q, r);
       const short = c.name.includes('Enterprise') ? 'ENT' : 'HOR';
 
-      // fix L4-F2: 两航母同位时标记完全重叠——按舰队数组索引整体上移 16px 错开
-      // （i=0 ENT 减 16；y 进入标记对象，CSE 标注与引导线随之整体偏移）
-      const my = i === 0 ? py - 16 : py;
+      // fix Loop2-F1: 两航母同位时标记仍大面积重叠（16px 垂直错位对 63×64 计数牌不足）——
+      // 对角错开加大：i=0 偏移 (x-14, y-28)、i=1 偏移 (x+14, y+0)。
+      // x/y 进入标记对象，计数牌、CSE 标注与引导线随之整体偏移（与 Loop1 y 偏移同位置实现）
+      const mx = i === 0 ? px - 14 : px + 14;
+      const my = i === 0 ? py - 28 : py;
 
       // Task 7.9：舰队标记改由 ChartRenderer.drawTaskForceMarker 绘制
       // （光栅计数牌 ENT/HOR + CSE 航向线 + 虚线引导线）。
@@ -626,7 +628,7 @@ class MapRenderer {
       // 引导线由此计算指向环礁（atollCenter）的方向。
       // fix: 加传 ox/oy 舰队居中平移量——atollCenter 是屏幕系，标记绘制在
       // translate(ox,oy) 本地系，不换算方向会反向。
-      ChartRenderer.drawTaskForceMarker(ctx, { x: px, y: my, callsign: short, courseDeg: tf.course }, this.width, this.height, ox, oy);
+      ChartRenderer.drawTaskForceMarker(ctx, { x: mx, y: my, callsign: short, courseDeg: tf.course }, this.width, this.height, ox, oy);
 
       // Task 7.9：旧航母图标/标签/航向箭头由舰队标记取代（保留代码备查）
       // // Try SVG icon first

@@ -142,8 +142,11 @@ def test_ui_controller_design_copy():
 def test_msg_intel_card_styles():
     """聊天卡复刻：.msg 亮色情报卡背景、.msg-classified 暗色卡 + 暗色正文、.msg-stamp 印章。"""
     css = (BASE / "static" / "css" / "style.css").read_text()
-    assert "url('/static/assets/ui/intel_card_light.svg')" in css, \
-        "style.css 缺少 .msg 亮色情报卡背景"
+    # fix Loop2-F3: B1 后 .msg 亮卡实为 paper_tex 平铺（intel_card_light.svg 仅存于回退注释，
+    # 原断言空转）——断言收紧到 .msg 规则块内，且要求 background-repeat: repeat。
+    msg_seg = css[css.rindex(".msg {"):]
+    assert "url('/static/assets/textures/paper_tex.jpg') repeat" in msg_seg, \
+        ".msg 规则缺少 paper_tex.jpg 亮色卡背景（repeat 平铺）"
     assert "url('/static/assets/ui/intel_card_dark.svg')" in css, \
         "style.css 缺少 .msg-classified 暗色情报卡背景"
     assert ".msg-classified .msg-text" in css, "style.css 缺少暗色卡正文覆盖规则"
@@ -174,11 +177,11 @@ def test_input_bar_and_button_focus_styles():
 
 
 def test_index_html_cache_version_consistent():
-    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（保真度修正 T4 → 1780997990，B1 → 1780997991，B3 → 1780997992，C4 → 1780997993，loop1 L4 → 1780997994）。"""
+    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（保真度修正 T4 → 1780997990，B1 → 1780997991，B3 → 1780997992，C4 → 1780997993，loop1 L4 → 1780997994，loop2 L4 → 1780997995）。"""
     html = (BASE / "static" / "index.html").read_text()
     versions = set(re.findall(r'\?v=(\d+)', html))
     assert len(versions) == 1, f"index.html 缓存号不一致: {versions}"
-    assert versions == {"1780997994"}, f"index.html 缓存号未递增到 1780997994: {versions}"
+    assert versions == {"1780997995"}, f"index.html 缓存号未递增到 1780997995: {versions}"
 
 
 # ── 保真度修正 · B2：木纹接入木尺（data-URI 内嵌） ──
@@ -272,5 +275,47 @@ def test_range_ring_25nm_label_offset():
 def test_npc_tab_active_lift_enhanced():
     """.npc-tab 段 isolation: isolate——底色移交 ::before 伪元素，激活凸起增强。"""
     css = (BASE / "static" / "css" / "style.css").read_text()
-    npc_seg = css[css.rindex(".npc-tab {"):]
+    # fix Loop2-F7: 文件尾新增 @media 断点也含 ".npc-tab {"，锚点改钉 Phase 8a 块签名
+    npc_seg = css[css.rindex(".npc-tab { position: relative"):]
     assert "isolation: isolate" in npc_seg, ".npc-tab 段缺 isolation: isolate（::before 双底色隔离）"
+
+
+# ── 保真度修正 · Loop2 L4：F1–F9 修复守卫 ──
+
+def test_loop2_fidelity_fix_markers():
+    """Loop2 L4 静态守卫：标记对角错开/岛标签胶囊/细网/纸舌造型/空态纸卡/底栏层次/窄屏断点。"""
+    chart = (BASE / "static" / "js" / "chartRenderer.js").read_text()
+    # F2: SAND ISLAND 字号 7px + 胶囊加宽（文字不出框）
+    assert "Math.max(rx * 0.34, 62)" in chart, "沙岛胶囊宽未加宽"
+    assert "ctx.font = `7px ${CHART_STYLE.fontTypewriter}`" in chart, "SAND ISLAND 标签未缩到 7px"
+    # F8: 0.25° 细网用 gridLineFaint，0.5° 主网 gridLine 原色保留
+    assert "gridLineFaint: 'rgba(160,140,110,0.18)'" in chart, "缺 gridLineFaint 细网色"
+    assert "gridLine: 'rgba(160,140,110,0.35)'" in chart, "0.5° 主网原色不得改动"
+    assert "lat += 0.25" in chart and "lon += 0.25" in chart, "经纬网未加 0.25° 细网"
+    assert "lat += 0.5" in chart and "lon += 0.5" in chart, "0.5° 主网须保留"
+    map_js = (BASE / "static" / "js" / "mapRenderer.js").read_text()
+    # F1: 舰队标记对角错开（i=0: x-14/y-28，i=1: x+14/y+0）
+    assert "px - 14 : px + 14" in map_js and "py - 28 : py" in map_js, "舰队标记未对角错开"
+    ui = (BASE / "static" / "js" / "uiController.js").read_text()
+    # F5: 空态包 intel_card 纸卡；F6: 空态读数 dash-empty
+    assert 'class="empty-card"' in ui, "空态未包 intel_card 纸卡"
+    assert "_setDashEmpty('d-scout'" in ui and "_setDashEmpty('d-enemy'" in ui, \
+        "底栏空态读数未接 dash-empty 弱化"
+    css = (BASE / "static" / "css" / "style.css").read_text()
+    # F4: 纸舌圆角造型 + 非激活压暗下沉（clip-path 切角移除）
+    assert "border-radius: 4px 4px 0 0;" in css, "纸舌未改圆角造型"
+    assert "clip-path: polygon(0 100%" not in css, "纸舌 clip-path 切角未移除"
+    before_seg = css[css.rindex(".npc-tab::before"):]
+    assert "transform: translateY(2px)" in before_seg, "非激活纸舌未下沉 2px"
+    assert ".npc-tab.active::before { background: var(--color-paper-base); transform: none; }" in css, \
+        "激活纸舌未复位（压暗下沉不得影响 active）"
+    # F5: 空态纸卡样式（intel_card_light + 宽 88% + SECRET 章移卡右上）
+    empty_seg = css[css.rindex(".empty-card {"):]
+    assert "intel_card_light.svg" in empty_seg and "width: 88%" in empty_seg, "空态纸卡样式缺失"
+    idle_seg = css[css.rindex(".idle-stamp {"):]
+    assert "position: absolute" in idle_seg and "right: 8px" in idle_seg, "SECRET 章未移纸卡右上角"
+    # F6: .dash-label 加深一档
+    assert "color: var(--color-ink-fade)" in css[css.rindex(".dash-label {"):], \
+        ".dash-label 未加深为 ink-fade"
+    # F7: ≤1360px 断点
+    assert "@media (max-width: 1360px)" in css, "缺 ≤1360px 窄屏断点"

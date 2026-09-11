@@ -92,9 +92,12 @@ class UIController {
     let html = `<div class="section-header section-${section.toLowerCase()}">${section}</div>`;
 
     if (!messages || messages.length === 0) {
-      // fix L4-F8: 空态叠 SECRET 红章（盖章语义：等待新指令）
-      html += '<img src="/static/assets/ui/secret_stamp.svg" class="idle-stamp" alt="">';
-      html += '<div class="chat-empty">等待指令（AWAITING ORDERS）...</div>';
+      // fix L4-F8 → Loop2-F5: 空态包 intel_card 纸卡（宽 88% 居中、chat-log 空态时垂直居中），
+      // SECRET 红章移到卡片右上角（.idle-stamp 改 absolute 定位）
+      html += `<div class="empty-card">
+        <img src="/static/assets/ui/secret_stamp.svg" class="idle-stamp" alt="">
+        <div class="chat-empty">等待指令（AWAITING ORDERS）...</div>
+      </div>`;
       container.innerHTML = html;
       return;
     }
@@ -204,6 +207,8 @@ class UIController {
     } else {
       this._setText('d-scout', '无');
     }
+    // fix Loop2-F6: 空态读数（「无/暂无」）60% 透明斜体
+    this._setDashEmpty('d-scout', scouts.length === 0);
 
     // Enemy
     const enemyEl = document.getElementById('d-enemy');
@@ -214,6 +219,7 @@ class UIController {
       this._setText('d-enemy', '暂无');
       if (enemyEl) enemyEl.style.color = '';
     }
+    this._setDashEmpty('d-enemy', state.known_enemy.length === 0);
 
     // AP
     this._setText('ap-current', state.ap.current);
@@ -310,6 +316,12 @@ class UIController {
   _setText(id, text) {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
+  }
+
+  // fix Loop2-F6: 底栏空态读数弱化——空值加 .dash-empty（60% 透明斜体），有值移除
+  _setDashEmpty(id, isEmpty) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('dash-empty', isEmpty);
   }
 }
 

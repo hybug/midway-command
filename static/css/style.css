@@ -216,7 +216,7 @@ html, body {
 
 .dash-label {
   font-size: 10px;
-  color: var(--color-ink-faint);
+  color: var(--color-ink-fade); /* fix Loop2-F6: 由 ink-faint 加深一档（标签更醒目） */
   letter-spacing: 1px;
   display: block;
 }
@@ -227,6 +227,8 @@ html, body {
   display: block;
 }
 .dash-val-red { color: var(--color-enemy-red); }
+/* fix Loop2-F6: 底栏空态读数弱化——60% 透明斜体（「无/暂无」，renderDashboard 空值时加类） */
+.dash-empty { opacity: 0.6; font-style: italic; }
 
 #controls {
   display: flex;
@@ -264,7 +266,7 @@ html, body {
   padding: 8px 4px;
   border: none;
   background: transparent;
-  color: var(--color-ink-fade);
+  color: var(--color-ink-main); /* fix Loop2-F4: 字色墨（原 ink-faint 偏灰） */
   font-family: var(--font-typewriter);
   font-size: 10px;
   letter-spacing: 1px;
@@ -350,21 +352,35 @@ html, body {
 }
 
 .chat-empty {
-  color: var(--color-ink-faint);
+  color: var(--color-ink-fade);
   font-style: italic;
   text-align: center;
-  padding: 60px 20px;
   letter-spacing: 2px;
   font-size: 12px;
 }
 
-/* fix L4-F8: 侧栏空态 SECRET 红章（盖章语义：等待新指令） */
+/* fix Loop2-F5: 空态「等待指令」包 intel_card 纸卡——宽 88% 水平居中；
+   chat-log 仅在空态（:has(.empty-card)）转 flex，margin:auto 使卡片垂直居中 */
+#chat-log:has(.empty-card) { display: flex; flex-direction: column; }
+.empty-card {
+  position: relative;
+  background: url('/static/assets/ui/intel_card_light.svg') center / 100% 100% no-repeat;
+  width: 88%;
+  margin: auto;
+  padding: 38px 16px 30px;
+  filter: drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.18));
+}
+.empty-card .chat-empty { padding: 0; }
+
+/* fix L4-F8 → Loop2-F5: 侧栏空态 SECRET 红章——移到纸卡右上角（absolute 定位） */
 .idle-stamp {
+  position: absolute;
+  top: 6px;
+  right: 8px;
   width: 96px;
   transform: rotate(-8deg);
   mix-blend-mode: multiply;
   opacity: .85;
-  margin: 18px auto 4px;
   display: block;
 }
 
@@ -479,10 +495,12 @@ html, body {
 .npc-tab { position: relative; isolation: isolate; background: transparent; border-bottom: none; }
 .npc-tab::before {
   content: ""; position: absolute; inset: 0; z-index: -1;
-  clip-path: polygon(0 100%, 0 6px, 6px 0, calc(100% - 6px) 0, 100% 6px, 100% 100%);
-  background: var(--color-paper-dark);
+  /* fix Loop2-F4: 纸舌造型对照 tab_bg.svg——clip-path 切角改圆角纸舌（上角 4px 圆角） */
+  border-radius: 4px 4px 0 0;
+  background: var(--color-paper-edge); /* #d4c8a8 非激活压暗一档（原 paper-dark） */
+  transform: translateY(2px); /* 非激活纸舌下沉 2px（active 态由下条复位，不受影响） */
 }
-.npc-tab.active::before { background: var(--color-paper-base); }
+.npc-tab.active::before { background: var(--color-paper-base); transform: none; }
 .npc-tab.active { transform: translateY(-6px); box-shadow: 0 -3px 6px rgba(0, 0, 0, 0.25); }
 /* Phase 9.3：标签 hover 上浮 1px（:not(.active) 保证 active 态 -6px 上浮不被覆盖） */
 .npc-tab:hover:not(.active) { transform: translateY(-1px); }
@@ -588,3 +606,12 @@ html, body {
   to { transform: translateY(0) rotate(0); opacity: 1; }
 }
 .order-note { animation: paperIn 0.25s ease-out both; }
+
+/* ═══════════════════════════════════════════════════════
+   Loop2-F7 — ≤1360px 窄屏断点：NPC 标签缩字号收边距
+   （设计建议 11→10px / 8→5px；现行基线已为 10px/4px，
+   故断点内再收一档 9px/3px，保 1280 宽度下标签不溢出）
+   ═══════════════════════════════════════════════════════ */
+@media (max-width: 1360px) {
+  .npc-tab { font-size: 9px; padding: 8px 3px; }
+}

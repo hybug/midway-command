@@ -10,6 +10,7 @@ const CHART_STYLE = {
   lagoon: '#b8d4c8', reef: '#8aaa98', sand: '#d4c4a0', eastern: '#c8b890',
   enemyRed: '#8b2500',
   gridLine: 'rgba(160,140,110,0.35)',
+  gridLineFaint: 'rgba(160,140,110,0.18)', // fix Loop2-F8: 0.25° 细网（alpha 减半，绘图纸质感）
   fontTypewriter: "'Special Elite', monospace",
 };
 
@@ -72,12 +73,29 @@ function fmtLon(lon) {
 }
 
 // Task 7.4：0.5° 虚线经纬网 + 纬度（左）/经度（顶）度分标注
+// fix Loop2-F8: 0.25° 细网垫底（gridLineFaint alpha 减半、无标注，绘图纸质感），
+// 0.5° 主网保持 gridLine 原色与度分标注
 function drawLatLonGrid(ctx, w, h) {
   ctx.save();
+  ctx.lineWidth = 1;
+  // 细网：0.25° 步进，跳过整半度线（由主网绘制）；(v*2)%1===0 即 0.5° 的倍数
+  ctx.strokeStyle = CHART_STYLE.gridLineFaint;
+  ctx.setLineDash([4, 4]);
+  for (let lat = 26.25; lat <= 30.01; lat += 0.25) {
+    if ((lat * 2) % 1 === 0) continue;
+    const y = latLonToChartPx(lat, CHART_CENTER.lon, w, h).y;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+  for (let lon = -183; lon <= -172; lon += 0.25) {
+    if (lon < -180 || (lon * 2) % 1 === 0) continue;
+    const x = latLonToChartPx(CHART_CENTER.lat, lon, w, h).x;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  // 主网：0.5° 步进 + 度分标注（原样保留）
   ctx.strokeStyle = CHART_STYLE.gridLine;
   ctx.fillStyle = CHART_STYLE.inkFade;
   ctx.font = `9px ${CHART_STYLE.fontTypewriter}`;
-  ctx.lineWidth = 1;
   for (let lat = 26.0; lat <= 30.01; lat += 0.5) {
     const y = latLonToChartPx(lat, CHART_CENTER.lon, w, h).y;
     ctx.setLineDash([4, 4]);
@@ -129,13 +147,17 @@ function drawIslands(ctx, c, rx, ry) {
   ctx.font = `8px ${CHART_STYLE.fontTypewriter}`;
   // SAND ISLAND — 环礁西侧圆角矩形（下移避让坐标行）
   const sx = c.x - rx * 0.60, sy = c.y + ry * 0.32;
+  // fix Loop2-F2: SAND ISLAND 文字溢出胶囊——字号 8→7px，胶囊宽加宽到至少 62px（1440 布局实测）
+  const sandW = Math.max(rx * 0.34, 62);
   ctx.fillStyle = CHART_STYLE.paperDark;
   ctx.strokeStyle = CHART_STYLE.ink;
-  roundRect(ctx, sx, sy, rx * 0.34, ry * 0.16, 3);
+  roundRect(ctx, sx, sy, sandW, ry * 0.16, 3);
   ctx.fill(); ctx.stroke();
   ctx.fillStyle = CHART_STYLE.ink;
   // fix L4-F7: 标签基线对回胶囊内（垂直居中于圆角矩形；原画在框外下方成空框）
+  ctx.font = `7px ${CHART_STYLE.fontTypewriter}`;
   ctx.fillText(CHART_LABELS.sandIsland, sx + 4, sy + ry * 0.16 * 0.72);
+  ctx.font = `8px ${CHART_STYLE.fontTypewriter}`;
   // EASTERN ISLAND — 东南侧三角形 + 三条交叉跑道
   const ex = c.x + rx * 0.28, ey = c.y + ry * 0.52, s = rx * 0.26;
   ctx.beginPath();
