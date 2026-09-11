@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development（每任务派发实现子代理 + 任务评审，本轮执行的主框架）。完成声明前遵循 superpowers:verification-before-completion（先验证后声明）；终验走 superpowers:requesting-code-review 的全分支审查；Loop 中遇缺陷先 superpowers:systematic-debugging 再修。本计划 v3 取代 v2。
 
-**Goal:** 修复实拍对照发现的 7 处真实差距并系统性收敛：批次 A（SVG/程序化，5 任务）→ 批次 B（AI 生成图集成，4 任务）→ **批次 C（航线模块单元测试与问题修复：舰队航线运动学 + 飞机航线生成/拦截 + JS 绘制守卫，4 任务）**→ **Loop 模式（「实拍对照→差距分级→设计评审→方案→实施」闭环 ≥5 轮）**→ 终验（全分支审查+修复波次）。总执行工时**自下而上核算 ≥13.7 小时**（见工作量核算表），并有预算保护条款兜底。
+**Goal:** 修复实拍对照发现的 7 处真实差距并系统性收敛：批次 A（SVG/程序化，5 任务）→ 批次 B（AI 生成图集成，4 任务）→ **批次 C（航线模块单元测试与问题修复：舰队航线运动学 + 飞机航线生成/拦截 + UI 显示一致性——「舰队与机群是否按代码逻辑的航线刷新显示」，5 任务）**→ **Loop 模式（「实拍对照→差距分级→设计评审→方案→实施」闭环 ≥5 轮）**→ 终验（全分支审查+修复波次）。总执行工时**自下而上核算 ≥14.7 小时**（见工作量核算表），并有预算保护条款兜底。
 
 **Architecture:** 零新增依赖（Pillow/numpy 已在 .venv）。批次 A 修订 chartRenderer.js/style.css/svgLoader.js；批次 B 新增 `static/assets/textures/`（归一化 AI 纹理）与 `tests/test_texture_assets.py` 质量门，木纹以 data-URI 内嵌 ruler.svg，雕刻罗盘走「亮度反转 alpha」抠图链。每任务走「红测→实现→转绿→目检→**任务评审**→提交」六步，评审不合格进修复环（≤5 轮，沿用子代理驱动纪律）。
 
@@ -32,10 +32,10 @@
 | R0 基线与纹理守卫 | 3 | 10–25 min | **0.8h** |
 | 批次 A（SVG 修正） | 5 | 20–35 min | **2.2h** |
 | 批次 B（AI 图集成） | 4 | 30–45 min（含管线脚本与抠图链） | **2.4h** |
-| 批次 C（航线模块单测与修复） | 4 | 25–35 min（含缺口审计与 TDD） | **2.0h** |
+| 批次 C（航线模块单测与修复） | 5 | 25–40 min（含缺口审计、Canvas 录制器显示一致性测试） | **3.0h** |
 | Loop ×5（每轮 L1–L6） | 5 轮 | 60–75 min/轮（实拍对照 15 + 设计评审 12 + 方案 10 + 实施 20–30 + 存档评审 10） | **5.3h** |
 | F 终验（全分支审查+修复波次+报告） | 3 | — | **1.0h** |
-| **合计** | | | **≥13.7h** ✓ |
+| **合计** | | | **≥14.7h** ✓ |
 
 **预算保护条款**：若所有 S/A 级差距提前清零且总耗时 <10h，则 Loop 自动加深（第 6、7 轮…），**B 级清单在保护期内解禁为可修**，直至工时达 10h 下限或清单彻底枯竭（枯竭须逐项核对表证明）。
 
@@ -45,7 +45,7 @@
 R0 基线与纹理守卫（0.8h）
 批次 A（SVG 修正，2.2h）：T0 罗盘回归验证 → T1 环礁三连修 → T2 25nm 环 → T3 引导线箭头 → T4 标签凸起
 批次 B（AI 图，2.4h）：B0 纹理管线与守卫 → B1 纸张 → B2 木纹 → B3 雕刻罗盘
-批次 C（航线模块单测与修复，2.0h）：C0 缺口审计 → C1 舰队航线 → C2 飞机航线 → C3 绘制守卫与修复
+批次 C（航线模块单测与修复，3.0h）：C0 缺口审计 → C1 舰队航线 → C2 飞机航线 → C3 显示一致性（Canvas 录制器）→ C4 刷新链路与实拍修复
 Loop ×5（5.3h）：L1 实拍 → L2 对照分级 → L3 设计评审（设计师 agent）→ L4 方案 → L5 实施 → L6 存档（预算保护可加深）
 F 终验（1.0h）：F1 全分支审查 → F2 修复波次+复审 → F3 报告/台账收口
 ```
@@ -406,9 +406,9 @@ print("compass_engraved.png", out.size)
 
 ---
 
-## 批次 C — 航线模块单元测试与问题修复（舰队航线 + 飞机航线，2.0h）
+## 批次 C — 航线模块单元测试与问题修复（舰队航线 + 飞机航线 + UI 显示一致性，3.0h）
 
-> 航线模块分布（已勘测）：**Python 运动学核心**——`src/entities.py` `calculate_new_position`/`update_entity_position`/`update_all_positions`（舰队航线移动）、`src/mission.py` `calculate_intercept`（打击拦截解算）、`src/scouting.py` `calculate_bearing`/`calculate_distance_nm`/`in_sector`/`generate_sector_route`/`generate_expanding_square_route`/`generate_parallel_route`/`_bearing_distance_to_position`（飞机航线生成）；**JS 绘制层**——`mapRenderer.js` `_drawScoutAircraft`/`_drawSearchSectors`/`_drawPendingRecon`、`chartRenderer.js` `drawTaskForceMarker`（CSE 航向线）。纪律：单测任务严格 superpowers:test-driven-development（红→绿→重构）；修复任务先 superpowers:systematic-debugging（四阶段：重现→隔离→根因→修复+回归测试），禁止盲改。
+> 航线模块分布（已勘测）：**Python 运动学核心**——`src/entities.py` `calculate_new_position`/`update_entity_position`/`update_all_positions`（舰队航线移动）、`src/mission.py` `calculate_intercept`（打击拦截解算）、`src/scouting.py` `calculate_bearing`/`calculate_distance_nm`/`in_sector`/`generate_sector_route`/`generate_expanding_square_route`/`generate_parallel_route`/`_bearing_distance_to_position`（飞机航线生成）；**JS 绘制层**——`mapRenderer.js` `_drawScoutAircraft`/`_drawSearchSectors`/`_drawPendingRecon`、`chartRenderer.js` `drawTaskForceMarker`（CSE 航向线）。纪律：单测任务严格 superpowers:test-driven-development（红→绿→重构）；修复任务先 superpowers:systematic-debugging（四阶段：重现→隔离→根因→修复+回归测试），禁止盲改。**本批重心（控制者明示）：C3/C4 的 UI 显示一致性——舰队与机群必须按代码逻辑的航线刷新显示，测的是「画布实际绘制」而非「代码看起来对」。**
 
 ### Task C0: 航线模块覆盖度缺口审计
 
@@ -518,23 +518,174 @@ class TestInterceptKinematics:
 - [ ] 红→（修复）→绿；任何 FAIL 走 systematic-debugging 并以本测试为回归。Commit `test: 飞机航线生成与拦截解算单元测试`（修复则追加 `fix: <根因>`）。
 - [ ] **派评审**。
 
-### Task C3: JS 航线绘制守卫与目检修复
+### Task C3: 航线显示一致性测试（Canvas 调用录制器 + Node 桩环境）★核心
 
-**Files:** Modify: `tests/test_ui_assets.py`（追加绘制守卫）、`static/js/chartRenderer.js` / `static/js/mapRenderer.js`（如发现缺陷）
+> 回答的问题是：「画布上**实际画出来**的位置，是否等于实体**逻辑坐标**的投影位置」。方法：Node 里以最小 DOM 桩加载两个 JS，用 Proxy 录制器捕获 ctx 全部绘制调用，断言绘制坐标与投影坐标一致。JS 无测试运行器的既有限制由此绕开（`node tests/ui/*.test.mjs` + pytest 包装）。
 
-- [ ] **静态守卫**：
+**Files:**
+- Create: `tests/ui/dom-stub.mjs`、`tests/ui/route_display.test.mjs`、`tests/test_route_display_js.py`（pytest 包装）
+- Modify: `tests/test_ui_assets.py`（保留静态守卫断言）
 
-```python
-def test_route_drawing_guards():
-    chart = (BASE / "static" / "js" / "chartRenderer.js").read_text()
-    mapping = (BASE / "static" / "js" / "mapRenderer.js").read_text()
-    assert "(tf.courseDeg - 90)" in chart, "舰队航向线须用航海约定（0°朝上）"
-    assert "_drawScoutAircraft" in mapping and "_drawSearchSectors" in mapping, "飞机航线/搜索扇面绘制缺失"
-    assert "drawTaskForceMarker" in mapping, "舰队标记未接 chartRenderer"
+- [ ] **Step 1: 写桩与加载器** `tests/ui/dom-stub.mjs`：
+
+```javascript
+/** 最小 DOM/Canvas2D 桩 + 录制器（批次 C3）。
+ *  ctx 的一切方法调用与属性赋值都被记录进 __calls，供断言「画在哪里、画了什么」。 */
+export function makeRecorderCtx(width = 1440, height = 900) {
+  const calls = [];
+  const ctx = {
+    __calls: calls,
+    canvas: { width, height },
+    measureText: (t) => ({ width: String(t ?? " ").length * 6 }),
+    createPattern: () => ({ __pattern: true }),
+  };
+  return new Proxy(ctx, {
+    get(t, prop) {
+      if (prop in t) return t[prop];
+      t[prop] = (...args) => { calls.push({ name: String(prop), args }); return undefined; };
+      return t[prop];
+    },
+    set(t, prop, value) { calls.push({ name: `set:${String(prop)}`, args: [value] }); t[`set:${String(prop)}`] = value; return true; },
+  });
+}
+
+export function makeStubDocument() {
+  const canvases = {};
+  return {
+    canvases,
+    getElementById(id) {
+      if (!canvases[id]) {
+        const ctx = makeRecorderCtx();
+        canvases[id] = {
+          id, width: 1440, height: 900, clientWidth: 1440, clientHeight: 900,
+          getContext: () => ctx, __ctx: ctx, style: {},
+          addEventListener: () => {},
+          getBoundingClientRect: () => ({ left: 0, top: 0, width: 1440, height: 900 }),
+        };
+      }
+      return canvases[id];
+    },
+    addEventListener: () => {},
+  };
+}
+
+export function loadGameScripts(paths) {
+  const { readFileSync } = await import("node:fs");
+  const vm = await import("node:vm");
+  const document = makeStubDocument();
+  const sandbox = {
+    document, console,
+    performance: { now: () => 0 },
+    requestAnimationFrame: () => 0,
+    setTimeout: () => 0, setInterval: () => 0, clearInterval: () => {},
+  };
+  sandbox.window = sandbox; sandbox.globalThis = sandbox;
+  vm.createContext(sandbox);
+  for (const p of paths) vm.runInContext(readFileSync(p, "utf8"), sandbox, { filename: p });
+  return { sandbox, document };
+}
 ```
 
-- [ ] **动态目检**：无头 Chrome 打开页面 → `POST /advance` 推进 2–3 回合（触发舰队移动/侦察航点变化）→ 截图对比前后：飞机航点/扇面随任务推进更新、舰队标记位移且 CSE 线随 course 变化。任何渲染异常（航线不更新/方向错/残留旧航线）走 systematic-debugging 修复 + 静态守卫断言固化。Commit `test: JS 航线绘制守卫`（修复则追加 `fix: <现象与根因>`）。
-- [ ] **派评审**；批次 C 收尾：审计表回填「已覆盖」，Commit `docs: 航线模块批次C收口`。
+（顶层 `await import` 若运行方式不支持，改静态 `import { readFileSync } from "node:fs"` 置顶——执行时取可行写法，语义不变。）
+
+- [ ] **Step 2: 写一致性测试** `tests/ui/route_display.test.mjs`：
+
+```javascript
+/** 断言三层：①投影确定性 ②底图层圆心一致 ③实体标记绘制位置==逻辑坐标投影（接线正确）。*/
+import assert from "node:assert/strict";
+import { loadGameScripts } from "./dom-stub.mjs";
+
+const { sandbox, document } = loadGameScripts([
+  "static/js/svgLoader.js", "static/js/chartRenderer.js", "static/js/mapRenderer.js",
+]);
+const canvas = document.getElementById("tacticalMap");
+const renderer = new sandbox.MapRenderer("tacticalMap");
+
+// ── ① 投影确定性（chartRenderer 层）──
+const p1 = sandbox.ChartRenderer.latLonToChartPx(31.5, -176.0, 1440, 900);
+const p2 = sandbox.ChartRenderer.latLonToChartPx(31.5, -176.0, 1440, 900);
+assert.deepEqual(p1, p2, "同输入投影必须确定");
+const pFar = sandbox.ChartRenderer.latLonToChartPx(28.2, -177.4, 1440, 900);
+assert.deepEqual(pFar, { x: 720, y: 450 }, "图面中心 lat/lon 必须映射到画布中心");
+
+// ── ② 底图层：环礁中心与距离环圆心一致（真实渲染调用）──
+sandbox.ChartRenderer.drawAll(canvas.__ctx, 1440, 900);
+const arcs = canvas.__ctx.__calls.filter((c) => c.name === "arc");
+const atollCx = 1440 * 0.44, atollCy = 900 * 0.46;
+const ringArc = arcs.find((c) => Math.abs(c.args[2] - sandbox.ChartRenderer.chartNmToPx(60, 1440, 900)) < 1);
+assert.ok(ringArc, "未找到 60nm 距离环 arc 调用");
+assert.ok(Math.abs(ringArc.args[0] - atollCx) < 1 && Math.abs(ringArc.args[1] - atollCy) < 1,
+  `距离环圆心 (${ringArc.args[0]},${ringArc.args[1]}) 偏离环礁中心 (${atollCx},${atollCy})`);
+
+// ── ③ 实体层：舰队标记画在其逻辑坐标的投影处（接线测试）──
+// 最小 state：字段以 mapRenderer.render 实际读取为准，缺啥补啥（systematic-debugging 迭代桩 state）
+function makeState(lat, lon) {
+  return {
+    clock: { game_time: "1942-06-04T04:00:00Z" }, game_phase: "playing",
+    task_forces: [{ name: "Task Force 16", course: 240, speed: 25,
+      carriers: [{ name: "USS Enterprise (CV-6)", position: { lat, lon }, aircraft: [] }] }],
+    known_enemy: [], active_scouts: [], pending_reports: [], pending_suggestions: [],
+  };
+}
+renderer.render(makeState(31.5, -176.0));
+const drawn = canvas.__ctx.__calls.filter((c) => c.name === "arc" || c.name === "drawImage");
+// 期望位置：用 renderer 自身投影路径求得（接线断言），再对照源码常量的独立换算（数学断言，公式从 _worldToHex/_hexToPixel 抄录）
+const [q, r] = renderer._worldToHex(31.5, -176.0);
+const [ex, ey] = renderer._hexToPixel(q, r);
+const ox = renderer.centerX - ex, oy = renderer.centerY - ey;   // 舰队居中平移
+// 实体层在 translate(ox,oy) 坐标系内画标记：期望画布位置 = renderer.centerX,renderer.centerY 附近的投影
+const hit = drawn.some((c) => Math.hypot((c.args[0] ?? 999) - renderer.centerX, (c.args[1] ?? 999) - renderer.centerY) < 60);
+assert.ok(hit, "舰队标记未绘制在其逻辑投影（图面中心附近）处");
+
+console.log("ROUTE-DISPLAY PASS");
+```
+
+（③ 的「独立公式对照」在执行时把 `_worldToHex/_hexToPixel` 源码公式抄录进测试后加强为精确断言：`assert.ok(Math.abs(drawnX - expectedX) < 2)`。）
+
+- [ ] **Step 3: pytest 包装** `tests/test_route_display_js.py`：
+
+```python
+"""JS 航线显示一致性冒烟（Node 桩环境）——批次 C3。"""
+import subprocess
+from pathlib import Path
+
+BASE = Path(__file__).resolve().parent.parent
+
+
+def test_route_display_node_suite():
+    r = subprocess.run(["node", str(BASE / "tests" / "ui" / "route_display.test.mjs")],
+                       capture_output=True, text=True, cwd=BASE, timeout=60)
+    assert r.returncode == 0, f"Node 航线显示测试失败:\n{r.stdout}\n{r.stderr}"
+    assert "ROUTE-DISPLAY PASS" in r.stdout
+```
+
+- [ ] **Step 4:** 红→（补桩/修真实缺陷）→绿；桩 state 缺字段导致 render 抛错属于**真实脆弱点**，修复优先改产品代码的防御（`?? []`）而非只补桩——每处修正走 systematic-debugging 记录根因。Commit `test: 航线显示一致性测试（Canvas 录制器 + Node 桩）`（产品修复则追加 `fix: <根因>`）；**派评审**。
+
+### Task C4: 刷新链路测试 + 浏览器实拍对照
+
+**Files:** Modify: `static/js/main.js`（init 末尾加调试钩子）、`tests/ui/route_display.test.mjs`、`tests/test_ui_assets.py`
+
+- [ ] **调试钩子**（E2E 需要从页面读到渲染器内部状态；main.js 的 `mapRenderer` 是模块级变量外部不可达）：init() 末尾加 `window.__ui = { mapRenderer }; // 测试/调试钩子`。
+- [ ] **刷新链路红测**（route_display.test.mjs 追加）：
+
+```javascript
+// advance 语义模拟：状态位置变化 → 重绘位置必须精确移动投影差值；lerp 目标必须跟随
+const sA = makeState(31.5, -176.0);
+renderer.render(sA);
+const before = canvas.__ctx.__calls.filter((c) => c.name === "drawImage").length;
+const sB = makeState(31.4, -176.1);           // 模拟一 tick 后的逻辑位置
+renderer.render(sB);
+const [q2, r2] = renderer._worldToHex(31.4, -176.1);
+const [nx, ny] = renderer._hexToPixel(q2, r2);
+const fp = renderer._animState.fleetPositions;   // 键名以源码为准（grep fleetPositions）
+const entry = Object.values(fp).find((v) => "targetX" in v);
+assert.ok(entry && Math.abs(entry.targetX - (renderer.centerX - nx)) < 2
+        && Math.abs(entry.targetY - (renderer.centerY - ny)) < 2,
+  "舰队动画目标未跟随新逻辑位置（刷新链路断裂）");
+```
+
+- [ ] **浏览器实拍对照**（真正的端到端）：无头 Chrome 打开页面 → 连续 `POST /advance` ×3 → evaluate `fetch('/state').then(r=>r.json())` 取逻辑位置，evaluate `window.__ui.mapRenderer._currentState...` 取渲染态位置——**两者必须一致**（不一致即「显示落后于逻辑」的实锤）；再截前后两图，舰队标记位移方向与 course 一致。发现缺陷走 systematic-debugging，修复 + 守卫断言固化。
+- [ ] Commit `test: 航线刷新链路与端到端显示对照`（修复则追加 `fix: <现象与根因>`）；**派评审**；批次 C 收尾：审计表回填「已覆盖」，Commit `docs: 航线模块批次C收口`。
 
 ---
 
@@ -645,12 +796,13 @@ def test_route_drawing_guards():
 | 木纹质感 | B0+B2 | B | 纹理门+目检 |
 | 整体收敛 | Loop ×5 | Loop | 每轮评分趋势不降；末轮 S=0 |
 | 设计质量收敛 | 设计师 agent 每轮评审（L3） | Loop | DESIGN-SCORE 五维趋势不降；末轮无未落地 D-S |
-| 航线模块正确性 | C0–C3 | C | 缺口审计表清零（全部高危缺口有用例）；JS 绘制守卫绿；目检航线随回合更新 |
+| 航线模块正确性 | C0–C2 | C | 缺口审计表清零（全部高危缺口有用例）；运动学/解算用例全绿 |
+| **航线 UI 显示一致性** | C3–C4 | C | Canvas 录制器断言「绘制位置==逻辑投影」全绿；刷新链路断言绿；端到端：渲染态位置==/state 逻辑位置、标记位移方向==course |
 | 工程质量 | F1–F3 | F | 全分支审查 APPROVE + 残余全裁定 |
 
 ## Self-Review 记录
 
-- **覆盖**：7 项差距 + 5 轮收敛 + 终验全映射；每任务带评审环节（执行框架§1–2）；每轮 Loop 引入独立设计师 agent 维度化评审（L3），D 级建议与保真度差距同渠道消化且有回查机制；航线模块（舰队航线运动学 + 飞机航线生成/拦截 + JS 绘制）单测与修复落批次 C，含缺口审计先行与 systematic-debugging 纪律。
+- **覆盖**：7 项差距 + 5 轮收敛 + 终验全映射；每任务带评审环节（执行框架§1–2）；每轮 Loop 引入独立设计师 agent 维度化评审（L3），D 级建议与保真度差距同渠道消化且有回查机制；航线模块落批次 C 五任务——运动学/解算单测（C1/C2）+ **UI 显示一致性（C3 Canvas 录制器断言「绘制位置==逻辑投影」、C4 刷新链路与端到端渲染态/逻辑态比对）**，含缺口审计先行与 systematic-debugging 纪律。
 - **工时保证**：核算表 ≥13.7h（下限 10h）+ 预算保护条款（Loop 加深 + B/D-B 级解禁）双保险。
 - **占位符扫描**：所有新增脚本/测试/CSS/JS 均完整可运行；批次 C 测试用例中「参数名/键名以源码为准校正」处均已附 grep 获取程序，断言意图写死；Loop 各轮差距条目属执行时数据，模板与命令已给全。
 - **依赖一致性**：B3 只依赖 P3 源图；B1 依赖 B0 产物 paper_tex；批次 C 与 A/B 无文件耦合（Python 运动学 + JS 绘制），排在 B 后 Loop 前（Loop 目检覆盖航线视觉）；Loop 依赖 A+B+C；F 依赖 Loop。顺序执行无环。
