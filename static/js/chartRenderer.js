@@ -217,7 +217,8 @@ function drawRangeRings(ctx, w, h) {
     const r = chartNmToPx(nm, w, h);
     ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI * 2); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillText(label, c.x + r + 4, c.y - 4);
+    // fix: 20/25nm 环间距仅 ~27px，25nm 标注移右上 45°（与设计图一致）防重叠
+    if (label === '25nm') ctx.fillText(label, c.x + r * 0.71, c.y - r * 0.71); else ctx.fillText(label, c.x + r + 4, c.y - 4);
     ctx.setLineDash([6, 5]);
   }
   // 中心 0nm 刻度短线（设计图中心右侧）
@@ -257,7 +258,7 @@ function drawScaleBar(ctx, w, h) {
 
 // Task 7.9：ENT/HOR 舰队标记——光栅计数牌优先（Phase 6 治理产物），缺失时矢量回退；
 // CSE 航向线与虚线引导线两模式共用（设计图：CSE 270° + 指向环礁的双虚线）
-function drawTaskForceMarker(ctx, tf, w, h) {
+function drawTaskForceMarker(ctx, tf, w, h, ox = 0, oy = 0) {
   const tag = getIcon(tf.callsign === 'ENT' ? 'fleet_tag_ent'
                     : tf.callsign === 'HOR' ? 'fleet_tag_hor' : 'fleet_counter');
   ctx.save();
@@ -284,7 +285,9 @@ function drawTaskForceMarker(ctx, tf, w, h) {
   ctx.font = `9px ${CHART_STYLE.fontTypewriter}`;
   ctx.fillText(`CSE ${Math.round(tf.courseDeg)}°`, tf.x + Math.cos(rad) * 38, tf.y + Math.sin(rad) * 38);
   // 指向环礁的虚线引导线 + 箭头（保真度修正 T3：方向由 atollCenter 计算，替代写死偏移）
-  const ac = atollCenter(w, h);
+  // fix: atollCenter 返回屏幕系坐标，而本函数在 mapRenderer 的 ctx.translate(ox,oy)
+  // 舰队本地系内绘制——先减去平移量换算到本地系，否则方向反向（S 级缺陷修复）
+  const ac = { x: atollCenter(w, h).x - ox, y: atollCenter(w, h).y - oy };
   const dx = ac.x - tf.x, dy = ac.y - tf.y;
   const len = Math.hypot(dx, dy) || 1;
   const ux = dx / len, uy = dy / len;

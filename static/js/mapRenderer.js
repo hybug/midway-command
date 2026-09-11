@@ -294,7 +294,7 @@ class MapRenderer {
       this._drawSearchSectors(ctx, state, fqr, frr);
       this._drawScoutAircraft(ctx, state, fqr, frr);
       // this._drawMidway(ctx, 0, 0, 1.5);
-      this._drawOwnFleet(ctx, tf);
+      this._drawOwnFleet(ctx, tf, ox, oy);
       this._drawEnemyContacts(ctx, state);
 
       // 绘制确认动画
@@ -606,7 +606,7 @@ class MapRenderer {
   // ═══════════════════════════════════════════════════════
   // Own Fleet (improved)
   // ═══════════════════════════════════════════════════════
-  _drawOwnFleet(ctx, tf) {
+  _drawOwnFleet(ctx, tf, ox, oy) {
     tf.carriers.forEach(c => {
       const [q, r] = this._worldToHex(c.position.lat, c.position.lon);
       const [px, py] = this._hexToPixel(q, r);
@@ -618,7 +618,9 @@ class MapRenderer {
       // courseDeg 取 TaskForce.course（与旧航向箭头同源）。
       // 保真度修正 T3：传 CSS 像素 W/H（= render() 里的 this.width/this.height），
       // 引导线由此计算指向环礁（atollCenter）的方向。
-      ChartRenderer.drawTaskForceMarker(ctx, { x: px, y: py, callsign: short, courseDeg: tf.course }, this.width, this.height);
+      // fix: 加传 ox/oy 舰队居中平移量——atollCenter 是屏幕系，标记绘制在
+      // translate(ox,oy) 本地系，不换算方向会反向。
+      ChartRenderer.drawTaskForceMarker(ctx, { x: px, y: py, callsign: short, courseDeg: tf.course }, this.width, this.height, ox, oy);
 
       // Task 7.9：旧航母图标/标签/航向箭头由舰队标记取代（保留代码备查）
       // // Try SVG icon first

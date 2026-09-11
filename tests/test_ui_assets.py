@@ -235,6 +235,26 @@ def test_task_force_leader_arrow():
     js = (BASE / "static" / "js" / "chartRenderer.js").read_text()
     assert "atollCenter(w, h)" in js and "closePath" in js, "引导线未指向环礁或缺箭头"
     assert "(tf.x - 60, tf.y + 18)" not in js, "写死方向未移除"
+    # fix round 1：atollCenter 是屏幕系坐标，调用点 ctx 处于舰队本地平移系——
+    # 签名须带 ox/oy，且引导线方向须先换算到本地系（防坐标系回退）
+    assert "drawTaskForceMarker(ctx, tf, w, h, ox = 0, oy = 0)" in js, \
+        "签名缺 ox/oy 本地系换算参数"
+    assert "atollCenter(w, h).x - ox" in js and "atollCenter(w, h).y - oy" in js, \
+        "引导线未做屏幕系→舰队本地系换算（atollCenter - 平移量）"
+    map_js = (BASE / "static" / "js" / "mapRenderer.js").read_text()
+    assert "this.width, this.height, ox, oy)" in map_js, \
+        "mapRenderer 调用点未传 ox/oy 舰队居中平移量"
+
+
+# ── 保真度修正 · fix round 1：25nm 标注错开（右上 45°） ──
+
+def test_range_ring_25nm_label_offset():
+    """20/25nm 环间距过近，25nm 标注移到右上 45° 防重叠（设计图位）。"""
+    js = (BASE / "static" / "js" / "chartRenderer.js").read_text()
+    assert "ctx.fillText(label, c.x + r * 0.71, c.y - r * 0.71)" in js, \
+        "25nm 标注未移到右上 45°"
+    assert "ctx.fillText(label, c.x + r + 4, c.y - 4)" in js, \
+        "其余环标注水平位应保留"
 
 
 # ── 保真度修正 · T4：标签激活凸起增强 ──
