@@ -174,11 +174,11 @@ def test_input_bar_and_button_focus_styles():
 
 
 def test_index_html_cache_version_consistent():
-    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（保真度修正 T4 → 1780997990，B1 → 1780997991，B3 → 1780997992）。"""
+    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（保真度修正 T4 → 1780997990，B1 → 1780997991，B3 → 1780997992，C4 → 1780997993）。"""
     html = (BASE / "static" / "index.html").read_text()
     versions = set(re.findall(r'\?v=(\d+)', html))
     assert len(versions) == 1, f"index.html 缓存号不一致: {versions}"
-    assert versions == {"1780997992"}, f"index.html 缓存号未递增到 1780997992: {versions}"
+    assert versions == {"1780997993"}, f"index.html 缓存号未递增到 1780997993: {versions}"
 
 
 # ── 保真度修正 · B2：木纹接入木尺（data-URI 内嵌） ──

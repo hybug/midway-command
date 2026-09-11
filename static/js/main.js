@@ -66,6 +66,8 @@ async function init() {
   // 启动动画循环
   mapRenderer.startAnimationLoop();
 
+  window.__ui = { mapRenderer }; // 测试/调试钩子（批次 C4）
+
   console.log('[MAIN] 中途岛指挥官 · 初始化完成');
 }
 

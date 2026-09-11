@@ -104,4 +104,42 @@ assert.doesNotThrow(() => renderer.render({
     carriers: [{ name: "USS Enterprise (CV-6)", position: { lat: 31.5, lon: -176.0 }, aircraft: [] }] }],
 }), "render 遇缺省 active_scouts/known_enemy 字段不得抛错");
 
+// ── ④ 刷新链路（批次 C4）：advance 语义模拟——逻辑位置变化后 render 必须以新位置为绘制目标 ──
+// 键名/路径以源码 grep 校正：_animState.fleetPositions 仅声明、从未写入——_drawOwnFleet
+// 无 lerp 缓存，每帧直接把标记画在当前 state 的投影上（_lerpPos 为死代码，无人调用）。
+// 故「动画目标」= 本次 render 的投影点本身；断言意图：新逻辑位置成为绘制目标。
+// （若日后给舰队引入 lerp 位置缓存，本组断言会因标记滞后于投影差而红——正是要守的链路。）
+const sA = makeState(31.5, -176.0);
+renderer.render(sA);
+const arcR7 = () => canvas.__ctx.__calls.filter((c) => c.name === "arc" && Math.abs(c.args[2] - 7) < 0.5);
+const beforeCount = arcR7().length;
+assert.ok(beforeCount >= 1, "render(sA) 未产生舰队标记（arc r≈7）");
+const sB = makeState(31.4, -176.1); // 模拟一 tick（advance 15min）后的逻辑位置
+renderer.render(sB);
+// 新逻辑位置 → hex → 像素（本地系；render 每次 resize 重置 centerX/centerY=720/450）
+const [q2, r2] = renderer._worldToHex(31.4, -176.1);
+const [nx, ny] = renderer._hexToPixel(q2, r2);
+const fp = renderer._animState.fleetPositions; // 源码现状：空对象（仅声明）；有 lerp 缓存时此处应有 {targetX,targetY}
+const entry = Object.values(fp).find((v) => v && "targetX" in v);
+if (entry) {
+  // 引入了 lerp 缓存的未来实现：目标必须跟随新逻辑位置（舰队居中平移下 target==投影点）
+  assert.ok(Math.abs(entry.targetX - (renderer.centerX - nx)) < 2
+          && Math.abs(entry.targetY - (renderer.centerY - ny)) < 2,
+    "舰队动画目标未跟随新逻辑位置（刷新链路断裂）");
+}
+// 当前实现断言：stateB 渲染帧的标记必须画在 stateB 投影处（新逻辑位置成为绘制目标）
+const bArcs = arcR7();
+assert.ok(bArcs.length > beforeCount, "render(sB) 未产生新的舰队标记帧");
+const [bx, by] = bArcs[bArcs.length - 1].args;
+assert.ok(Math.abs(bx - nx) < 2 && Math.abs(by - ny) < 2,
+  `sB 帧标记 (${bx.toFixed(1)},${by.toFixed(1)}) 偏离 sB 投影 (${nx.toFixed(1)},${ny.toFixed(1)})——刷新链路断裂（显示落后于逻辑）`);
+// 位移必须精确等于两次逻辑位置的投影差值（重绘位置精确移动投影差）
+const [qA, rA] = renderer._worldToHex(31.5, -176.0);
+const [axp, ayp] = renderer._hexToPixel(qA, rA);
+const aArc = arcR7()[beforeCount - 1].args;
+assert.ok(Math.abs((bx - aArc[0]) - (nx - axp)) < 2 && Math.abs((by - aArc[1]) - (ny - ayp)) < 2,
+  "sA→sB 标记位移 ≠ 逻辑位置投影差（重绘未精确跟随状态变化）");
+// render 已把 _currentState 换成 sB（动画循环每帧 render(_currentState) 的数据源）
+assert.ok(renderer._currentState === sB, "render 后 _currentState 未更新为新 state");
+
 console.log("ROUTE-DISPLAY PASS");
