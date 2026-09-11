@@ -1,113 +1,78 @@
-# 保真度修正计划：实拍对照差距修复（ui-fidelity-fix-plan）
+# 保真度修正计划 v2：批次 A（SVG 先行）+ 批次 B（AI 生成图）
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax.
-> 前置计划：`docs/plans/ui-replication-plan.md`（已执行完毕，15/15 验收）。本计划修复终审实拍对照发现的 7 处真实差距。
+> 前置计划：`docs/plans/ui-replication-plan.md`（已执行完毕，15/15 验收）。本计划 v2 取代 v1（`ui-fidelity-fix-plan.md` 初版），依据 2026-09-11 实拍对照结论与「SVG/AI 生成/网图」三档素材评估重构。
 
-**Goal:** 修复实拍对照（2026-09-11）发现的 7 处视觉差距——罗盘华丽度、SAND ISLAND 岛体压坐标、纸张做旧度、环礁立体感与 SW 海面斜线、25nm 距离环、引导线箭头与指向、标签激活凸起。
+**Goal:** 修复实拍对照发现的 7 处真实差距。批次 A 用 SVG/程序化完成全部几何与线条类修正（可立即执行）；批次 B 用 AI 生成图升级三处「有机质感」（纸张/木纹/罗盘雕刻感）——控制者按本计划给出的提示词生成图片并交付，执行者过质量门后集成。
 
-**Architecture:** 全部为既有资产的修订与新绘制（2 个 SVG 重绘/增强、chartRenderer.js 绘制修正、style.css 标签样式），零新增文件、零新增依赖。
+**Architecture:** 批次 A 全部为既有资产修订（chartRenderer.js 绘制修正、style.css、SVG 重绘），零新增文件。批次 B 新增 `static/assets/ui/textures/`（AI 纹理图）与新守卫 `tests/test_texture_assets.py`（无缝平铺检测）；木纹以 data-URI 内嵌进 ruler.svg（`<img>` 引用的 SVG 不允许外部资源，必须内嵌）；罗盘 AI 版走既有抠图→质量门→curate 链路。
 
-**Tech Stack:** 同前置计划（原生 SVG/Canvas/CSS + pytest 静态守卫）。
+**Tech Stack:** 同前置计划 + Pillow（平铺接缝检测、data-URI 内嵌、色温归一）。
 
-**Spec:** 对照结论（2026-09-11 实拍 vs `docs/assets/ChatGPT Image 2026年6月17日 10_55_51.png`）——本计划 §0 逐条引用。
+**Spec:** 实拍对照结论（2026-09-11）+ 素材三档评估（SVG 正解 11 项 / AI 生成 3 项 / 抠图链路已验证）。
+
+## 批次与依赖
+
+```
+批次 A（SVG 先行，可立即执行，预计 1–1.5h）
+  T0 罗盘零成本试换（库内 compass_raster.png）
+  T1 环礁绘制修正（岛体避让/SW海面斜线/沙环投影）
+  T2 距离环补 25nm
+  T3 引导线指向环礁+箭头
+  T4 标签激活凸起增强
+批次 B（AI 生成图，等控制者交图后执行，预计 1–1.5h）
+  B1 旧纸无缝纹理（A2/A11）
+  B2 木纹贴图（A14）
+  B3 AI 雕刻罗盘（可选——T0 目检不满意才启用）
+批次 A 中的 T5 罗盘 SVG 重绘降级为 B3 的备选：若 B3 交付合格则取消。
+```
 
 ## Global Constraints（沿用前置计划）
 
-- 色值只允许 `SVG_PALETTE`（tests/test_ui_assets.py 白名单）；新增色值须先登记。
-- 改动任何 SVG/CSS/JS 后递增 `static/index.html` 全量 `?v=`（当前 1780997988）并同步缓存守卫测试 pin；**被 svgLoader 加载的资产文件本身无缓存参数，被修改的资产须在 `ICON_FILES` 对应 URL 后追加 `?v=<新版本号>`**。
-- 每任务「改→node --check/pytest→提交」；全量 `pytest tests/ -q` 保持 253+ 全绿 0 skipped。
-- 不 push、不派发子代理（执行时由控制者派发）、零新增依赖。
-- 目检分工：SVG 由控制者 qlmanage 渲染核验，页面由控制者无头 Chrome 截图核验（IAB 通道不稳定，直接用 `/Applications/Google Chrome.app` headless）。
-
-## 工作量
-
-6 个任务、约 30 个执行步骤，预计 **1.5–2.5 小时**。建议 2 批派发：批 A = T1+T5（两个 SVG 资产），批 B = T2+T3+T4+T6（chartRenderer/CSS）。
-
-## 范围外（用户拍板项，本计划不动）
-
-- ENT/HOR 形态保持光栅计数牌（设计图为空心圆圈）—— Phase 6/7 既有裁定。
-- 整体色温保持 `UI_DESIGN.md` token（`--color-paper-base:#f5edd6`），做旧感一律走纹理层，不改 token。
-- 环礁占比保持真实地理比例（设计图的非比例夸张不采纳）。
+- 色值只允许 `SVG_PALETTE`；AI 图**不改 token**，色温归一一律走纹理本身或 overlay。
+- 改动 CSS/JS 后递增 `static/index.html` 全量 `?v=`（当前 1780997989）并同步缓存守卫 pin；被 svgLoader 加载的资产修改时在 `ICON_FILES` URL 追加 `?v=`。
+- 每任务「红测→实现→转绿→目检→提交」；全量 `pytest tests/ -q` 保持 253+ 全绿 0 skipped。
+- 目检：SVG 用 qlmanage，页面用无头 Chrome（`/Applications/Google Chrome.app --headless=new --screenshot --virtual-time-budget=9000`；IAB 通道不稳定弃用）。
+- **批次 B 质量门（AI 图专用，集成前强制）**：
+  1. **无缝平铺检测**：`Pillow` 将图平铺 2×2，接缝两侧 4px 带灰度差均值 ≤ 8/255，且目检无可见接缝；
+  2. **色温归一**：纹理均值色与 `#f5edd6`（纸）/`#c9a76a`（木）做比对，偏差用 Pillow 通道缩放拉回（记录在报告）；
+  3. 抠图类（B3）走既有 `extract_icons.py` → `quality_gate.py` → `curate_icons.py` 全链路；
+  4. 来源与提示词登记进 `docs/reports/raster-icon-review.md` 附录。
 
 ---
 
-## Task 1: 罗盘重绘为华丽多针版（A6）
+## 批次 A — SVG 先行（可立即执行）
+
+### Task T0: 罗盘零成本试换（compass_raster）
 
 **Files:**
-- Modify: `static/assets/ui/compass.svg`（整文件重写）
-- Modify: `tests/test_ui_assets.py`（compass 关键字追加）
+- Modify: `static/js/chartRenderer.js`（drawCompassRose）、`static/index.html`（缓存号）
 
-- [ ] **Step 1: 更新守卫**——`ASSET_MANIFEST` 中 compass 条目关键字改为 `["use href", ">N<", ">E<", ">S<", ">W<"]`（`use href` 断言复用结构存在）。先运行确认 FAIL（现文件无 `use href`… 注意现文件已有 `<use href="#cardinal">`——若已含则本步自然 PASS，跳过红测直接进入 Step 2，如实记录）。
+库内已有绿幕抠图真罗盘 `static/assets/ui/icons/compass_raster.png`（评审 §3.1：质感优于 SVG 版）。
 
-- [ ] **Step 2: 重写 compass.svg**
-
-```svg
-<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
-  <defs>
-    <g id="ptLong">
-      <polygon points="100,8 107,100 100,100" fill="#2a2218"/>
-      <polygon points="100,8 93,100 100,100" fill="#f5edd6" stroke="#2a2218" stroke-width="1"/>
-    </g>
-    <g id="ptShort">
-      <polygon points="100,32 105,100 100,100" fill="#2a2218"/>
-      <polygon points="100,32 95,100 100,100" fill="#f5edd6" stroke="#2a2218" stroke-width="0.8"/>
-    </g>
-  </defs>
-  <!-- 刻度外环：粗描边虚线圆近似放射状刻度 -->
-  <circle cx="100" cy="100" r="96" fill="none" stroke="#2a2218" stroke-width="1.5"/>
-  <circle cx="100" cy="100" r="91" fill="none" stroke="#2a2218" stroke-width="7" stroke-dasharray="1.2,4.6"/>
-  <circle cx="100" cy="100" r="64" fill="none" stroke="#2a2218" stroke-width="1"/>
-  <circle cx="100" cy="100" r="30" fill="none" stroke="#2a2218" stroke-width="1"/>
-  <!-- 8 长针（每 45°） -->
-  <use href="#ptLong"/>
-  <use href="#ptLong" transform="rotate(45 100 100)"/>
-  <use href="#ptLong" transform="rotate(90 100 100)"/>
-  <use href="#ptLong" transform="rotate(135 100 100)"/>
-  <use href="#ptLong" transform="rotate(180 100 100)"/>
-  <use href="#ptLong" transform="rotate(225 100 100)"/>
-  <use href="#ptLong" transform="rotate(270 100 100)"/>
-  <use href="#ptLong" transform="rotate(315 100 100)"/>
-  <!-- 8 短细针（偏移 22.5°） -->
-  <use href="#ptShort" transform="rotate(22.5 100 100)"/>
-  <use href="#ptShort" transform="rotate(67.5 100 100)"/>
-  <use href="#ptShort" transform="rotate(112.5 100 100)"/>
-  <use href="#ptShort" transform="rotate(157.5 100 100)"/>
-  <use href="#ptShort" transform="rotate(202.5 100 100)"/>
-  <use href="#ptShort" transform="rotate(247.5 100 100)"/>
-  <use href="#ptShort" transform="rotate(292.5 100 100)"/>
-  <use href="#ptShort" transform="rotate(337.5 100 100)"/>
-  <circle cx="100" cy="100" r="5" fill="#2a2218"/>
-  <g font-family="'Special Elite', monospace" font-size="15" fill="#2a2218" text-anchor="middle">
-    <text x="100" y="30">N</text>
-    <text x="170" y="105">E</text>
-    <text x="100" y="182">S</text>
-    <text x="30" y="105">W</text>
-  </g>
-</svg>
-```
-
-- [ ] **Step 3: 转绿** — `pytest tests/test_ui_assets.py -v` 全 PASS。
-- [ ] **Step 4: 缓存** — `static/js/svgLoader.js` 中 compass 的 ICON_FILES URL 追加 `?v=1780997989`（资产文件缓存参数，Global Constraints）。
-- [ ] **Step 5: 目检** — 控制者 qlmanage 渲染：16 针 + 刻度环 + 字母清晰。
-- [ ] **Step 6: Commit** `feat: A6 罗盘重绘为华丽多针版（刻度外环/长短针）`
-
-## Task 2: 环礁绘制修正（岛体避让/SW 海面斜线/沙环立体感）
-
-**Files:**
-- Modify: `static/js/chartRenderer.js`（drawIslands、drawAtoll）
-
-- [ ] **Step 1: SAND ISLAND 避让中心坐标**——drawIslands 中沙岛矩形改为泻湖西南更低处（中心标注坐标行在 `c.y+20`，岛体上缘须低于它）：
+- [ ] drawCompassRose 改为优先 `getIcon('compass_raster')`，SVG `getIcon('compass')` 回退：
 
 ```javascript
-  const sx = c.x - rx * 0.60, sy = c.y + ry * 0.32;
+function drawCompassRose(ctx, w, h) {
+  const raster = getIcon('compass_raster');
+  if (raster) { ctx.drawImage(raster, w - 150, 20, 110, 110 * (raster.height / raster.width)); return; }
+  const icon = getIcon('compass');
+  if (icon) ctx.drawImage(icon, w - 150, 24, 110, 110);
+}
 ```
 
-沙岛标签保持在矩形下方（现 `sy + ry * 0.16 + 10` 不动）。几何自检：岛体上缘 `c.y+0.32ry ≈ c.y+29 > c.y+20` ✓，岛底 `c.y+0.48ry`、标签 `c.y+0.56ry`，均在泻湖内缘 `c.y+0.74ry` 之上 ✓。
+- [ ] 缓存号递增（1780997989→1780997990）随提交。
+- [ ] 控制者目检：真罗盘 vs 设计图 A6——**满意则 T5（SVG 重绘）与 B3 取消；不满意记结论进 T5/B3 的取舍依据**。
+- [ ] Commit `feat: 罗盘优先使用绿幕抠图真品`
 
-- [ ] **Step 2: SW 海面大片斜线（移到环礁填充之前）**——drawAtoll 中删除现有「clip 到放大轮廓」的斜线块，替换为在 `tracePath(ctx, outer)` 填充沙色**之前**执行：
+### Task T1: 环礁绘制修正（岛体避让/SW 海面斜线/沙环投影）
+
+**Files:** Modify: `static/js/chartRenderer.js`
+
+- [ ] **岛体避让**——drawIslands 沙岛矩形移到中心坐标行（`c.y+20`）之下：`const sx = c.x - rx * 0.60, sy = c.y + ry * 0.32;`（几何自检：上缘 ≈`c.y+29` > `c.y+20` ✓；标签 `c.y+0.56ry` 在泻湖内缘 `c.y+0.74ry` 之上 ✓）。标签位置不动。
+- [ ] **SW 海面斜线**——删除现「clip 到放大轮廓」斜线块，改为在 `tracePath(ctx, outer)` 沙色填充**之前**执行（先铺后盖，环礁填充自动盖掉多余部分）：
 
 ```javascript
-  // 西南海面斜线阴影：先铺后盖（环礁填充会盖住多余部分）
   ctx.save();
   ctx.beginPath();
   ctx.rect(c.x - rx * 1.5, c.y + ry * 0.15, rx * 1.9, ry * 1.35);
@@ -123,7 +88,7 @@
   ctx.restore();
 ```
 
-- [ ] **Step 3: 沙环下缘投影**——在沙色填充之后、泻湖填充之前插入（外轮廓向下偏移描一圈暗色，形成立体投影）：
+- [ ] **沙环投影**——沙色填充后、泻湖填充前插入：
 
 ```javascript
   ctx.save();
@@ -135,29 +100,24 @@
   ctx.restore();
 ```
 
-（`rgba(42,34,24,…)` 为 `--color-ink-main` 的透明变体，色板合规。）
+- [ ] `node --check` + 全量 pytest + 控制者无头 Chrome 目检。
+- [ ] Commit `feat: 环礁绘制修正（岛体避让/SW海面斜线/沙环投影）`（缓存号随 T2/T4 批内收口）
 
-- [ ] **Step 4: 验证** — `node --check static/js/chartRenderer.js`；`pytest tests/ -q` 253 全绿；控制者无头 Chrome 截图目检（岛体不再压坐标、SW 海面斜线成片、沙环有投影）。
-- [ ] **Step 5: Commit** `feat: 环礁绘制修正（岛体避让/SW海面斜线/沙环投影）`（含缓存号递增，见 Task 6）
+### Task T2: 距离环补 25nm 内环
 
-## Task 3: 距离环补 25nm 内环
+**Files:** Modify: `static/js/chartRenderer.js`、`tests/test_ui_assets.py`
 
-**Files:**
-- Modify: `static/js/chartRenderer.js`（RING_NM）、`tests/test_ui_assets.py`（字面量断言）
+- [ ] 红测：`test_chart_renderer_constants_match_css` 的 label 列表追加 `"25nm"` → FAIL。
+- [ ] `const RING_NM = [["20nm", 20], ["25nm", 25], ["40nm", 40], ["60nm", 60]];`
+- [ ] 转绿 → Commit `feat: 距离环补 25nm 内环`
 
-- [ ] **Step 1: 红测**——`test_chart_renderer_constants_match_css` 的 label 列表追加 `"25nm"`，运行确认 FAIL。
-- [ ] **Step 2:** `const RING_NM = [["20nm", 20], ["25nm", 25], ["40nm", 40], ["60nm", 60]];`
-- [ ] **Step 3: 转绿** → **Step 4: Commit** `feat: 距离环补 25nm 内环`（并入 Task 5 的缓存号提交亦可）
+### Task T3: 引导线指向环礁 + 箭头
 
-## Task 4: 引导线指向环礁 + 箭头
+**Files:** Modify: `static/js/chartRenderer.js`、`static/js/mapRenderer.js`
 
-**Files:**
-- Modify: `static/js/chartRenderer.js`（drawTaskForceMarker 签名与引导线）、`static/js/mapRenderer.js`（调用点）
-
-- [ ] **Step 1:** 签名改 `drawTaskForceMarker(ctx, tf, w, h)`；删除写死的 `(tf.x-60, tf.y+18)` 虚线段，替换为：
+- [ ] `drawTaskForceMarker(ctx, tf, w, h)`；删写死 `(tf.x-60, tf.y+18)` 段，替换为：
 
 ```javascript
-  // 引导线指向环礁中心（虚线 + 箭头）
   const ac = atollCenter(w, h);
   const dx = ac.x - tf.x, dy = ac.y - tf.y;
   const len = Math.hypot(dx, dy) || 1;
@@ -179,58 +139,15 @@
   ctx.fill();
 ```
 
-- [ ] **Step 2:** mapRenderer.js 调用点改为 `ChartRenderer.drawTaskForceMarker(ctx, tfData, W, H)`（W/H 即 render() 现用的 CSS 像素宽高）。
-- [ ] **Step 3:** `node --check` 两文件；全量 pytest；目检箭头指向环礁。
-- [ ] **Step 4: Commit** `feat: 舰队引导线指向环礁并带箭头`
+- [ ] mapRenderer 调用点传 `(ctx, tfData, W, H)`。
+- [ ] `node --check` + pytest + 目检（箭头指向环礁）。
+- [ ] Commit `feat: 舰队引导线指向环礁并带箭头`（批内最后一次提交递增缓存号→1780997990，同步 pin）
 
-## Task 5: 纸张做旧增强（A2）
+### Task T4: 标签激活凸起增强
 
-**Files:**
-- Modify: `static/assets/ui/paper_base.svg`（整文件重写）、`tests/test_ui_assets.py`（关键字）
+**Files:** Modify: `static/css/style.css`
 
-- [ ] **Step 1: 红测**——paper_base 关键字追加 `"stainsBig"`，运行确认 FAIL。
-- [ ] **Step 2: 重写 paper_base.svg**（大渍斑层 + 原渍斑增强 + 边缘焦化）：
-
-```svg
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
-  <defs>
-    <filter id="stainsBig" x="0" y="0" width="100%" height="100%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.006" numOctaves="2" seed="19"/>
-      <feColorMatrix type="matrix" values="0 0 0 0 0.52  0 0 0 0 0.42  0 0 0 0 0.24  0 0 0 0.5 0"/>
-      <feComponentTransfer><feFuncA type="discrete" tableValues="0 0 0 0.2 0 0.45"/></feComponentTransfer>
-    </filter>
-    <filter id="stains" x="0" y="0" width="100%" height="100%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="3" seed="11"/>
-      <feColorMatrix type="matrix" values="0 0 0 0 0.55  0 0 0 0 0.45  0 0 0 0 0.28  0 0 0 0.55 0"/>
-      <feComponentTransfer><feFuncA type="discrete" tableValues="0 0 0 0 0.15 0 0.4 0.65"/></feComponentTransfer>
-    </filter>
-    <radialGradient id="edgeBurn" cx="50%" cy="50%" r="72%">
-      <stop offset="0%" stop-color="#3a2518" stop-opacity="0"/>
-      <stop offset="76%" stop-color="#3a2518" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#3a2518" stop-opacity="0.3"/>
-    </radialGradient>
-    <filter id="grain" x="0" y="0" width="100%" height="100%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7"/>
-      <feColorMatrix type="matrix" values="0 0 0 0 0.42  0 0 0 0 0.36  0 0 0 0 0.26  0 0 0 0.18 0"/>
-    </filter>
-  </defs>
-  <rect width="1200" height="900" fill="#f5edd6"/>
-  <rect width="1200" height="900" filter="url(#stainsBig)" opacity="0.7"/>
-  <rect width="1200" height="900" filter="url(#stains)" opacity="0.6"/>
-  <rect width="1200" height="900" fill="url(#edgeBurn)"/>
-  <rect width="1200" height="900" filter="url(#grain)"/>
-</svg>
-```
-
-- [ ] **Step 3:** svgLoader 中 paper_base 的 URL 追加 `?v=1780997989`（与 Task 1 同版本号）。
-- [ ] **Step 4: 转绿 + 目检**（控制者 qlmanage：大渍斑成片、边缘焦化）→ **Step 5: Commit** `feat: A2 纸张做旧增强（大渍斑/边缘焦化）`
-
-## Task 6: 标签激活凸起增强 + 缓存号收口
-
-**Files:**
-- Modify: `static/css/style.css`、`static/index.html`、`tests/test_ui_assets.py`（缓存 pin）
-
-- [ ] **Step 1:** `.npc-tab` 族改造（伪元素承载切角底色，元素本体恢复投影能力）：
+- [ ] 伪元素承载切角底色，本体恢复投影（`isolation: isolate` 防 `z-index:-1` 伪元素被父背景吞掉）：
 
 ```css
 .npc-tab { position: relative; isolation: isolate; background: transparent; }
@@ -243,22 +160,73 @@
 .npc-tab.active { transform: translateY(-6px); box-shadow: 0 -3px 6px rgba(0, 0, 0, 0.25); }
 ```
 
-（`isolation: isolate` 使 `::before` 的 `z-index:-1` 落在标签底色层而非标签条背景之后；旧 `.npc-tab` 规则中的 `background`/`clip-path` 行删除，避免双底色。）
+- [ ] 旧 `.npc-tab` 规则中的 `background`/`clip-path` 行删除（避免双底色）；缓存号随 T3 收口。
+- [ ] 目检（激活 tab 高凸+投影）→ Commit `feat: 标签激活凸起增强`
 
-- [ ] **Step 2:** index.html 全量 `?v=1780997988→1780997989`；同步 `tests/test_ui_assets.py` 缓存守卫 pin。
-- [ ] **Step 3:** 全量 pytest 253 全绿；目检激活 tab 高凸 + 投影可见。
-- [ ] **Step 4: Commit** `feat: 标签激活凸起增强与缓存号收口`
+### 批次 A 收尾
+
+- [ ] `pytest tests/ -q` 全绿 0 skipped；无头 Chrome 整页截图对照；验收报告追加「保真度修正·批次 A」小节。
+- [ ] Commit `docs: 保真度修正批次A验收记录`
 
 ---
 
-## 验收（控制者执行）
+## 批次 B — AI 生成图（控制者按提示词出图后执行）
 
-1. `pytest tests/ -q` 全绿 0 skipped；`node --check` 全部涉及 JS。
-2. 无头 Chrome 整页截图 vs 设计图复对照：罗盘 16 针、岛体避让、SW 海面斜线、25nm 环、箭头指向、纸张陈旧感、标签凸起——7 项逐条打勾，记入 `docs/reports/ui-replication-report.md`「保真度修正轮」小节。
-3. 每批派发后走「红测→实现→转绿→目检→提交」，评审沿用前置计划的两层把关。
+> **交付方式**：控制者用任意生图工具（即梦/DALL-E/Midjourney/Gemini 均可）按下述提示词生成，把图片放进 `docs/assets/ai_textures/`（文件名按提示词编号），然后说「批次 B 执行」。执行者过质量门后集成；不合格的具体说明原因并给出修订提示词。
+
+### 提示词 P1：旧纸无缝纹理（用于 A2 海图底/A11 顶栏/卡片）
+
+```
+Seamless tileable texture of aged 1942 nautical chart paper, warm cream color close to #f5edd6, flat top-down scan, subtle fiber grain, faint brown age spots and water stains, gently mottled surface, even flat lighting, no vignette, no shadows, no folds, no tears, no objects, no text, no watermark, tile seamlessly on all edges. Authentic old paper scan look, muted and slightly desaturated.
+```
+
+- 负向要求（工具支持 negative prompt 就填）：`vignette, gradient border, dark edges, folded corner, object, text, watermark, high contrast`
+- 规格：**1024×1024 以上、必须可无缝平铺**。建议生成 2 张：标准版（如上）+ 陈旧版（把 `warm cream color close to #f5edd6` 换成 `yellowed tan aged paper, heavier stains and browning`）对照择优。
+- 用途与集成：海图 Canvas 底纹（`drawChartBase` 由 `drawImage` 拉伸改为 `ctx.createPattern` 平铺）+ `style.css` 中顶栏/卡片的 `paper_base.svg` 引用换纹理（`background-repeat: repeat`）。SVG 版保留为加载失败的回退。
+
+### 提示词 P2：旧木尺木纹（用于 A14 尺身）
+
+```
+Seamless tileable wood grain texture of worn vintage varnished wooden ruler, warm honey-tan wood close to #c9a76a, fine straight tight grain lines along one axis, small scratches and dents, slightly darkened worn edges, flat top-down view, even flat lighting, no numbers, no tick marks, no metal parts, no background, no text.
+```
+
+- 规格：1024×512 以上、可平铺（沿尺身长轴纹理走向）。
+- 集成：**data-URI 内嵌**进 ruler.svg（`<img>` 引用的 SVG 禁止外部资源）：一次性脚本用 Pillow 把纹理缩到尺身比例、base64 编码写进 `<image>` + `<pattern>` 填充尺身矩形，刻度/数字图层保留在其上；脚本与产物一并提交。
+
+### 提示词 P3（可选）：AI 雕刻罗盘（T0 目检不满意才启用）
+
+```
+Vintage nautical compass rose, copperplate engraving style, black ink lines on pure white background, top-down, perfectly centered, 8 long ornate points with alternating dark and light halves, 8 short fine points between them, graduated outer ring with fine tick marks, bold serif letters N E S W, delicate hatching, high contrast pure black and white only, no gray shading, no shadows, no other text.
+```
+
+- 规格：纯白背景+纯黑线稿（`extract_icons.py` 角点取色抠图可直接处理）；1024×1024；居中对称。
+- 集成：跑抠图→`quality_gate.py`→`curate_icons.py` 产出 `compass_engraved.png` → svgLoader `ICON_FILES` 增条目 → `drawCompassRose` 优先级改为 `compass_engraved > compass_raster > compass.svg`。
+
+### 批次 B 任务
+
+- [ ] **B1 纸张**：质量门（平铺检测/色温归一/目检）→ 存 `static/assets/ui/textures/paper_tex.jpg` → `drawChartBase` 改 pattern 平铺 + CSS 引用切换 → 目检（海图/顶栏/卡片三处）→ Commit `feat: AI 旧纸纹理接入（Canvas 平铺+CSS）`
+- [ ] **B2 木纹**：质量门 → data-URI 内嵌 ruler.svg → 目检（刻度数字在木纹上清晰）→ Commit `feat: AI 木纹接入木尺`
+- [ ] **B3 罗盘（可选）**：抠图链路 → 质量门 → 接入 → 目检 → Commit `feat: AI 雕刻罗盘接入`
+- [ ] 验收报告追加「保真度修正·批次 B」小节 + `raster-icon-review.md` 登记 AI 图来源/提示词/许可证结论（AI 生成=无第三方许可问题）。
+
+---
+
+## 验收总表
+
+| 差距 | 任务 | 批次 | 门 |
+|------|------|------|-----|
+| 罗盘华丽度 | T0（→B3 兜底） | A（→B） | 目检 |
+| 岛体压坐标 | T1 | A | 目检 |
+| SW 海面斜线 | T1 | A | 目检 |
+| 沙环立体感 | T1 | A | 目检 |
+| 25nm 环 | T2 | A | 红绿测试+目检 |
+| 引导线箭头 | T3 | A | 目检 |
+| 标签凸起 | T4 | A | 目检 |
+| 纸张做旧 | B1 | B | 平铺门+色温门+目检 |
+| 木纹质感 | B2 | B | 平铺门+目检 |
 
 ## Self-Review 记录
 
-- **覆盖**：§一表 7 项真实差距全部映射（1→T1、2→T2S1、3→T5、4→T2S2/S3、5→T3、6→T4、7→T6）。
-- **契约一致性**：所有新色值在 SVG_PALETTE 或其透明变体；缓存号策略含 svgLoader 资产 URL 追加参数（新覆盖点，已写明）；RING_NM 标签对结构沿用。
-- **占位符扫描**：无 TBD；T2S1 几何自检给出数值验证路径。
+- **覆盖**：实拍对照 7 项真实差距全部映射；三档评估的「AI 生成 3 项」全部落批次 B，且罗盘给了「库内现货优先」的低成本路径。
+- **占位符扫描**：批次 B 的集成代码形态（pattern 平铺/data-URI 内嵌/抠图链路）已写明；具体像素级参数（平铺偏移、内嵌缩放比）属执行时数据，已给获取程序。
+- **依赖一致性**：T0 结论决定 T5/B3 取舍；批次 B 全部依赖控制者交图，执行入口明确。
