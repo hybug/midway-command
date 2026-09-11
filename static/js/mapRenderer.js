@@ -518,7 +518,9 @@ class MapRenderer {
   _drawScoutAircraft(ctx, state, fleetQ, fleetR) {
     const [fx, fy] = this._hexToPixel(fleetQ, fleetR);
 
-    state.active_scouts.forEach(scout => {
+    // fix: 缺省字段防御——render 为公开入口，state 缺 active_scouts 时渲染帧抛 TypeError
+    // （批次 C3 Node 桩环境复现；服务端 /state 恒有此键，防御前端部分载荷）
+    (state.active_scouts ?? []).forEach(scout => {
       if (scout.status !== 'in_flight') return;
 
       // Calculate search sector midpoint angle (always needed for direction)
@@ -686,7 +688,8 @@ class MapRenderer {
     const pulse = this._animState.enemyPulse;
     const pulseAlpha = 0.3 + 0.2 * Math.sin(pulse * Math.PI * 2);
 
-    state.known_enemy.forEach((e, i) => {
+    // fix: 缺省字段防御（同 _drawScoutAircraft，批次 C3 复现）
+    (state.known_enemy ?? []).forEach((e, i) => {
       const [q, r] = this._worldToHex(e.position.lat, e.position.lon);
       const [px, py] = this._hexToPixel(q, r);
 
@@ -839,7 +842,8 @@ class MapRenderer {
     const [fx, fy] = this._hexToPixel(fleetQ, fleetR);
     const sectorRadius = 8 * HEX_SIZE * SQRT3;
 
-    state.active_scouts.filter(s => s.status === 'in_flight').forEach(s => {
+    // fix: 缺省字段防御（同 _drawScoutAircraft，批次 C3 复现的首个崩溃点）
+    (state.active_scouts ?? []).filter(s => s.status === 'in_flight').forEach(s => {
       const startRad = ((s.search_bearing_min - 90) * Math.PI) / 180;
       const endRad = ((s.search_bearing_max - 90) * Math.PI) / 180;
 

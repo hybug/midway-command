@@ -96,4 +96,12 @@ assert.ok(Math.abs(drawnMx - centerX) < 2 && Math.abs(drawnMy - centerY) < 2,
 const hit = drawn.some((c) => Math.hypot((c.args[0] ?? 999) + ox - centerX, (c.args[1] ?? 999) + oy - centerY) < 60);
 assert.ok(hit, "舰队标记未绘制在其逻辑投影（图面中心附近）处");
 
+// 回归（fix: 缺省列表防御）：render 是公开入口，缺省 active_scouts/known_enemy 的
+// 最小 state 不得让渲染帧抛错（桩环境复现根因：_drawSearchSectors 的
+// state.active_scouts.filter 首先抛 TypeError）
+assert.doesNotThrow(() => renderer.render({
+  task_forces: [{ name: "Task Force 16", course: 240, speed: 25,
+    carriers: [{ name: "USS Enterprise (CV-6)", position: { lat: 31.5, lon: -176.0 }, aircraft: [] }] }],
+}), "render 遇缺省 active_scouts/known_enemy 字段不得抛错");
+
 console.log("ROUTE-DISPLAY PASS");
