@@ -42,3 +42,27 @@
 
 ## 提交
 - （待 L6）
+
+## L5 实施结果（2026-09-12）
+
+| # | 条目 | 结果 | 落点 |
+|---|------|------|------|
+| F1 | 舰队标记对角错开 | ✅ i=0 (x-14, y-28)、i=1 (x+14, y+0)，牌/CSE/引导线整体随动；截图 ENT/HOR 牌完全分离 | mapRenderer.js `_drawOwnFleet`；route_display.test.mjs 锚点同步（F2_LEADER_DX=-14 / DY=-28，CSE 与标记锚点均含 DX） |
+| F2 | SAND ISLAND 入胶囊 | ✅ 字号 8→7px + 胶囊宽 `Math.max(rx*0.34, 62)`，截图文字全入框 | chartRenderer.js `drawIslands`（EASTERN ISLAND 维持 8px 不变） |
+| F3 | 守卫断言复活 | ✅ 断言收紧钉入 `.msg {` 规则块内：`url('…/paper_tex.jpg') repeat`（不再匹配注释里的 SVG 回退串） | tests/test_ui_assets.py `test_msg_intel_card_styles` |
+| F4 | 标签纸舌造型 | ✅ clip-path 切角删除 → `border-radius: 4px 4px 0 0`；非激活 `--color-paper-edge`(#d4c8a8) 压暗 + `translateY(2px)` 下沉；active::before `transform: none` 复位；.npc-tab 字色 → ink-main | style.css Phase 8a 段 |
+| F5 | 空态纸卡 | ✅ `div.empty-card` 包 intel_card_light.svg，宽 88% `margin:auto`；`#chat-log:has(.empty-card)` 转 flex 垂直居中；.idle-stamp 改 absolute 右上（top:6px/right:8px） | uiController.js `renderChat` + style.css |
+| F6 | 底栏层次 | ✅ .dash-label ink-faint→ink-fade；新增 `_setDashEmpty()` 给空态值（无/暂无）加 `.dash-empty`（opacity .6 + italic） | uiController.js `renderDashboard` + style.css |
+| F7 | ≤1360 断点 | ✅（数值修正）设计建议 11→10px/8→5px 系对照 UI_DESIGN 规格基线，实际代码基线已是 10px/4px——照抄会成为无效甚至反向规则，故断点内在基线上再收一档：9px / 8px 3px | style.css 文件尾 `@media (max-width: 1360px)` |
+| F8 | 经纬网密度 | ✅ 按裁定：`gridLine` 常量与 0.5° 主网原色不动，新增 `gridLineFaint: 'rgba(160,140,110,0.18)'` 画 0.25° 细网（跳过整半度线、无标注，垫底） | chartRenderer.js `drawLatLonGrid` |
+| F9 | 缓存号收口 | ✅ index.html 全量 1780997994→1780997995 + test pin 同步 + svgLoader paper_tex ?v=1780997992→1780997995（svgLoader 在允许清单外，按 F9 条目明示执行） | index.html / svgLoader.js / test_ui_assets.py |
+
+### 验证
+- `node --check`：chartRenderer / mapRenderer / uiController / svgLoader 全过
+- `node tests/ui/route_display.test.mjs`：ROUTE-DISPLAY PASS（F1 偏移同步后锚点全绿）
+- 全量 `pytest tests/`：**273 passed, 0 failed**（含本轮新增守卫 `test_loop2_fidelity_fix_markers` 与 `test_npc_tab_active_lift_enhanced` 锚点修正——文件尾 @media 也含 `.npc-tab {`，rindex 锚点改钉 Phase 8a 块签名）
+- 截图：loop-2-after-1440.png / loop-2-after-1280.png（无头 Chrome，服务器 8000）；裁片复核 F1 牌分离、F2 文字入框、F4 纸舌造型、F5 卡片+右上章、1280 标签单行不溢出
+
+### 备注
+- 新增守卫测试 `test_loop2_fidelity_fix_markers`（静态断言 F1/F2/F4/F5/F6/F7/F8 关键 token），防回退
+- L2 表 #4（MIDWAY ATOLL 标题与 HOR 牌轻微重叠）按裁定记录不修；F1 对角错开后 HOR 牌东移 14px，重叠面进一步缩小
