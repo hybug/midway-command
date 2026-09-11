@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development（每任务派发实现子代理 + 任务评审，本轮执行的主框架）。完成声明前遵循 superpowers:verification-before-completion（先验证后声明）；终验走 superpowers:requesting-code-review 的全分支审查；Loop 中遇缺陷先 superpowers:systematic-debugging 再修。本计划 v3 取代 v2。
 
-**Goal:** 修复实拍对照发现的 7 处真实差距并系统性收敛：批次 A（SVG/程序化，5 任务）→ 批次 B（AI 生成图集成，4 任务）→ **Loop 模式（「实拍对照→差距分级→方案→实施」闭环 ≥5 轮）**→ 终验（全分支审查+修复波次）。总执行工时**自下而上核算 ≥10 小时**（见工作量核算表），并有预算保护条款兜底。
+**Goal:** 修复实拍对照发现的 7 处真实差距并系统性收敛：批次 A（SVG/程序化，5 任务）→ 批次 B（AI 生成图集成，4 任务）→ **批次 C（航线模块单元测试与问题修复：舰队航线运动学 + 飞机航线生成/拦截 + JS 绘制守卫，4 任务）**→ **Loop 模式（「实拍对照→差距分级→设计评审→方案→实施」闭环 ≥5 轮）**→ 终验（全分支审查+修复波次）。总执行工时**自下而上核算 ≥13.7 小时**（见工作量核算表），并有预算保护条款兜底。
 
 **Architecture:** 零新增依赖（Pillow/numpy 已在 .venv）。批次 A 修订 chartRenderer.js/style.css/svgLoader.js；批次 B 新增 `static/assets/textures/`（归一化 AI 纹理）与 `tests/test_texture_assets.py` 质量门，木纹以 data-URI 内嵌 ruler.svg，雕刻罗盘走「亮度反转 alpha」抠图链。每任务走「红测→实现→转绿→目检→**任务评审**→提交」六步，评审不合格进修复环（≤5 轮，沿用子代理驱动纪律）。
 
@@ -32,9 +32,10 @@
 | R0 基线与纹理守卫 | 3 | 10–25 min | **0.8h** |
 | 批次 A（SVG 修正） | 5 | 20–35 min | **2.2h** |
 | 批次 B（AI 图集成） | 4 | 30–45 min（含管线脚本与抠图链） | **2.4h** |
+| 批次 C（航线模块单测与修复） | 4 | 25–35 min（含缺口审计与 TDD） | **2.0h** |
 | Loop ×5（每轮 L1–L6） | 5 轮 | 60–75 min/轮（实拍对照 15 + 设计评审 12 + 方案 10 + 实施 20–30 + 存档评审 10） | **5.3h** |
 | F 终验（全分支审查+修复波次+报告） | 3 | — | **1.0h** |
-| **合计** | | | **≥11.7h** ✓ |
+| **合计** | | | **≥13.7h** ✓ |
 
 **预算保护条款**：若所有 S/A 级差距提前清零且总耗时 <10h，则 Loop 自动加深（第 6、7 轮…），**B 级清单在保护期内解禁为可修**，直至工时达 10h 下限或清单彻底枯竭（枯竭须逐项核对表证明）。
 
@@ -44,6 +45,7 @@
 R0 基线与纹理守卫（0.8h）
 批次 A（SVG 修正，2.2h）：T0 罗盘回归验证 → T1 环礁三连修 → T2 25nm 环 → T3 引导线箭头 → T4 标签凸起
 批次 B（AI 图，2.4h）：B0 纹理管线与守卫 → B1 纸张 → B2 木纹 → B3 雕刻罗盘
+批次 C（航线模块单测与修复，2.0h）：C0 缺口审计 → C1 舰队航线 → C2 飞机航线 → C3 绘制守卫与修复
 Loop ×5（5.3h）：L1 实拍 → L2 对照分级 → L3 设计评审（设计师 agent）→ L4 方案 → L5 实施 → L6 存档（预算保护可加深）
 F 终验（1.0h）：F1 全分支审查 → F2 修复波次+复审 → F3 报告/台账收口
 ```
@@ -404,7 +406,139 @@ print("compass_engraved.png", out.size)
 
 ---
 
-## Loop 模式：对照-方案-实施闭环（≥5 轮，4.8h）
+## 批次 C — 航线模块单元测试与问题修复（舰队航线 + 飞机航线，2.0h）
+
+> 航线模块分布（已勘测）：**Python 运动学核心**——`src/entities.py` `calculate_new_position`/`update_entity_position`/`update_all_positions`（舰队航线移动）、`src/mission.py` `calculate_intercept`（打击拦截解算）、`src/scouting.py` `calculate_bearing`/`calculate_distance_nm`/`in_sector`/`generate_sector_route`/`generate_expanding_square_route`/`generate_parallel_route`/`_bearing_distance_to_position`（飞机航线生成）；**JS 绘制层**——`mapRenderer.js` `_drawScoutAircraft`/`_drawSearchSectors`/`_drawPendingRecon`、`chartRenderer.js` `drawTaskForceMarker`（CSE 航向线）。纪律：单测任务严格 superpowers:test-driven-development（红→绿→重构）；修复任务先 superpowers:systematic-debugging（四阶段：重现→隔离→根因→修复+回归测试），禁止盲改。
+
+### Task C0: 航线模块覆盖度缺口审计
+
+**Files:** Create: `docs/reports/route-module-audit.md`
+
+- [ ] 逐函数盘点：上表每个函数 → 现有测试覆盖点（grep `tests/test_entities.py`/`test_mission.py`/`test_scouting.py` 对应调用）→ 缺口清单。重点核对五类高危缺口：①`calculate_new_position` 航向换算象限（0°=北？东向增？）与经度 ±180° 包裹；②`calculate_intercept` 不可拦截分支（敌速≥机速时是否返回 None）与拦截时间非负；③三种 `generate_*_route` 航点序列性质（点数、起终点、扇区/环带约束）；④`calculate_bearing` 四象限（东=90/南=180/西=270）；⑤`update_all_positions` 多舰队同 tick 一致性。
+- [ ] 产出审计表（函数 | 现有测试 | 缺口 | 计划用例），Commit `docs: 航线模块覆盖度审计`。
+
+### Task C1: 舰队航线单元测试补全
+
+**Files:** Modify: `tests/test_entities.py`（追加 `TestRouteKinematics` 类）
+
+- [ ] **红测**（参数顺序/字段名先 `grep -n -B2 -A15 "def calculate_new_position" src/entities.py` 校正，断言意图不变）：
+
+```python
+class TestRouteKinematics:
+    """批次 C1：舰队航线运动学（docs/plans/ui-fidelity-fix-plan.md）。"""
+
+    def test_due_north_increases_lat(self):
+        """航向 0°（北）：纬度增、经度不变。"""
+        pos = calculate_new_position(_pos(28.0, -177.4), course=0, speed=24, minutes=60)
+        assert pos.lat > 28.0
+        assert abs(pos.lon - (-177.4)) < 0.5
+
+    def test_due_east_increases_lon_wrapped(self):
+        """航向 90°（东）：经度增；跨 ±180° 包裹到 [-180, 180]。"""
+        pos = calculate_new_position(_pos(28.0, 179.5), course=90, speed=600, minutes=60)
+        assert -180 <= pos.lon <= 180, f"经度未包裹: {pos.lon}"
+        assert pos.lon > 0, "跨 180° 后应落在东经"
+
+    def test_zero_speed_stays(self):
+        pos = calculate_new_position(_pos(28.0, -177.4), course=135, speed=0, minutes=60)
+        assert (pos.lat, pos.lon) == (28.0, -177.4)
+
+    def test_update_all_positions_moves_both_fleets(self):
+        state = build_initial_state()
+        before = [(tf.carriers[0].position.lat, tf.carriers[0].position.lon)
+                  for tf in state.task_forces]
+        enemy_before = (state.enemy_fleet.carriers[0].position.lat,
+                        state.enemy_fleet.carriers[0].position.lon)
+        update_all_positions(state, minutes=15)
+        after = [(tf.carriers[0].position.lat, tf.carriers[0].position.lon)
+                 for tf in state.task_forces]
+        enemy_after = (state.enemy_fleet.carriers[0].position.lat,
+                       state.enemy_fleet.carriers[0].position.lon)
+        assert before != after and enemy_before != enemy_after
+```
+
+（`_pos` 为构造 helper：`Position(lat=…, lon=…)`，字段名以 `src/entities.py` 为准。）
+- [ ] 运行确认红/绿（已有实现则部分直接绿，缺口即 bug 线索）→ 任何 FAIL 走 systematic-debugging：重现→根因→修复→本测试即回归测试。Commit `test: 舰队航线运动学单元测试`（若修 bug 追加 `fix: <根因>`）。
+- [ ] **派评审**。
+
+### Task C2: 飞机航线单元测试补全
+
+**Files:** Modify: `tests/test_scouting.py`（追加 `TestRouteGeneration` 类）、`tests/test_mission.py`（追加拦截解算用例）
+
+- [ ] **红测**（函数签名先 grep 校正）：
+
+```python
+class TestRouteGeneration:
+    """批次 C2：飞机搜索航线生成性质。"""
+
+    def test_bearing_four_quadrants(self):
+        assert abs(calculate_bearing((0.0, 0.0), (1.0, 0.0)) - 0) < 1    # 北
+        assert abs(calculate_bearing((0.0, 0.0), (0.0, 1.0)) - 90) < 1   # 东
+        assert abs(calculate_bearing((0.0, 0.0), (-1.0, 0.0)) - 180) < 1 # 南
+        assert abs(calculate_bearing((0.0, 0.0), (0.0, -1.0)) - 270) < 1 # 西
+
+    def test_bearing_distance_roundtrip(self):
+        """bearing+distance → position → 反算 bearing/distance 应回到原值。"""
+        origin = (28.2, -177.4)
+        dest = _bearing_distance_to_position(origin, bearing=45, distance_nm=60)
+        assert abs(calculate_bearing(origin, (dest.lat, dest.lon)) - 45) < 1
+        assert abs(calculate_distance_nm(origin, (dest.lat, dest.lon)) - 60) < 1
+
+    def test_expanding_square_route_closes_and_counts(self):
+        route = generate_expanding_square_route(origin=(28.2, -177.4), legs=3, leg_nm=30)  # 参数名以源码为准
+        assert len(route) >= 4
+        assert abs(calculate_distance_nm((route[0].lat, route[0].lon),
+                                         (route[-1].lat, route[-1].lon))) <= 30 * 3
+
+    def test_sector_route_stays_within_sector(self):
+        route = generate_sector_route(origin=(28.2, -177.4), bearing_min=30, bearing_max=90, distance_nm=120)  # 参数名以源码为准
+        for p in route:
+            assert in_sector(calculate_bearing((28.2, -177.4), (p.lat, p.lon)), 30, 90)
+```
+
+```python
+# tests/test_mission.py 追加
+class TestInterceptKinematics:
+    """批次 C2：打击拦截解算。"""
+
+    def test_intercept_solvable_when_aircraft_faster(self):
+        result = calculate_intercept(enemy_lat=30.0, enemy_lon=-178.0, enemy_course=90,
+                                     enemy_speed=20, launch_lat=28.2, launch_lon=-177.4,
+                                     aircraft_speed=180)  # 字段名以源码为准
+        assert result is not None
+        assert result["time_to_intercept"] >= 0  # 键名以源码为准
+
+    def test_intercept_unsolvable_when_too_slow(self):
+        result = calculate_intercept(enemy_lat=30.0, enemy_lon=-178.0, enemy_course=0,
+                                     enemy_speed=200, launch_lat=28.2, launch_lon=-177.4,
+                                     aircraft_speed=100)
+        assert result is None
+```
+
+- [ ] 红→（修复）→绿；任何 FAIL 走 systematic-debugging 并以本测试为回归。Commit `test: 飞机航线生成与拦截解算单元测试`（修复则追加 `fix: <根因>`）。
+- [ ] **派评审**。
+
+### Task C3: JS 航线绘制守卫与目检修复
+
+**Files:** Modify: `tests/test_ui_assets.py`（追加绘制守卫）、`static/js/chartRenderer.js` / `static/js/mapRenderer.js`（如发现缺陷）
+
+- [ ] **静态守卫**：
+
+```python
+def test_route_drawing_guards():
+    chart = (BASE / "static" / "js" / "chartRenderer.js").read_text()
+    mapping = (BASE / "static" / "js" / "mapRenderer.js").read_text()
+    assert "(tf.courseDeg - 90)" in chart, "舰队航向线须用航海约定（0°朝上）"
+    assert "_drawScoutAircraft" in mapping and "_drawSearchSectors" in mapping, "飞机航线/搜索扇面绘制缺失"
+    assert "drawTaskForceMarker" in mapping, "舰队标记未接 chartRenderer"
+```
+
+- [ ] **动态目检**：无头 Chrome 打开页面 → `POST /advance` 推进 2–3 回合（触发舰队移动/侦察航点变化）→ 截图对比前后：飞机航点/扇面随任务推进更新、舰队标记位移且 CSE 线随 course 变化。任何渲染异常（航线不更新/方向错/残留旧航线）走 systematic-debugging 修复 + 静态守卫断言固化。Commit `test: JS 航线绘制守卫`（修复则追加 `fix: <现象与根因>`）。
+- [ ] **派评审**；批次 C 收尾：审计表回填「已覆盖」，Commit `docs: 航线模块批次C收口`。
+
+---
+
+## Loop 模式：对照-方案-实施闭环（≥5 轮，5.3h）
 
 > 批次 A+B 验收后自动启动。每轮以**新实拍**为基准，把单轮修复的盲区系统性逼出并消化。
 
@@ -511,11 +645,12 @@ print("compass_engraved.png", out.size)
 | 木纹质感 | B0+B2 | B | 纹理门+目检 |
 | 整体收敛 | Loop ×5 | Loop | 每轮评分趋势不降；末轮 S=0 |
 | 设计质量收敛 | 设计师 agent 每轮评审（L3） | Loop | DESIGN-SCORE 五维趋势不降；末轮无未落地 D-S |
+| 航线模块正确性 | C0–C3 | C | 缺口审计表清零（全部高危缺口有用例）；JS 绘制守卫绿；目检航线随回合更新 |
 | 工程质量 | F1–F3 | F | 全分支审查 APPROVE + 残余全裁定 |
 
 ## Self-Review 记录
 
-- **覆盖**：7 项差距 + 5 轮收敛 + 终验全映射；每任务带评审环节（执行框架§1–2）；每轮 Loop 引入独立设计师 agent 维度化评审（L3），D 级建议与保真度差距同渠道消化且有回查机制。
-- **工时保证**：核算表 ≥11.2h（下限 10h）+ 预算保护条款（Loop 加深 + B 级解禁）双保险。
-- **占位符扫描**：所有新增脚本/测试/CSS/JS 均完整可运行；Loop 各轮差距条目属执行时数据，模板与命令已给全。
-- **依赖一致性**：B3 依赖 B0？否——B3 只依赖 P3 源图；B1 依赖 B0 产物 paper_tex；T0 中间态被 B3 升级；Loop 依赖 A+B；F 依赖 Loop。顺序执行无环。
+- **覆盖**：7 项差距 + 5 轮收敛 + 终验全映射；每任务带评审环节（执行框架§1–2）；每轮 Loop 引入独立设计师 agent 维度化评审（L3），D 级建议与保真度差距同渠道消化且有回查机制；航线模块（舰队航线运动学 + 飞机航线生成/拦截 + JS 绘制）单测与修复落批次 C，含缺口审计先行与 systematic-debugging 纪律。
+- **工时保证**：核算表 ≥13.7h（下限 10h）+ 预算保护条款（Loop 加深 + B/D-B 级解禁）双保险。
+- **占位符扫描**：所有新增脚本/测试/CSS/JS 均完整可运行；批次 C 测试用例中「参数名/键名以源码为准校正」处均已附 grep 获取程序，断言意图写死；Loop 各轮差距条目属执行时数据，模板与命令已给全。
+- **依赖一致性**：B3 只依赖 P3 源图；B1 依赖 B0 产物 paper_tex；批次 C 与 A/B 无文件耦合（Python 运动学 + JS 绘制），排在 B 后 Loop 前（Loop 目检覆盖航线视觉）；Loop 依赖 A+B+C；F 依赖 Loop。顺序执行无环。
