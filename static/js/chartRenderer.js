@@ -45,13 +45,19 @@ function latLonToChartPx(lat, lon, w, h) {
   };
 }
 
-// Task 7.3：纸张底图——米黄底色 + 水渍纹理 + 噪点颗粒（资产由 svgLoader 提供）
+// Task 7.3 → 保真度修正 B1：纸张底图——米黄底色 + AI 纸纹 createPattern 平铺（SVG 水渍回退）+ 噪点颗粒
 function drawChartBase(ctx, w, h) {
   ctx.fillStyle = CHART_STYLE.paper;
   ctx.fillRect(0, 0, w, h);
-  const stains = getIcon('paper_base');
+  const tex = getIcon('paper_tex');
+  if (tex) {
+    const pattern = ctx.createPattern(tex, 'repeat');
+    if (pattern) { ctx.fillStyle = pattern; ctx.fillRect(0, 0, w, h); }
+  } else {
+    const stains = getIcon('paper_base');
+    if (stains) ctx.drawImage(stains, 0, 0, w, h);
+  }
   const grain = getIcon('noise');
-  if (stains) ctx.drawImage(stains, 0, 0, w, h);
   if (grain) { ctx.globalAlpha = 0.3; ctx.drawImage(grain, 0, 0, w, h); ctx.globalAlpha = 1; }
 }
 

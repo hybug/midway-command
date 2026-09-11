@@ -436,7 +436,8 @@ html, body {
    Phase 8a — A11 顶栏纸带 + 48 星旗
    ═══════════════════════════════════════════════════════ */
 #topbar.paper-topbar {
-  background: url('/static/assets/ui/topbar_bg.svg') center / cover no-repeat;
+  /* 保真度修正 B1：AI 旧纸纹理平铺（SVG 回退：background: url('/static/assets/ui/topbar_bg.svg') center / cover no-repeat;） */
+  background: url('/static/assets/textures/paper_tex.jpg') repeat;
 }
 .topbar-flag-img { height: 26px; width: auto; image-rendering: pixelated; }
 
@@ -487,7 +488,8 @@ html, body {
    ═══════════════════════════════════════════════════════ */
 .order-note {
   position: relative;
-  background: url('/static/assets/ui/paper_note.svg') center / 100% 100% no-repeat;
+  /* 保真度修正 B1：AI 旧纸纹理平铺（SVG 回退：background: url('/static/assets/ui/paper_note.svg') center / 100% 100% no-repeat;） */
+  background: url('/static/assets/textures/paper_tex.jpg') repeat;
   margin: 10px; padding: 12px 14px;
   box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.25);
 }
@@ -513,7 +515,8 @@ html, body {
 .msg {
   position: relative;
   border: none;
-  background: url('/static/assets/ui/intel_card_light.svg') center / 100% 100% no-repeat;
+  /* 保真度修正 B1：AI 旧纸纹理平铺（SVG 回退：background: url('/static/assets/ui/intel_card_light.svg') center / 100% 100% no-repeat;） */
+  background: url('/static/assets/textures/paper_tex.jpg') repeat;
   padding: 10px 12px; margin: 6px 8px;
   filter: drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.18));
 }
