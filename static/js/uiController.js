@@ -109,7 +109,9 @@ class UIController {
       const safeText = msg.content.replace(/</g, '&lt;').replace(/\n/g, '<br>');
       const zTime = timeStr + ' Z';
       const classified = CLASSIFIED_MSG_RE.test(msg.content);
-      const cardClass = (isPlayer || classified ? ' msg-classified' : '') + borderClass;
+      // 成品图复现 E2：INTEL 分区发信者（通信官/情报官）常驻深卡（无印章），PLAYER 卡维持现状
+      const intelDark = !isPlayer && this.npcSections[activeNpc] === 'INTEL';
+      const cardClass = ((isPlayer || classified || intelDark) ? ' msg-classified' : '') + borderClass;
       const stamp = classified ? '<img class="msg-stamp" src="/static/assets/ui/secret_stamp.svg" alt="">' : '';
       html += `<div class="msg${cardClass}">
         ${stamp}
@@ -135,7 +137,9 @@ class UIController {
     const safeText = content.replace(/</g, '&lt;').replace(/\n/g, '<br>');
     const zTime = timeStr + ' Z';
     const classified = CLASSIFIED_MSG_RE.test(content);
-    const cardClass = (isPlayer || classified ? ' msg-classified' : '') + borderClass;
+    // 成品图复现 E2：INTEL 分区发信者（通信官/情报官）常驻深卡（无印章），PLAYER 卡维持现状
+    const intelDark = !isPlayer && this.npcSections[activeNpc] === 'INTEL';
+    const cardClass = ((isPlayer || classified || intelDark) ? ' msg-classified' : '') + borderClass;
     const stamp = classified ? '<img class="msg-stamp" src="/static/assets/ui/secret_stamp.svg" alt="">' : '';
 
     const div = document.createElement('div');

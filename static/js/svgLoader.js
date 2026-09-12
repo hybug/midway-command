@@ -35,7 +35,7 @@ const ICON_FILES = {
   enemy_marker: '/static/assets/ui/enemy_marker.svg',
   secret_stamp: '/static/assets/ui/secret_stamp.svg',
   // 保真度修正 B1：AI 旧纸纹理（docs/assets/normalize_texture.py 归一产物，Canvas repeat 平铺）
-  paper_tex: '/static/assets/textures/paper_tex.jpg?v=1780997999',
+  paper_tex: '/static/assets/textures/paper_tex.jpg?v=1780998000',
 };
 
 let iconsLoaded = false;

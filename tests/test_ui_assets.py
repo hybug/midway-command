@@ -103,6 +103,7 @@ SVG_PALETTE = {
     "#e8a33d", "#c8871f", "#b8b8c0", "#8f8f9a", "#d88a7c", "#d4b890", "#3a3228",  # pencil
     "#b22234", "#3c3b6e",  # flag48 旗
     "#2b2118",  # chart-area 海图厚画框（style.css #chart-area border，成品图复现 D3）
+    "#241c14",  # sidebar 右栏深底（style.css #sidebar background，成品图复现 E2）
 }
 
 SVG_COLOR_RE = re.compile(r'(?:fill|stroke|stop-color)="(#[0-9a-fA-F]{6})"')
@@ -188,11 +189,11 @@ def test_input_bar_and_button_focus_styles():
 
 
 def test_index_html_cache_version_consistent():
-    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（保真度修正 T4 → 1780997990，B1 → 1780997991，B3 → 1780997992，C4 → 1780997993，loop1 L4 → 1780997994，loop2 L4 → 1780997995，loop3 F1-F5 → 1780997996，终审修复 → 1780997997，成品图复现 D1/D2 → 1780997998，D4 → 1780997999）。"""
+    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（保真度修正 T4 → 1780997990，B1 → 1780997991，B3 → 1780997992，C4 → 1780997993，loop1 L4 → 1780997994，loop2 L4 → 1780997995，loop3 F1-F5 → 1780997996，终审修复 → 1780997997，成品图复现 D1/D2 → 1780997998，D4 → 1780997999，E1/E2 → 1780998000）。"""
     html = (BASE / "static" / "index.html").read_text()
     versions = set(re.findall(r'\?v=(\d+)', html))
     assert len(versions) == 1, f"index.html 缓存号不一致: {versions}"
-    assert versions == {"1780997999"}, f"index.html 缓存号未递增到 1780997999: {versions}"
+    assert versions == {"1780998000"}, f"index.html 缓存号未递增到 1780998000: {versions}"
     # 防再漂移：svgLoader.js 内全部带 ?v= 的资源 URL，版本号必须与 index.html 现值一致
     # （历史漂移：paper_tex ?v=1780997995 与 index.html 1780997996 脱钩，见终审修复项 1）
     loader = (BASE / "static" / "js" / "svgLoader.js").read_text()

@@ -263,7 +263,8 @@ html, body {
   grid-area: sidebar;
   display: flex;
   flex-direction: column;
-  background: var(--color-desk-light);
+  /* 成品图复现 E2：右栏深色化——采样成品图右栏底 (62,46,36) 压暗版 #241c14（原 desk-light） */
+  background: #241c14;
   border: 1px solid #2a1a10;
   border-radius: 2px;
   overflow: hidden;
@@ -335,7 +336,7 @@ html, body {
   overflow-y: auto;
   padding: 0;
   min-height: 0;
-  background: var(--color-paper-base);
+  background: transparent; /* 成品图复现 E2：右栏深色化——透出 #sidebar #241c14 深底（原 paper-base 浅纸） */
 }
 
 .msg {
@@ -592,9 +593,13 @@ html, body {
   filter: drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.18));
 }
 .msg-classified {
-  background: url('/static/assets/ui/intel_card_dark.svg') center / 100% 100% no-repeat;
+  /* 成品图复现 E2：#4a3f30 垫底——SVG 卡稿（320:140 meet）在非等比 msg 盒内 letterbox，
+     透明边带垫同色底（卡稿同色 fill），深底浅字不被透出（INTEL 卡常驻深色） */
+  background: url('/static/assets/ui/intel_card_dark.svg') center / 100% 100% no-repeat #4a3f30;
 }
 .msg-classified .msg-text { color: var(--color-paper-dark); }
+/* 成品图复现 E2：INTEL 深卡常驻化——发信者名随正文提亮（原 ink-fade 在深底不可读） */
+.msg-classified .msg-sender { color: var(--color-paper-edge); }
 .msg-stamp {
   position: absolute; right: 8px; top: 6px; width: 64px;
   transform: rotate(-8deg); mix-blend-mode: multiply; opacity: 0.9;
