@@ -37,22 +37,24 @@
   const HOR_LAT = DESIGN_THEATER.center.lat;
   const HOR_LON = DESIGN_THEATER.center.lon - 25 * NM_TO_DEG_LON; // ≈ -177.873 → 量化 (-3, 0)
 
-  // 敌情 ×2：成品图环礁东北（画布目标 ≈(792,138) 与 (855,156)，即 ~x55%/y22% 邻域）
-  // 反推：canvas = hexPx + (ox,oy)，ox/oy 为舰队居中平移（ENT@画布中心）——
-  //   (792,138) → hex (8,-17)  → lat 25.37 / lon -175.89
-  //   (855,156) → hex (9,-13)  → lat 26.03 / lon -175.70
+  // 敌情 ×2：成品图环礁东北、内外错开（fix Loop1-F2 微调——原位偏正北）。
+  // 图表层目标（1440×900，chart 比例尺 12.22px/nm，环礁心 (633.6,414)）：
+  //   内标 hex (9,-11)  → 画布 (875.9,252.0) ≈ 方位 56° / 23.8nm（礁环内缘）
+  //   外标 hex (10,-17) → 画布 (834.3,144.0) ≈ 方位 37° / 27.5nm（礁环外缘）
+  // 反推（存储系「北向画在屏幕下方」，lat/lon 语义与屏幕朝向相反）：
+  //   lat = 28.2 + r×10/60，lon = -177.4 + q×10/(60×cos28.2°)
   const KNOWN_ENEMY = [
     {
       description: '敌航母约 4 艘 - 方位 55° - 距离 150nm',
       confidence: 'high',
       source: 'SCOUT-2',
-      position: { lat: 25.37, lon: -175.89 },
+      position: { lat: 26.37, lon: -175.7 },
     },
     {
       description: '敌航母约 4 艘 - 战列舰 2 艘护航',
       confidence: 'high',
       source: 'TBD-1',
-      position: { lat: 26.03, lon: -175.7 },
+      position: { lat: 25.37, lon: -175.51 },
     },
   ];
 
