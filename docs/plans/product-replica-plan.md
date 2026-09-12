@@ -215,16 +215,18 @@ function drawTaskForceMarker(ctx, tf, w, h, ox = 0, oy = 0) {
 
 **Files:** Create: `static/assets/ui/icons/compass_brass.png`（分拆产物）；Modify: `static/index.html`（desk prop）
 
-- [ ] 从 `docs/assets/icons_extracted/button_26_88x354.png` 分拆圆规段（Loop 前评审登记的「素材表独有道具」）：Read 原图定分割框 → Pillow 裁切+trim → quality_gate（G4 多部件按 MANUAL 目检裁决先例）。
-- [ ] 桌面左下接入（与铅笔并排，rotate 约 15°，drop-shadow 同族）。
-- [ ] 目检对照成品图左下 → Commit `feat: 黄铜圆规桌面道具（button_26 分拆）`；**派评审**。
+- [ ] **素材来源裁定（2026-09-12 勘验后锁定）**：从 u1fak0 直接裁**不可行**——圆规为写实黄铜材质，压在非纯色底上（叠木尺/图框双线/虚线航线），矩形裁切会带杂质，alpha 抠图对金属反光边缘质量风险高；且整块场景贴片会把设计图的图框线带入与我们自绘图框冲突。**采用 button_26 分拆路线**：`docs/assets/icons_extracted/button_26_88x354.png`（铅笔+圆规工具条，透明底现成）分拆圆规段——风格与既有桌面道具同族。
+- [ ] Read button_26 定分割框 → Pillow 裁切+trim → `static/assets/ui/icons/compass_brass.png` → quality_gate（G4 多部件按 MANUAL 目检裁决先例）。
+- [ ] 桌面左下接入（横放木尺旁，rotate 约 15°，drop-shadow 同族）。
+- [ ] 目检 → Commit `feat: 黄铜圆规桌面道具（button_26 分拆）`；**派评审**。
 
-### Task G6: 尺与铅笔移位（A6）
+### Task G6: 尺与铅笔移位（A6，按成品图勘测修正）
 
 **Files:** Modify: `static/css/style.css`
 
-- [ ] 尺改海图右缘**竖放**（`right: 10px; top: 15%; transform: rotate(90deg); transform-origin: right top;` 方案目检调优）；铅笔移海图右下（成品图位）。限制：不遮比例尺/罗盘。
-- [ ] 目检 → Commit `feat: 尺竖放右缘与铅笔右下移位`；**派评审**。
+- [ ] **成品图实际布局**（勘测修正，推翻 v1 草案「尺竖放右缘」）：**木尺横放左下**（压海图左缘，与圆规同侧）、**铅笔竖放右缘**（笔尖朝下）、右侧另有一把斜放直尺（不再新造，ruler_wood 横放即可）。当前实现：尺/铅笔均横放底部中央——需移位。
+- [ ] `.desk-ruler { left: 6px; right: auto; bottom: 54px; transform: rotate(-3deg); }`（横放左下压图缘）；`.desk-pencil { right: 14px; left: auto; bottom: 120px; transform: rotate(180deg) 或垂直翻转; height: 200px; width: auto; }`（竖放右缘笔尖朝下，以目检调优）。限制：不遮比例尺/罗盘/经纬标注。
+- [ ] 目检对照成品图 → Commit `feat: 尺与铅笔按成品图布局移位`；**派评审**。
 
 ---
 
