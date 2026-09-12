@@ -68,3 +68,12 @@
 - 空态初始位（舰队在环礁正西同纬）下 HOR 矢量箭头尖距坐标行尾 ~2px 擦边——数据相关几何，fixture 基准位无此问题；
 - ENT 的 CSE 270° 读数仍被本舰航向线尾段穿过（G1 既有形态，非本轮改动引入）；
 - 搜索扇区方向标签（southwest 等）随扇区退背景后被陆地遮挡，开放水面扇区可见性待设计裁定。
+
+### L5.5 设计师验收 · F8 重做（2026-09-13）
+
+- **裁决**：F1–F7 全 ACCEPT；**F8 REJECT**——纸面内阴影零视觉效果。原因：inset box-shadow 写在不透明 canvas（#tacticalMap，100%×100%）的父级 #chart-area 上，被 canvas 完全盖住（before/after 逐像素 diff=0）。
+- **改法（设计师建议，采纳）**：`#chart-area::after` 覆层（`content:''; position:absolute; inset:0; pointer-events:none; box-shadow: inset 0 0 22px rgba(42,34,24,0.22)`），::after 绘制在 canvas 之上，blur 12→22px 贴近基准强度；父级无效 inset 写法移除。
+- **实施**：style.css #chart-area box-shadow 拆分（外投影 2px/8px 保留在父级，内阴影移入 ::after）；缓存号 1780998006→1780998007 全链（index.html 全部 ?v= + svgLoader paper_tex 同步 + test_ui_assets 断言/历史注释登记）。
+- **取证**：loop-1-after-fixture-1440.png 覆盖重截（无头 Chrome 1440×900，设计态 09:45Z）并 Read 自查——纸缘晕影四边可见。像素级复核（旧图 vs 新图）：差异 82,439px（此前 REJECT 时 diff=0），其中 95% 落在海图内缘 40–60px 边带；边带亮度均值 −6.6（变暗）、图心 0.6% 像素变动（≈0）；角落 −26 vs 向内 60px −19，梯度向内衰减，符合 inset 晕影形态。
+- **验证**：全量 pytest 285 passed / 0 failed；test_index_html_cache_version_consistent PASS（1780998007）。
+- **提交**：`fix: 纸面晕影改 ::after 覆层（设计师验收 F8）`。
