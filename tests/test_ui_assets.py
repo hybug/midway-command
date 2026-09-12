@@ -292,11 +292,22 @@ def test_range_ring_25nm_label_offset():
 # ── 保真度修正 · T4：标签激活凸起增强 ──
 
 def test_npc_tab_active_lift_enhanced():
-    """.npc-tab 段 isolation: isolate——底色移交 ::before 伪元素，激活凸起增强。"""
+    """.npc-tab 段 isolation: isolate——底色移交 ::before 伪元素，激活凸起增强。
+    成品图复现 E3：非激活深色舌 #2b2118 + bar-text 浅字，激活 paper-base 白底 + ink 墨字（INTEL 式白底激活）。"""
     css = (BASE / "static" / "css" / "style.css").read_text()
     # fix Loop2-F7: 文件尾新增 @media 断点也含 ".npc-tab {"，锚点改钉 Phase 8a 块签名
     npc_seg = css[css.rindex(".npc-tab { position: relative"):]
     assert "isolation: isolate" in npc_seg, ".npc-tab 段缺 isolation: isolate（::before 双底色隔离）"
+    # 成品图复现 E3：标签深色白字
+    before_seg = css[css.rindex(".npc-tab::before"):]
+    assert "background: #2b2118;" in before_seg, "非激活纸舌应为深色 #2b2118（成品图 A9）"
+    base_seg = css[css.index(".npc-tab {"):css.index(".npc-tab:hover")]
+    assert "color: var(--color-bar-text);" in base_seg, "非激活标签字应为 bar-text 浅字（深舌白字）"
+    active_seg = css[css.rindex(".npc-tab.active {"):]
+    assert "color: var(--color-ink-main);" in active_seg, "激活标签须显式回 ink 墨字（白底激活，防 bar-text 泄漏）"
+    # 成品图复现 E3：hover 旧纸色遗留清除——深色系提亮（rgba(245,237,214,.5) 为深舌前的死值）
+    hover_seg = css[css.index(".npc-tab:hover"):css.index(".npc-tab.active")]
+    assert "rgba(216, 203, 178, 0.12)" in hover_seg, "hover 底应为深色系提亮 rgba(216,203,178,0.12)"
 
 
 # ── 保真度修正 · Loop2 L4：F1–F9 修复守卫 ──

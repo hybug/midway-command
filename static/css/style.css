@@ -284,7 +284,7 @@ html, body {
   padding: 8px 4px;
   border: none;
   background: transparent;
-  color: var(--color-ink-main); /* fix Loop2-F4: 字色墨（原 ink-faint 偏灰） */
+  color: var(--color-bar-text); /* 成品图复现 E3：深舌白字（原 ink-main 墨字随浅舌废弃） */
   font-family: var(--font-typewriter);
   font-size: 10px;
   letter-spacing: 1px;
@@ -294,11 +294,13 @@ html, body {
   white-space: nowrap;
 }
 .npc-tab:hover {
-  color: var(--color-ink-main);
-  background: rgba(245,237,214,0.5);
+  color: var(--color-bar-text);
+  /* 成品图复现 E3：hover 旧纸色遗留清除——深色系提亮（注：元素底在隔离层内被不透明
+     ::before 纸舌覆盖，实际 hover 反馈由 Phase 9.3 的 -1px 上浮承载） */
+  background: rgba(216, 203, 178, 0.12);
 }
 .npc-tab.active {
-  color: var(--color-ink-main);
+  color: var(--color-ink-main); /* 成品图复现 E3：白底激活须显式回墨字（基础色改 bar-text 后防泄漏） */
   border-bottom-color: var(--color-ink-main);
   /* 保真度修正 T4：底色移交 ::before 伪元素（Phase 8a 段），避免元素矩形底色从切角漏出 */
   font-weight: bold;
@@ -526,7 +528,7 @@ html, body {
   content: ""; position: absolute; inset: 0; z-index: -1;
   /* fix Loop2-F4: 纸舌造型对照 tab_bg.svg——clip-path 切角改圆角纸舌（上角 4px 圆角） */
   border-radius: 4px 4px 0 0;
-  background: var(--color-paper-edge); /* #d4c8a8 非激活压暗一档（原 paper-dark） */
+  background: #2b2118; /* 成品图复现 E3：非激活深色舌（同海图厚画框色，白字对比） */
   transform: translateY(2px); /* 非激活纸舌下沉 2px（active 态由下条复位，不受影响） */
 }
 .npc-tab.active::before { background: var(--color-paper-base); transform: none; }
