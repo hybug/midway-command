@@ -438,14 +438,23 @@ function drawSecretStamp(ctx, w, h) {
 }
 
 const ChartRenderer = {
-  drawAll(ctx, w, h) {
+  // fix Loop1-F5: 底图层拆分 drawBase（纸底+经纬网）/drawLandmarks（环礁+距离环+罗盘+
+  // 比例尺+章）——搜索扇区须画在纸面之后、陆地填充之前（先扇区后陆地，扇区压焦点消除）；
+  // drawAll 保持原序（base+landmarks），像素比对与既有测试不受影响
+  drawBase(ctx, w, h) {
     drawChartBase(ctx, w, h);
     drawLatLonGrid(ctx, w, h);
+  },
+  drawLandmarks(ctx, w, h) {
     drawAtoll(ctx, w, h);
     drawRangeRings(ctx, w, h);
     drawCompassRose(ctx, w, h);
     drawScaleBar(ctx, w, h);
     drawSecretStamp(ctx, w, h);
+  },
+  drawAll(ctx, w, h) {
+    this.drawBase(ctx, w, h);
+    this.drawLandmarks(ctx, w, h);
   },
   drawTaskForceMarker,
   drawEnemyContact,

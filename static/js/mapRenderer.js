@@ -268,30 +268,35 @@ class MapRenderer {
 
     // Task 7.8：渲染入口最前部——A1 旧海图底图（纸底/经纬网/环礁/距离环/罗盘/比例尺）
     // 注：传 CSS 像素 W/H（ctx 已按 dpr setTransform，传 canvas.width 设备像素会放大 dpr 倍）
-    ChartRenderer.drawAll(ctx, W, H);
+    // fix Loop1-F5: 底图拆层——drawBase（纸底+经纬网）先画，搜索扇区插在纸面之后、
+    // 陆地填充之前（先扇区后陆地），drawLandmarks（环礁+距离环+罗盘+比例尺+章）随后
+    ChartRenderer.drawBase(ctx, W, H);
+    // fix Loop1-F6: 纸面 10nm 细网格（纹理之后、距离环之前，survey 绘图感）
+    this._drawFineGrid(ctx, W, H);
 
-    // Task 7.8：旧底图层已被 ChartRenderer.drawAll 取代（保留代码备查）
-    // this._drawPaper(ctx, W, H);
-    // this._drawChartBorder(ctx, W, H);
-
+    let fqr = 0, frr = 0, ox = 0, oy = 0;
     if (state) {
       const tf = state.task_forces[0];
       const c1 = tf.carriers[0];
-      const [fqr, frr] = this._worldToHex(c1.position.lat, c1.position.lon);
+      [fqr, frr] = this._worldToHex(c1.position.lat, c1.position.lon);
       const [fpx, fpy] = this._hexToPixel(fqr, frr);
-      const ox = this.centerX - fpx;
-      const oy = this.centerY - fpy;
+      ox = this.centerX - fpx;
+      oy = this.centerY - fpy;
 
+      // fix Loop1-F5: 搜索扇区退背景——独立层画在环礁/距离环之前（被陆地覆盖不压焦点）
       ctx.save();
       ctx.translate(ox, oy);
+      this._drawSearchSectors(ctx, state, fqr, frr);
+      ctx.restore();
+
+      ChartRenderer.drawLandmarks(ctx, W, H);
 
       // Draw layers in order (back to front)
-      // Task 7.8：旧地形/六边形网格/距离环/环礁已被 ChartRenderer.drawAll 取代（保留代码备查）
+      // Task 7.8：旧地形/六边形网格/距离环/环礁已被 ChartRenderer 取代（保留代码备查）
       // this._drawDepthContours(ctx, fpx, fpy);
       // this._drawGrid(ctx, W, H, ox, oy);
       // this._drawDistanceRings(ctx, fpx, fpy, 8);
       this._drawPendingRecon(ctx, state, fqr, frr);
-      this._drawSearchSectors(ctx, state, fqr, frr);
       this._drawScoutAircraft(ctx, state, fqr, frr);
       // this._drawMidway(ctx, 0, 0, 1.5);
       this._drawOwnFleet(ctx, tf, ox, oy);
@@ -299,9 +304,8 @@ class MapRenderer {
 
       // 绘制确认动画
       this._drawConfirmAnimations(ctx, ox, oy);
-
-      ctx.restore();
     } else {
+      ChartRenderer.drawLandmarks(ctx, W, H);
       // Task 7.8：旧底图层已被 ChartRenderer.drawAll 取代（保留代码备查）
       // this._drawGrid(ctx, W, H, 0, 0);
       // this._drawMidway(ctx, this.centerX, this.centerY, 1.5);
@@ -859,6 +863,25 @@ class MapRenderer {
   }
 
   // ═══════════════════════════════════════════════════════
+  // 成品图复现 Loop1-F6：纸面 10nm 细网格（survey 绘图感）
+  // 绘制位：纹理（drawBase）之后、距离环/陆地（drawLandmarks）之前；
+  // 1px rgba(90,70,40,0.10)，间距经 ChartRenderer.chartNmToPx 换算 nm→px，
+  // 锚定环礁中心（chartRenderer atollCenter 同式 0.44w/0.46h，与距离环同轴）
+  // ═══════════════════════════════════════════════════════
+  _drawFineGrid(ctx, W, H) {
+    const step = ChartRenderer.chartNmToPx(10, W, H);
+    const ax = W * 0.44, ay = H * 0.46;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(90,70,40,0.10)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = ax % step; x < W; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+    for (let y = ay % step; y < H; y += step) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ═══════════════════════════════════════════════════════
   // Search Sectors (wedge-shaped扇形 with hatching)
   // ═══════════════════════════════════════════════════════
   _drawSearchSectors(ctx, state, fleetQ, fleetR) {
@@ -892,7 +915,8 @@ class MapRenderer {
       ctx.setLineDash([]);
 
       // Hatching inside wedge
-      ctx.strokeStyle = 'rgba(42,34,24,0.12)';
+      // fix Loop1-F5: hatch alpha 减半（0.12→0.06）+ 本层移到陆地填充前绘制——扇区退背景不压焦点
+      ctx.strokeStyle = 'rgba(42,34,24,0.06)';
       ctx.lineWidth = 0.6;
       ctx.save();
       ctx.beginPath();
