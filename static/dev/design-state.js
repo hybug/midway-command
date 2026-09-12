@@ -30,12 +30,19 @@
 
   const NM_TO_DEG_LON = 1 / (60 * Math.cos(DESIGN_THEATER.center.lat * Math.PI / 180));
 
-  // 舰队：course 270 / 30 KTS，按成品图 ENT 环礁西 ~40nm、HOR 西 ~25nm
-  //（lat/lon 由 theater 中心反推：lon = center.lon − nm × NM_TO_DEG_LON）
-  const ENT_LAT = DESIGN_THEATER.center.lat;
-  const ENT_LON = DESIGN_THEATER.center.lon - 40 * NM_TO_DEG_LON; // ≈ -178.156 → 实体层量化 (-4, 0)
+  // 舰队：course 270 / 30 KTS，按成品图 ENT 图左外缘（环礁西缘外开阔水面）、HOR 环礁
+  // 中心区对位（fix Loop2-F1——原两圈同挤环礁中心）。实体层首航母恒画在画布中心
+  //（known wart，route_display 平移守卫钉住）：数据只能移动次航母，故 Hornet 作锚点
+  //（ carriers[0]，钉在画布中心 (centerX−14, centerY−28)）、Enterprise 挂次位西推。
+  // lat/lon 由 theater 中心反推（存储系「北向画在屏幕下方」，勿用地理常识"纠正"）：
+  //   HOR（锚点）: hex (-4, 0)   ← lon = center.lon − 40×NM_TO_DEG_LON
+  //   ENT（次位）: hex (-24, -2) ← lon = center.lon − 240×NM_TO_DEG_LON、lat = center.lat − 20/60
+  //     无头 Chrome 实测（canvas 1084×657, center (542,328.5)）画布位 ≈ (119, 293)：
+  //     环礁西缘（x≈153）外开阔水面、与 HOR/atoll 近同排（成品图 ENT-HOR-atoll 一条水平线）
   const HOR_LAT = DESIGN_THEATER.center.lat;
-  const HOR_LON = DESIGN_THEATER.center.lon - 25 * NM_TO_DEG_LON; // ≈ -177.873 → 量化 (-3, 0)
+  const HOR_LON = DESIGN_THEATER.center.lon - 40 * NM_TO_DEG_LON;  // ≈ -178.156 → 锚点量化 (-4, 0)
+  const ENT_LAT = DESIGN_THEATER.center.lat - 20 / 60;             // ≈ 27.867
+  const ENT_LON = DESIGN_THEATER.center.lon - 240 * NM_TO_DEG_LON; // ≈ -181.939 → 量化 (-24, -2)
 
   // 敌情 ×2：成品图环礁东北、内外错开（fix Loop1-F2 微调——原位偏正北）。
   // 图表层目标（1440×900，chart 比例尺 12.22px/nm，环礁心 (633.6,414)）：
@@ -105,27 +112,31 @@
         name: 'Task Force 16',
         course: 270,
         speed: 30,
+        // 次序即绘制序/仪表序：carriers[0] = 实体层锚点（钉画布中心）。
+        // 底栏读数按位取值（uiController：位置/损伤取 carriers[0/1]、甲板按数组序），
+        // 故 damage 1 挂 Hornet 位以保持「企业:LGT 大黄蜂:OK」读数、巡逻 6 CAP 挂锚点位
+        // （合计不变）；甲板合计 14（SBD/TBD）随 Enterprise 位不变，仅企/蜂展示序对调。
         carriers: [
-          {
-            name: 'USS Enterprise (CV-6)',
-            position: { lat: ENT_LAT, lon: ENT_LON },
-            course: 270,
-            speed: 30,
-            cap_strength: 6,                           // 成品图 巡逻 6 CAP
-            damage_level: 1,                           // 损伤 minor（LGT → 橙红警示）
-            air_groups: [
-              { type: 'dive', count: 8, status: 'ready', fuel_pct: 100, ammo_pct: 100, squadron_name: 'VB-6' },
-              { type: 'torpedo', count: 6, status: 'ready', fuel_pct: 100, ammo_pct: 100, squadron_name: 'VT-6' },
-            ],                                         // 甲板合计 14（SBD/TBD）
-          },
           {
             name: 'USS Hornet (CV-8)',
             position: { lat: HOR_LAT, lon: HOR_LON },
             course: 270,
             speed: 30,
+            cap_strength: 6,                           // 巡逻 6 CAP（成品图合计同源）
+            damage_level: 1,                           // 底栏「企业:LGT」橙红警示读数位
+            air_groups: [],
+          },
+          {
+            name: 'USS Enterprise (CV-6)',
+            position: { lat: ENT_LAT, lon: ENT_LON },
+            course: 270,
+            speed: 30,
             cap_strength: 0,
             damage_level: 0,
-            air_groups: [],
+            air_groups: [
+              { type: 'dive', count: 8, status: 'ready', fuel_pct: 100, ammo_pct: 100, squadron_name: 'VB-6' },
+              { type: 'torpedo', count: 6, status: 'ready', fuel_pct: 100, ammo_pct: 100, squadron_name: 'VT-6' },
+            ],                                         // 甲板合计 14（SBD/TBD）
           },
         ],
       },

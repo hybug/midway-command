@@ -111,14 +111,17 @@ function drawLatLonGrid(ctx, w, h) {
     // fix Loop3-F5: 纬度标注（均在左缘列 x=6）上移避左下木尺（y-3 → y-8）
     ctx.fillText(fmtLat(lat), 6, y - 8);
   }
-  for (let lon = -183; lon <= -172; lon += 0.5) {
-    if (lon < -180) continue;
-    const x = latLonToChartPx(CHART_CENTER.lat, lon, w, h).x;
-    ctx.setLineDash([4, 4]);
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillText(fmtLon(lon), x + 3, 26); // y=26 下移避让左上角 .chart-label div（fix round 3）
-  }
+    // fix Loop2-F6: 罗盘避让——右上罗盘 150px 占位（drawCompassRose 自 w-170 起），
+    // 落在罗盘半径带内（x > w-170）的顶部经度标注跳过（网格线照画，只让标注带避让）
+    for (let lon = -183; lon <= -172; lon += 0.5) {
+      if (lon < -180) continue;
+      const x = latLonToChartPx(CHART_CENTER.lat, lon, w, h).x;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      ctx.setLineDash([]);
+      if (x > w - 170) continue; // 罗盘占位带（x > w-170）内不画标注
+      ctx.fillText(fmtLon(lon), x + 3, 26); // y=26 下移避让左上角 .chart-label div（fix round 3）
+    }
   ctx.restore();
 }
 
@@ -391,7 +394,12 @@ function drawTaskForceMarker(ctx, tf, w, h, ox = 0, oy = 0) {
   ctx.beginPath(); ctx.moveTo(tf.x, tf.y);
   ctx.lineTo(tf.x + Math.cos(rad) * 30, tf.y + Math.sin(rad) * 30); ctx.stroke(); // 航向线
   ctx.font = `9px ${CHART_STYLE.fontTypewriter}`;
-  ctx.fillText(`CSE ${Math.round(tf.courseDeg)}°`, tf.x + Math.cos(rad) * 34, tf.y + Math.sin(rad) * 34);
+  // fix Loop2-F2: CSE 读数外推复核——锚点圈 CSE 落入环礁中心坐标行文字带
+  //（基线 ac.y+4 ±14px、中心 ±140px 内）时沿屏幕 +y 外推一行高，消叠字
+  //（fixture 实证：HOR 锚点圈 CSE 270° 压坐标行 "…21'W" 尾）；带外维持原位（航线同排）
+  let cseX = tf.x + Math.cos(rad) * 34, cseY = tf.y + Math.sin(rad) * 34;
+  if (Math.abs(cseY - (ac.y + 4)) < 14 && Math.abs(cseX - ac.x) < 140) cseY = ac.y + 18;
+  ctx.fillText(`CSE ${Math.round(tf.courseDeg)}°`, cseX, cseY);
   // 双虚线矢量：两条平行虚线从圈缘指向环礁，末端双箭头
   const dx = ac.x - tf.x, dy = ac.y - tf.y, len = Math.hypot(dx, dy) || 1;
   const ux = dx / len, uy = dy / len, px = -uy, py = ux;
