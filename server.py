@@ -333,3 +333,19 @@ async def confirm_contact(index: int):
     if not success:
         raise HTTPException(404, "报告不存在或已确认。")
     return {"success": True, "message": "敌情已确认"}
+
+
+# ── Theater context (CHART_SYSTEM.md §三/§四/§九决议6：后端单一下发) ──
+from src.theater import load_theater
+
+# fail-fast：战区包损坏则拒绝启动
+theater_ctx = load_theater(BASE_DIR / "theaters" / "midway")
+
+
+@app.get("/theater")
+async def get_theater():
+    """下发战区包合并 JSON（theater.json + geography.geojson 原样）。"""
+    return {
+        "theater": theater_ctx.theater_raw,
+        "geography": theater_ctx.geography,
+    }
