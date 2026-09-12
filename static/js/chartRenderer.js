@@ -207,6 +207,30 @@ function drawAtoll(ctx, w, h) {
     ctx.stroke();
   }
   ctx.restore();
+  // hatchNE — 东北海面斜线（成品图复现 D4：复用 SW 斜线逻辑，区域改环礁外东北矩形，步进 7→5px）
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(c.x - rx * 0.4, c.y - ry * 1.5, rx * 1.9, ry * 1.35);
+  ctx.clip();
+  ctx.strokeStyle = CHART_STYLE.inkFaint;
+  ctx.lineWidth = 1;
+  for (let d = 0; d < rx * 2.2; d += 5) {
+    ctx.beginPath();
+    ctx.moveTo(c.x - rx * 0.3 + d, c.y - ry * 0.15);
+    ctx.lineTo(c.x - rx * 0.3 + d + ry * 1.2, c.y - ry * 1.5);
+    ctx.stroke();
+  }
+  ctx.restore();
+  // 环礁外等深线感放射细线（成品图复现 D4）：reef 外缘起每 18px 三圈极淡椭圆，先铺后盖
+  ctx.save();
+  ctx.strokeStyle = 'rgba(42, 34, 24, 0.08)';
+  ctx.lineWidth = 1;
+  for (let k = 0; k < 3; k++) {
+    ctx.beginPath();
+    ctx.ellipse(c.x, c.y, rx * 1.06 + k * 18, ry * 1.06 + k * 18, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
   // 礁环沙色
   tracePath(ctx, outer);
   ctx.fillStyle = CHART_STYLE.sand; ctx.fill();
