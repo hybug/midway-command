@@ -12,8 +12,10 @@ SRC = BASE / "docs" / "assets" / "ai_textures"
 DST = BASE / "static" / "assets" / "textures"
 
 # 集成产物 → (接缝差阈值/255——None 表示非平铺用途不断言, 目标均值色, 通道容差)
+# 成品图复现 D2：paper 目标色 (245,237,214) → (225,207,168)
+# （整体压黄加深对齐成品图；采样设计图面 (231,206,159) 的提亮版，冲突审计 H4）
 TEXTURE_TARGETS = {
-    "paper_tex.jpg": (8, (245, 237, 214), 10),
+    "paper_tex.jpg": (8, (225, 207, 168), 10),
     "wood_tex.png": (None, (201, 167, 106), 14),
 }
 
