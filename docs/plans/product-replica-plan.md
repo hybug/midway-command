@@ -4,6 +4,8 @@
 
 **Goal:** 视觉基准从 15 项物料板**升级为成品完整界面设计图** `docs/assets/Gemini_Generated_Image_u1fak0u1fak0u1fa.png`（2752×1536，下称「成品图」），按像素级比对结果实施结构性改造并 **100% 复现**——含近景构图、深色 chrome、地图要素（圆圈标记/飞机剪影/敌标/SECRET 章）与黄铜圆规道具。设计师 agent 每轮评审 + Loop ≥5 轮 + 终验，总工时核算 **≥14h**。
 
+**续篇（2026-09-12 增补）：UI 复现终验通过后，进入「海图系统 Phase 1–3」**（批次 M/N/O，见 Phase V 之后的新章）——战区包化重构（投影唯一化，关闭两参考系已知局限）→ 航线系统 + 航海参谋 NPC（核心玩法闭环：参谋提案→指挥官修订→批准上图）→ 战役选择 + 珊瑚海战区包（agent 工作流）。规格依据 `docs/design/CHART_SYSTEM.md` v1.1（六项决议已拍板）。追加核算 **≥12.5h**，全工程 **≥28.8h**。
+
 **Architecture:** 三大结构性改造——①取景重构（65nm 区域远景 → 45nm 环礁近景，chartRenderer 比例参数级改动）；②Chrome 深色化（底栏/右栏换深棕黑主题，新增 chrome token 组）；③基准态 fixture（`static/dev/design-fixture.html` 渲染设计同款中局状态，使敌标/飞机/损伤等「设计中局要素」可进入像素比对）。地图要素复用已入库素材（aircraft_topdown.png、enemy_tag_q、button_26 圆规分拆）。
 
 **Tech Stack:** 同既有（原生 HTML/CSS/JS + Canvas + SVG + Pillow + pytest + 无头 Chrome）。
@@ -50,7 +52,10 @@
 | H 基准态 fixture+比对流水线 | 2 任务 | 1.0h |
 | Loop ×5（实拍→分级→设计师→实施→存档） | 5 轮 | 5.0h |
 | V 终验（全分支审查+修复波次+收口） | 3 | 1.0h |
-| **合计** | | **≥16.3h** ✓（预算保护同 v3：提前收敛则 Loop 加深、B/D-B 解禁至 10h 下限） |
+| Phase M 战区包+ChartEngine+包化+投影唯一化（M.1–M.5） | 5 任务 | 4.5h |
+| Phase N 航线系统+航海参谋（N.1–N.6） | 6 任务 | 4.5h |
+| Phase O 战役选择+珊瑚海包+微型收敛（O.1–O.4） | 4 任务 | 3.5h |
+| **合计** | | **≥28.8h** ✓（UI 复现 ≥16.3h + 海图系统 ≥12.5h；预算保护同 v3） |
 
 ---
 
@@ -298,6 +303,162 @@ function drawTaskForceMarker(ctx, tf, w, h, ox = 0, oy = 0) {
 
 - V1 全分支审查（P0 BASE..HEAD）→ V2 单修复波次+范围化复审 → V3 收口（ui-replication-report 基准升级终章、AGENTS.md 测试基数、工作区清理）。
 
+## Phase M — 海图系统 Phase 1：战区包 + ChartEngine + 中途岛包化（重构，投影唯一化）
+
+> Spec：`docs/design/CHART_SYSTEM.md` v1.1 §三（Theater Pack schema）/§四（ChartEngine）/§七（校验器）。验收 = **视觉风格零变化 + 投影唯一化**（消灭「底图与实体两参考系」已知局限）+ scenario 初始位对齐成品图。前置：批次 D（近景取景）已落地。
+
+### Task M.1: 战区包落盘 + 校验器
+
+**Files:** Create: `theaters/midway/{theater.json,geography.geojson,scenario.json,README.md}`、`tools/validate_theater.py`、`tools/gen_midway_pack.py`、`tests/test_theater_pack.py`
+
+- [ ] **红测**（tests/test_theater_pack.py）：
+
+```python
+"""战区包校验（CHART_SYSTEM.md §三/§七）。"""
+from pathlib import Path
+import json
+from tools.validate_theater import validate_theater
+
+BASE = Path(__file__).resolve().parent.parent
+PACK = BASE / "theaters" / "midway"
+
+def test_midway_pack_complete():
+    missing = [f for f in ["theater.json", "geography.geojson", "scenario.json", "README.md"]
+               if not (PACK / f).exists()]
+    assert missing == [], f"战区包缺文件: {missing}"
+
+def test_midway_pack_passes_validator():
+    result = validate_theater(PACK)
+    assert result["ok"], result["errors"]
+
+def test_theater_schema_core_fields():
+    pack = json.loads((PACK / "theater.json").read_text())
+    assert pack["id"] == "midway" and pack["view"]["view_nm"] == 45
+    assert len(pack["bases"]) >= 1 and len(pack["sectors"]) >= 1
+    gr = pack["graticule"]
+    assert gr["minor_step"] == 0.25 and gr["major_step"] == 1.0
+
+def test_scenario_fleet_positions_match_mockup():
+    sc = json.loads((PACK / "scenario.json").read_text())
+    pos = {u["callsign"]: (u["lat"], u["lon"]) for u in sc["task_forces"]}
+    assert 35 <= _nm_west_of_atoll(*pos["ENT"]) <= 55   # ENT 环礁西 35-55nm（成品图量取）
+    assert 20 <= _nm_west_of_atoll(*pos["HOR"]) <= 40   # HOR 环礁西 20-40nm
+```
+
+（`_nm_west_of_atoll` 为测试内 helper：`calculate_distance_nm((28.2,-177.4), pos)` 且经度 < -177.4。）
+
+- [ ] 实现：①theater.json 按 CHART_SYSTEM §三 schema（center 28.2/-177.4、view_nm 45、graticule 0.25/1.0、rings [20,25,40,60]、bases [midway airfield]、sectors [30°-90° 沿用]）；②scenario.json：task_forces 双舰队（callsign ENT/HOR、course 270、speed 25、初始位按成品图环礁西侧量取）+ 损伤/甲板/巡逻字段；③geography.geojson 由 `tools/gen_midway_pack.py` 生成——把 chartRenderer 现有 atollOutline/双岛/跑道公式移植为 GeoJSON 产出（land=atoll rim 外环、lagoon、islet=双岛、label=四条标注），数据与渲染同源保证视觉等价；④validate_theater.py 硬校验（schema/几何闭合/坐标范围/bases 视野内）+ 软校验 WARN。
+- [ ] 红→绿 → Commit `feat: midway 战区包与校验器`；**派评审**。
+
+### Task M.2: 后端 TheaterContext + GET /theater
+
+**Files:** Create: `src/theater/context.py`、`tests/test_theater_context.py`；Modify: `server.py`
+
+- [ ] `TheaterContext` dataclass（id/name/view/bases/sectors/graticule/range_rings/scenario 摘要）+ `load_theater(path)`（读包+调 validate，失败抛异常拒绝启动）；`GET /theater` 返回战区包合并 JSON（前端唯一来源）。
+- [ ] tests/test_theater_context.py：加载/字段/端点三用例。红→绿。
+- [ ] Commit `feat: 后端战区上下文与下发端点`；**派评审**。
+
+### Task M.3: 前端 TheaterLoader + ChartEngine 数据驱动化
+
+**Files:** Create: `static/js/theaterLoader.js`；Modify: `static/js/chartRenderer.js`、`tests/ui/route_display.test.mjs`
+
+- [ ] theaterLoader.js：`TheaterLoader.load()` → `fetch('/theater')`；chartRenderer.js 删 CHART_CENTER/CHART_VIEW_NM/RING_NM/环礁程序化绘制常量 → `let THEATER`；drawAll 前置 `if (!THEATER) return 纸底`；投影改 `ChartRenderer.makeProjector(theater.view, w, h)`（导出，含 invert）；graticule 步进/距离环半径/环礁 GeoJSON（投影后 Path2D 绘制）/标注全部读 THEATER。
+- [ ] route_display.test.mjs 桩改为注入固定 theater JSON；独立公式副本同步为新投影公式（等距圆柱+cos(lat)）。
+- [ ] `node tests/ui/route_display.test.mjs` PASS + 全量 pytest + 无头 Chrome 目检（与改造前渲染等价）。
+- [ ] Commit `feat: ChartEngine 数据驱动化（战区包消费）`；**派评审**。
+
+### Task M.4: 实体层投影唯一化 + scenario 布兵
+
+**Files:** Modify: `static/js/mapRenderer.js`、`src/initial_state.py`、`tests/ui/route_display.test.mjs`
+
+- [ ] 实体层（舰队/飞机/敌标/航线）弃 `_worldToHex/_hexToPixel + translate(ox,oy)` 舰队居中体系，改 `ChartRenderer.makeProjector` 直接投影真实位置（近景下 ENT/HOR 按新初始位天然在画内）——**两参考系已知局限就此关闭**；ENT/HOR 让位偏移 hack（+80/-64）删除；ui-replication-report 已知局限条目标注「已消除」。
+- [ ] initial_state.py：舰队初始位从 scenario.json 读取（最小参数化——其余兵力结构不变）。
+- [ ] route_display.test.mjs：公式副本更新为唯一投影公式；C3/C4 锚点断言改直接投影期望（无 translate 换算）。
+- [ ] `node tests/ui/route_display.test.mjs` + 全量 pytest（grep 31.5N 旧引用点逐一更新为 scenario 值）+ 无头 Chrome 目检（舰队真实位可见、标记不遮标题）。
+- [ ] Commit `feat: 实体层接入唯一投影并按 scenario 布兵`；**派评审**。
+
+### Task M.5: Phase M 视觉回归验收
+
+- [ ] 无头 Chrome 截 fixture+空态双页 → compare_regions.py（对照 u1fak0）区域差报告 → 验收线（H2 同款：最大格 ≤45、结构要素清单逐项在位）→ 报告落 docs/reports/product-compare/phase-m-verify.md。
+- [ ] Commit `docs: Phase M 视觉回归验收`；**派评审**。
+
+## Phase N — 海图系统 Phase 2：航线系统 + 航海参谋（核心玩法）
+
+### Task N.1: Route 模型与 API
+
+**Files:** Create: `src/routes.py`、`tests/test_routes.py`；Modify: `src/state.py`（GameState.routes 字段）、`server.py`
+
+- [ ] `Route` 模型（id / kind: planned|mission|track / owner / waypoints[{lat,lon,eta}] / status: draft|active|done|cancelled）+ `GameState.routes: list[Route]`（default_factory）。
+- [ ] API：`POST /routes`（建草案）、`POST /routes/{id}/approve`、`POST /routes/{id}/cancel`、`GET /routes`。
+- [ ] tests/test_routes.py 四用例（建/批/撤/列）。红→绿 → Commit `feat: 航线模型与 API`；**派评审**。
+
+### Task N.2: 前端三类航线渲染
+
+**Files:** Modify: `static/js/mapRenderer.js`、`tests/ui/route_display.test.mjs`
+
+- [ ] drawRoutes（实体层内）：planned=Caveat 铅笔灰虚线+航点小圈；mission=红/蓝虚线+末端箭头；track=浅墨点线。数据源 GET /routes。
+- [ ] 录制器断言：三样式以 setLineDash 参数区分（[2,3]/[6,4]/[1,3]），坐标==航点投影。红→绿。
+- [ ] Commit `feat: 三类航线渲染（planned/mission/track）`；**派评审**。
+
+### Task N.3: 航海参谋 NPC
+
+**Files:** Create: `src/agents/navigator.py`、`tests/test_navigator.py`；Modify: `src/npc_config.py`、`server.py`
+
+- [ ] NavigatorNPC：工具 `query_own_fleet / query_theater / query_distance_bearing / propose_route`（OpenAI 工具 schema，全部经 GameState 墙——只读三项+一项写 pending_routes）；system prompt=航海参谋人设（严谨、给 rationale、引用真实地理）。
+- [ ] `propose_route` 产 `PendingRoute`（**独立列表 state.pending_routes**，避免与既有建议索引互扰；rationale 供命令卡展示）。
+- [ ] API：`POST /routes/{id}/comment`（指挥官修改意见→追加参谋会话轮次）；命令卡三按钮：批准=approve / 驳回=cancel / 提意见=comment。
+- [ ] tests/test_navigator.py：fake LLM client（沿既有 NPC 测试桩模式）驱动 propose_route→pending_routes 入列→批准→route.status=active 全链。红→绿。
+- [ ] Commit `feat: 航海参谋 NPC 与航线提案审批流`；**派评审**。
+
+### Task N.4: 舰队沿航路点航行
+
+**Files:** Modify: `src/entities.py`（update_entity_position 支持 route 模式）、`tests/test_entities.py`
+
+- [ ] active route 的舰队：每 tick 朝下一航路点按 speed 位移（bearing 实时推导），剩余距离 ≤ 本 tick 位移即切换下一段；全部完成 route.status=done。
+- [ ] tests：三航路点航线 ×4 tick 位置序列断言（含到点切换与终态 done）。红→绿。
+- [ ] Commit `feat: 舰队沿航路点航行`；**派评审**。
+
+### Task N.5: 命令卡联动
+
+**Files:** Modify: `static/js/uiController.js`、`tests/test_ui_assets.py`
+
+- [ ] renderPendingRoute：PendingRoute 渲染军令纸卡（SECRET 头 / rationale 正文 / 航点表（航向·距离·ETA）/ 三按钮：批准实施=approve、驳回=cancel、提修改意见=comment 回路）。
+- [ ] 静态断言：js 含 "PENDING ROUTE" 与 "提修改意见"。红→绿。
+- [ ] Commit `feat: 命令卡联动航线提案`；**派评审**。
+
+### Task N.6: 玩法闭环验收
+
+- [ ] fixture 流：curl 建 route（模拟参谋产物）→ approve → advance×4 → 断言 /routes active + /state 舰队位置沿航线 + 截图（mission 线+航迹）。
+- [ ] 存 docs/reports/fidelity-loop/route-loop-verify.md → Commit `test: 航线玩法闭环验收`。
+
+## Phase O — 海图系统 Phase 3：战役选择 + 珊瑚海战区包（agent 工作流）
+
+### Task O.1: 战役选择界面
+
+**Files:** Modify: `static/index.html`（开局层）、`server.py`、`tests/test_game_new.py`（新建）
+
+- [ ] `GET /theaters`（列 theaters/ 全包摘要）、`POST /game/new {theater_id}`（重建 GameState=scenario 初始化，含 NPC 名册热替换）。
+- [ ] 开局层：全屏战区选择卡（战区名/日期/简介/开始按钮——深色 chrome 风格对齐成品图）。
+- [ ] tests：/theaters 列表、/game/new 重建后 /state 与 scenario 一致。红→绿。
+- [ ] Commit `feat: 战役选择（正式玩法）`；**派评审**。
+
+### Task O.2: 珊瑚海战区包生成（theater-designer agent 工作流）
+
+- [ ] **theater-designer agent** 按 CHART_SYSTEM §六 五步执行：RESEARCH（web 检索珊瑚海地理：147°-156°E / 10°-22°S、所罗门群岛/新几内亚东端/路易西亚德群岛/图拉吉/莫尔兹比港 + 1942-05-04~08 珊瑚海海战史实：TF17 Fletcher 约克城+列克星敦 vs MO 机动部队 翔鹤+瑞鹤）→ GENERATE（theaters/coral-sea/ 全包：theater.json+geography.geojson+scenario.json 双方史实兵力+README）→ VALIDATE（校验器全绿）→ PREVIEW（fixture 截图）。
+- [ ] 设计师 agent 视觉审（海岸线形态/取景/标注，对照真实珊瑚海地图）——REJECT 则修订重交。
+- [ ] README 登记来源/许可证（§六 标准 5 条逐项）。
+- [ ] Commit `feat: 珊瑚海战区包（agent 生成，过五条验收标准）`；**派评审**。
+
+### Task O.3: 珊瑚海玩法验收
+
+- [ ] fixture 截图对照真实珊瑚海地图参考；玩法回路全通：战役选择→参谋提案（TF17 布局）→批准→沿航路点航行→侦察敌情（MO 部队）→advance 推进。
+- [ ] Commit `test: 珊瑚海玩法验收`。
+
+### Task O.4: 微型收敛轮 ×2（设计师验收硬门）
+
+- [ ] 两轮「实拍→对照（真实珊瑚海地图参考）→设计师 ACCEPT/REJECT→修」——珊瑚海图视觉 vs 真实地理参考收敛。
+- [ ] Commit `docs: 珊瑚海收敛记录`。
+
 ## 验收总表
 
 | 差距 | 任务 | 门 |
@@ -318,6 +479,13 @@ function drawTaskForceMarker(ctx, tf, w, h, ox = 0, oy = 0) {
 | 像素比对验收 | H1/H2 | 区域差 ≤45 + 结构要素清单 |
 | 整体收敛 | Loop ×5 | 双曲线趋势不降；末轮 S=0 |
 | 工程质量 | V1–V3 | 全分支 APPROVE |
+| 战区包+校验器+后端权威源 | M.1/M.2 | 校验器红绿+端点测试 |
+| ChartEngine 数据驱动+投影唯一化 | M.3/M.4 | 录制器断言（新投影公式）+已知局限关闭 |
+| 航线三类渲染 | N.2 | 录制器 setLineDash 断言 |
+| 航海参谋闭环 | N.3–N.6 | fake-LLM 全链测试+玩法闭环验收 |
+| 舰队沿航路点 | N.4 | 位移序列断言 |
+| 战役选择（正式玩法） | O.1 | API 测试+目检 |
+| 珊瑚海战区包 | O.2–O.4 | §六五条标准+微型收敛轮设计师签字 |
 
 ## Self-Review 记录
 
@@ -326,4 +494,6 @@ function drawTaskForceMarker(ctx, tf, w, h, ox = 0, oy = 0) {
 - **设计师验收硬门**：Loop L5.5 每轮设计师逐条 ACCEPT/REJECT，REJECT 未清零不得关轮（用户明示要求）。
 - **占位符扫描**：G1/G2/H1 核心代码完整；G3 两方案（红方块沿用/补虚线圈）给了裁决规则；「参数名以源码为准」处均附 grep 程序。
 - **依赖一致性**：D1 改变全部地图几何 → 必须先于 G（G 的坐标断言依赖新取景）；H1 依赖 G2/G3 的状态字段消费；Loop 依赖 D/E/G/H；V 收尾。顺序执行无环。
+- **海图系统增补（2026-09-12）**：批次 M/N/O 依据 `docs/design/CHART_SYSTEM.md` v1.1（六项决议已拍板：正式玩法/航海参谋闭环/陆地仅视觉/数据白名单/缩放暂缓/后端权威源）；M.4 投影唯一化顺带关闭两参考系已知局限并删除让位 hack；M.4 改 scenario 布兵会影响既有坐标断言（grep 31.5N 更新项已在任务书注明）。
+- **海图系统依赖链**：M.1→M.2→M.3→M.4→M.5（严格顺序）；N 依赖 M（投影/战区包）；O.2 依赖 M 校验器与 O.1 菜单；O.2 的 agent 产出需设计师视觉审+校验器双门。无环。
 - **已知代价（登记）**：近景后 60nm 环出画、远处舰队不可见——战术信息让位于构图复现（成品图即此取舍）；fixture 页为 dev 工件常驻 static/dev/。
