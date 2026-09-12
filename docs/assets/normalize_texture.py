@@ -42,9 +42,11 @@ def make_seamless(img: Image.Image, band: int = 100) -> Image.Image:
 
 DST.mkdir(parents=True, exist_ok=True)
 # 成品图复现 D2：paper 目标色 (245,237,214) → (225,207,168)
-# （整体压黄加深对齐成品图；采样设计图面 (231,206,159) 的提亮版，冲突审计 H4，
-#   与 tests/test_texture_assets.py 的 TEXTURE_TARGETS 保持同步）
-paper = make_seamless(normalize(Image.open(SRC / "P1_paper.png").convert("RGB"), (225, 207, 168)))
+# （整体压黄加深对齐成品图；采样设计图面 (231,206,159) 的提亮版，冲突审计 H4）
+# fix Loop2-F3: 纸面暖黄化（225,207,168)→(232,214,175)——设计师裁定暖黄方向半程，
+# 灰褐→暖黄提亮；晕影覆层 #chart-area::after 形状/强度保持，只调纸底色温。
+# 与 tests/test_texture_assets.py 的 TEXTURE_TARGETS 保持同步
+paper = make_seamless(normalize(Image.open(SRC / "P1_paper.png").convert("RGB"), (232, 214, 175)))
 paper.save(DST / "paper_tex.jpg", quality=85)
 print("paper_tex.jpg", paper.size)
 wood = normalize(Image.open(SRC / "P2_wood.png").convert("RGB"), (201, 167, 106), crop=(0.0, 0.06, 0.0, 0.06))
