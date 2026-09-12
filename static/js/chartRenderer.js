@@ -27,9 +27,12 @@ const CHART_LABELS = {
   easternIsland: "EASTERN ISLAND",
 };
 
-// 65nm 半径必须完整落在图面内（留 40px 边距）
+// 成品图复现 D1：45nm 近景取景——换算式 (nm / 45) × (min(w,h)/2 + 100)，
+// 基准半径取负边距（初版 -30 边距时 40nm 不出上缘、60nm 不出画右缘，目检调参 +100）；
+// 60nm 环允许出画（设计即如此，不加特判）
+const CHART_VIEW_NM = 45;
 function chartNmToPx(nm, w, h) {
-  return (nm / 65) * (Math.min(w, h) / 2 - 40);
+  return (nm / CHART_VIEW_NM) * (Math.min(w, h) / 2 + 100);
 }
 
 // 环礁图面中心——环礁、双岛与距离环共享的绘制基准（fix: 距离环与环礁共心）
@@ -94,7 +97,9 @@ function drawLatLonGrid(ctx, w, h) {
   ctx.setLineDash([]);
   // 主网：0.5° 步进 + 度分标注（原样保留）
   ctx.strokeStyle = CHART_STYLE.gridLine;
-  ctx.fillStyle = CHART_STYLE.inkFade;
+  // 成品图复现 D1/B5（设计审计 MISSING-11）：近景后边缘度分标注淡出（初版 0.15 目检过淡，
+  // 调至 0.25），验收口径「可辨但不抢主体」——边缘刻度不再与近景环礁/距离环构图冲突
+  ctx.fillStyle = 'rgba(107, 93, 74, 0.25)'; // inkFade #6b5d4a 淡出
   ctx.font = `9px ${CHART_STYLE.fontTypewriter}`;
   for (let lat = 26.0; lat <= 30.01; lat += 0.5) {
     const y = latLonToChartPx(lat, CHART_CENTER.lon, w, h).y;
@@ -183,7 +188,8 @@ function drawIslands(ctx, c, rx, ry) {
 // Task 7.5：中途岛环礁——礁环沙色 + 泻湖 + SW 斜线阴影 + 双岛 + 中心标注
 function drawAtoll(ctx, w, h) {
   const c = atollCenter(w, h);
-  const rx = chartNmToPx(23, w, h), ry = chartNmToPx(17, w, h);
+  // 成品图复现 D1 目检调参：23/17 → 34/25（近景后环礁跨度 ≈70% 图面，与成品图占比对齐）
+  const rx = chartNmToPx(34, w, h), ry = chartNmToPx(25, w, h);
   const outer = atollOutline(c.x, c.y, rx, ry);
   const rim = atollOutline(c.x, c.y, rx * 0.94, ry * 0.90);
   const lagoon = atollOutline(c.x, c.y, rx * 0.80, ry * 0.74);

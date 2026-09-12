@@ -326,3 +326,11 @@ def test_loop2_fidelity_fix_markers():
         ".dash-label 未加深为 ink-fade"
     # F7: ≤1360px 断点
     assert "@media (max-width: 1360px)" in css, "缺 ≤1360px 窄屏断点"
+
+
+# ── 成品图复现 · D1：45nm 近景取景重构 ──
+
+def test_close_framing_constants():
+    js = (BASE / "static" / "js" / "chartRenderer.js").read_text()
+    assert "/ 45)" in js, "取景未改 45nm 近景"
+    assert "CHART_VIEW_NM = 45" in js, "视野常量未提取"
