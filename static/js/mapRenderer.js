@@ -8,6 +8,11 @@
  */
 
 // ── Constants ──
+// REF_LAT/REF_LON：图面中心经纬（chartRenderer CHART_CENTER 同源）。Loop3-F1 投影
+// 唯一化后为实体层唯一投影中心（ChartRenderer.makeProjector），北向上、东向右。
+// HEX_SIZE/SQRT3/CELL_NM：遗留 px 尺度常量，仅扇区楔形半径等样式换算沿用
+//（8×HEX_SIZE×SQRT3≈166px 楔形半径、rangeNm/CELL_NM×… 待定扇区半径），
+// 不再承担地理换算——实体定位一律走 makeProjector 直接投影真实经纬度。
 const HEX_SIZE = 12;
 const SQRT3 = Math.sqrt(3);
 const CELL_NM = 10;
@@ -186,7 +191,7 @@ class MapRenderer {
     this._hoverTarget = null;
     this.canvas.style.cursor = 'default';
 
-    if (!this._currentState) return;
+    if (!this._currentState || !this._project) return;
 
     // 检查是否悬停在待确认敌军标记上
     const pending = this._currentState.pending_suggestions || [];
@@ -198,17 +203,13 @@ class MapRenderer {
       const sectorEnd = d.sector_end || 340;
       const rangeNm = d.range_nm || 200;
 
-      // 计算扇面中心位置
+      // 计算扇面中心位置（锚点=首航母真实投影位，与绘制同式——fix Loop3-F1）
       const midAngle = ((sectorStart + sectorEnd) / 2 - 90) * Math.PI / 180;
       const sectorRadius = rangeNm / CELL_NM * HEX_SIZE * SQRT3 * 0.8;
-      const tf = this._currentState.task_forces[0];
-      const c1 = tf.carriers[0];
-      const [fqr, frr] = this._worldToHex(c1.position.lat, c1.position.lon);
-      const [fpx, fpy] = this._hexToPixel(fqr, frr);
-      const ox = this.centerX - fpx;
-      const oy = this.centerY - fpy;
-      const lx = ox + fpx + sectorRadius * 0.6 * Math.cos(midAngle);
-      const ly = oy + fpy + sectorRadius * 0.6 * Math.sin(midAngle);
+      const c1 = this._currentState.task_forces[0].carriers[0];
+      const fp = this._project(c1.position.lat, c1.position.lon);
+      const lx = fp.x + sectorRadius * 0.6 * Math.cos(midAngle);
+      const ly = fp.y + sectorRadius * 0.6 * Math.sin(midAngle);
 
       if (Math.hypot(mx - lx, my - ly) < 20) {
         this._hoverTarget = { type: 'pending_scout', index: i, x: lx, y: ly };
@@ -221,19 +222,11 @@ class MapRenderer {
     const enemies = this._currentState.known_enemy || [];
     for (let i = 0; i < enemies.length; i++) {
       const e = enemies[i];
-      const [eq, er] = this._worldToHex(e.position.lat, e.position.lon);
-      const [epx, epy] = this._hexToPixel(eq, er);
-      const tf = this._currentState.task_forces[0];
-      const c1 = tf.carriers[0];
-      const [fqr, frr] = this._worldToHex(c1.position.lat, c1.position.lon);
-      const ox = this.centerX - this._hexToPixel(fqr, frr)[0];
-      const oy = this.centerY - this._hexToPixel(fqr, frr)[1];
-      const sx = ox + epx;
-      const sy = oy + epy;
+      const ep = this._project(e.position.lat, e.position.lon);
 
       // 命中半径 24：覆盖 medium 34px 敌情标记的可点域
-      if (Math.hypot(mx - sx, my - sy) < 24) {
-        this._hoverTarget = { type: 'enemy', index: i, x: sx, y: sy };
+      if (Math.hypot(mx - ep.x, my - ep.y) < 24) {
+        this._hoverTarget = { type: 'enemy', index: i, x: ep.x, y: ep.y };
         this.canvas.style.cursor = 'pointer';
         break;
       }
@@ -274,45 +267,33 @@ class MapRenderer {
     // fix Loop1-F6: 纸面 10nm 细网格（纹理之后、距离环之前，survey 绘图感）
     this._drawFineGrid(ctx, W, H);
 
-    let fqr = 0, frr = 0, ox = 0, oy = 0;
+    // fix Loop3-F1（CHART_SYSTEM.md §四 C3 投影唯一化）：实体层与底图共用同一投影——
+    // makeProjector 直接投影真实经纬度（北向上、东向右），「舰队居中 translate(ox,oy)」
+    // 体系整体拆除，「底图与实体两参考系」已知局限就此关闭。
+    // （M.3 TheaterLoader 落地后此处改传 theater.view；取值与 CHART_CENTER 同源。）
+    this._project = ChartRenderer.makeProjector({ center: { lat: REF_LAT, lon: REF_LON } }, W, H);
+
     if (state) {
       const tf = state.task_forces[0];
+      // 扇区/待定建议参照锚点 = 首航母真实投影位（原舰队锚点槽位语义，无居中平移）
       const c1 = tf.carriers[0];
-      [fqr, frr] = this._worldToHex(c1.position.lat, c1.position.lon);
-      const [fpx, fpy] = this._hexToPixel(fqr, frr);
-      ox = this.centerX - fpx;
-      oy = this.centerY - fpy;
+      const anchor = this._project(c1.position.lat, c1.position.lon);
 
       // fix Loop1-F5: 搜索扇区退背景——独立层画在环礁/距离环之前（被陆地覆盖不压焦点）
-      ctx.save();
-      ctx.translate(ox, oy);
-      this._drawSearchSectors(ctx, state, fqr, frr);
-      ctx.restore();
+      this._drawSearchSectors(ctx, state, anchor);
 
       ChartRenderer.drawLandmarks(ctx, W, H);
 
-      // 实体层：恢复舰队居中平移（translate 与 save/restore 必须成对——
-      // fix Loop1-F5 重构回归：漏掉本层 translate 使实体画在屏幕系原点附近全部出画）
-      ctx.save();
-      ctx.translate(ox, oy);
-
-      // Draw layers in order (back to front)
-      // Task 7.8：旧地形/六边形网格/距离环/环礁已被 ChartRenderer 取代（保留代码备查）
-      // this._drawDepthContours(ctx, fpx, fpy);
-      // this._drawGrid(ctx, W, H, ox, oy);
-      // this._drawDistanceRings(ctx, fpx, fpy, 8);
-      this._drawPendingRecon(ctx, state, fqr, frr);
-      this._drawScoutAircraft(ctx, state, fqr, frr);
+      // 实体层：屏幕系直绘（Loop3-F1 投影唯一化，无 translate——绘制顺序不变）
+      this._drawPendingRecon(ctx, state, anchor);
+      this._drawScoutAircraft(ctx, state, anchor);
       // fix Loop2-F4: 扇区方向词标签在实体层补画（陆地填充之后，开阔水面+纸色底衬）
-      this._drawSectorLabels(ctx, state, fqr, frr);
-      // this._drawMidway(ctx, 0, 0, 1.5);
-      this._drawOwnFleet(ctx, tf, ox, oy);
+      this._drawSectorLabels(ctx, state, anchor);
+      this._drawOwnFleet(ctx, tf);
       this._drawEnemyContacts(ctx, state);
 
       // 绘制确认动画
-      this._drawConfirmAnimations(ctx, ox, oy);
-
-      ctx.restore();
+      this._drawConfirmAnimations(ctx);
     } else {
       ChartRenderer.drawLandmarks(ctx, W, H);
       // Task 7.8：旧底图层已被 ChartRenderer.drawAll 取代（保留代码备查）
@@ -528,9 +509,7 @@ class MapRenderer {
   // ═══════════════════════════════════════════════════════
   // Scout Aircraft
   // ═══════════════════════════════════════════════════════
-  _drawScoutAircraft(ctx, state, fleetQ, fleetR) {
-    const [fx, fy] = this._hexToPixel(fleetQ, fleetR);
-
+  _drawScoutAircraft(ctx, state, anchor) {
     // fix: 缺省字段防御——render 为公开入口，state 缺 active_scouts 时渲染帧抛 TypeError
     // （批次 C3 Node 桩环境复现；服务端 /state 恒有此键，防御前端部分载荷）
     (state.active_scouts ?? []).forEach(scout => {
@@ -539,19 +518,20 @@ class MapRenderer {
       // Calculate search sector midpoint angle (always needed for direction)
       const midAngle = ((scout.search_bearing_min + scout.search_bearing_max) / 2 - 90) * Math.PI / 180;
 
-      // Use actual position from API if available
+      // Use actual position from API if available（fix Loop3-F1：真实投影位）
       let px, py;
       if (scout.position) {
-        const [sq, sr] = this._worldToHex(scout.position.lat, scout.position.lon);
-        [px, py] = this._hexToPixel(sq, sr);
+        const sp = this._project(scout.position.lat, scout.position.lon);
+        px = sp.x;
+        py = sp.y;
       } else {
-        // Fallback: estimate from phase
+        // Fallback: estimate from phase（遗留 px 尺度：非地理换算，仅缺省回退用）
         const dist = scout.search_distance_nm / CELL_NM * HEX_SIZE * SQRT3;
         const progress = scout.phase === 'preparing' ? 0.1 :
                         scout.phase === 'outbound' ? 0.6 :
                         scout.phase === 'searching' ? 0.8 : 0.3;
-        px = fx + dist * progress * Math.cos(midAngle);
-        py = fy + dist * progress * Math.sin(midAngle);
+        px = anchor.x + dist * progress * Math.cos(midAngle);
+        py = anchor.y + dist * progress * Math.sin(midAngle);
       }
 
       ctx.save();
@@ -637,17 +617,13 @@ class MapRenderer {
   // ═══════════════════════════════════════════════════════
   // Own Fleet (improved)
   // ═══════════════════════════════════════════════════════
-  _drawOwnFleet(ctx, tf, ox, oy) {
-    tf.carriers.forEach((c, i) => {
-      const [q, r] = this._worldToHex(c.position.lat, c.position.lon);
-      const [px, py] = this._hexToPixel(q, r);
+  _drawOwnFleet(ctx, tf) {
+    tf.carriers.forEach((c) => {
+      // fix Loop3-F1 投影唯一化：标记画在真实经纬投影点本位——F2 对角错开（同位防挤）
+      // 随「两航母同位」前提消失退役（真实位天然分离，见 design-state fixture
+      // ENT 西外缘/HOR 环礁西缘）；悬停命中与标记同投影系。
+      const p = this._project(c.position.lat, c.position.lon);
       const short = c.name.includes('Enterprise') ? 'ENT' : 'HOR';
-
-      // fix Loop2-F1（F2 错位机制，成品图复现 G1 保留）：两航母同位时对角错开——
-      // i=0 偏移 (x-14, y-28)、i=1 偏移 (x+14, y+0)，中心间距 28px（圆圈 r=10 小标记仍有效）。
-      // Loop3-F1 ENT 让位 hack (x+80, y-64) 已随计数牌退役删除——空心圆圈标记回归真实位附近。
-      const mx = i === 0 ? px - 14 : px + 14;
-      const my = i === 0 ? py - 28 : py;
 
       // 成品图复现 G1：舰队标记由 ChartRenderer.drawTaskForceMarker 绘制
       // （空心圆圈 r=10 + 字标 + CSE 航向线 + 双虚线箭头矢量指向环礁；
@@ -655,9 +631,8 @@ class MapRenderer {
       // 字段映射：数据模型无 callsign 字段，沿用既有 name→ENT/HOR 推导；
       // courseDeg 取 TaskForce.course（与旧航向箭头同源）。
       // 传 CSS 像素 W/H（= render() 里的 this.width/this.height）供环礁方向计算；
-      // 加传 ox/oy 舰队居中平移量——atollCenter 是屏幕系，标记绘制在
-      // translate(ox,oy) 本地系，不换算方向会反向。
-      ChartRenderer.drawTaskForceMarker(ctx, { x: mx, y: my, callsign: short, courseDeg: tf.course }, this.width, this.height, ox, oy);
+      // Loop3-F1 起实体层与环礁同屏幕系，drawTaskForceMarker 无需 ox/oy 本地系换算。
+      ChartRenderer.drawTaskForceMarker(ctx, { x: p.x, y: p.y, callsign: short, courseDeg: tf.course }, this.width, this.height);
 
       // Task 7.9：旧航母图标/标签/航向箭头由舰队标记取代（保留代码备查）
       // // Try SVG icon first
@@ -725,8 +700,9 @@ class MapRenderer {
 
     // fix: 缺省字段防御（同 _drawScoutAircraft，批次 C3 复现）
     (state.known_enemy ?? []).forEach((e, i) => {
-      const [q, r] = this._worldToHex(e.position.lat, e.position.lon);
-      const [px, py] = this._hexToPixel(q, r);
+      // fix Loop3-F1 投影唯一化：敌标画在真实经纬投影点（悬停命中同式，见 _onMouseMove）
+      const ep = this._project(e.position.lat, e.position.lon);
+      const px = ep.x, py = ep.y;
 
       // 脉冲光晕（保留既有动画）
       ctx.save();
@@ -805,8 +781,10 @@ class MapRenderer {
 
   // ═══════════════════════════════════════════════════════
   // 确认动画（画圈效果）
+  // fix Loop3-F1：triggerConfirmAnimation 存屏幕系坐标，实体层投影唯一化后
+  // 直接按存储坐标绘制（原 ox/oy 本地系换算随 translate 体系删除）
   // ═══════════════════════════════════════════════════════
-  _drawConfirmAnimations(ctx, ox, oy) {
+  _drawConfirmAnimations(ctx) {
     this._animState.confirmAnimations.forEach(anim => {
       const progress = anim.progress;
       const endAngle = progress * Math.PI * 2;
@@ -817,7 +795,7 @@ class MapRenderer {
       ctx.lineWidth = 3;
       ctx.globalAlpha = 1 - progress * 0.5;
       ctx.beginPath();
-      ctx.arc(anim.x - ox, anim.y - oy, radius, -Math.PI / 2, -Math.PI / 2 + endAngle);
+      ctx.arc(anim.x, anim.y, radius, -Math.PI / 2, -Math.PI / 2 + endAngle);
       ctx.stroke();
 
       // 闪光效果
@@ -825,7 +803,7 @@ class MapRenderer {
         ctx.globalAlpha = (0.3 - progress) * 2;
         ctx.fillStyle = COL.confirmGold;
         ctx.beginPath();
-        ctx.arc(anim.x - ox, anim.y - oy, radius * (1 + progress), 0, Math.PI * 2);
+        ctx.arc(anim.x, anim.y, radius * (1 + progress), 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();
@@ -894,8 +872,7 @@ class MapRenderer {
   // ═══════════════════════════════════════════════════════
   // Search Sectors (wedge-shaped扇形 with hatching)
   // ═══════════════════════════════════════════════════════
-  _drawSearchSectors(ctx, state, fleetQ, fleetR) {
-    const [fx, fy] = this._hexToPixel(fleetQ, fleetR);
+  _drawSearchSectors(ctx, state, anchor) {
     const sectorRadius = 8 * HEX_SIZE * SQRT3;
 
     // fix: 缺省字段防御（同 _drawScoutAircraft，批次 C3 复现的首个崩溃点）
@@ -908,8 +885,8 @@ class MapRenderer {
       // Wedge fill (semi-transparent)
       ctx.fillStyle = 'rgba(160,140,110,0.15)';
       ctx.beginPath();
-      ctx.moveTo(fx, fy);
-      ctx.arc(fx, fy, sectorRadius, startRad, endRad);
+      ctx.moveTo(anchor.x, anchor.y);
+      ctx.arc(anchor.x, anchor.y, sectorRadius, startRad, endRad);
       ctx.closePath();
       ctx.fill();
 
@@ -918,8 +895,8 @@ class MapRenderer {
       ctx.lineWidth = 1.2;
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
-      ctx.moveTo(fx, fy);
-      ctx.arc(fx, fy, sectorRadius, startRad, endRad);
+      ctx.moveTo(anchor.x, anchor.y);
+      ctx.arc(anchor.x, anchor.y, sectorRadius, startRad, endRad);
       ctx.closePath();
       ctx.stroke();
       ctx.setLineDash([]);
@@ -930,14 +907,14 @@ class MapRenderer {
       ctx.lineWidth = 0.6;
       ctx.save();
       ctx.beginPath();
-      ctx.moveTo(fx, fy);
-      ctx.arc(fx, fy, sectorRadius, startRad, endRad);
+      ctx.moveTo(anchor.x, anchor.y);
+      ctx.arc(anchor.x, anchor.y, sectorRadius, startRad, endRad);
       ctx.closePath();
       ctx.clip();
       for (let d = -sectorRadius; d < sectorRadius; d += 6) {
         ctx.beginPath();
-        ctx.moveTo(fx + d, fy - sectorRadius);
-        ctx.lineTo(fx + d + sectorRadius, fy + sectorRadius);
+        ctx.moveTo(anchor.x + d, anchor.y - sectorRadius);
+        ctx.lineTo(anchor.x + d + sectorRadius, anchor.y + sectorRadius);
         ctx.stroke();
       }
       ctx.restore();
@@ -955,17 +932,15 @@ class MapRenderer {
   // 沿扇区中线从扇区弧外起步向外推，直至落点出环礁椭圆（+14px 缓冲）即开阔水面；
   // 纸色圆角底衬 + 墨字（设计裁定「外推+纸色 halo」：底衬形态，压 hatch/细网格仍可读）。
   // 环礁基准与 _drawFineGrid 同源（0.44w/0.46h + chartNmToPx(34/25) 半轴）
+  // fix Loop3-F1 投影唯一化：锚点为首航母真实投影位（不再恒等画心），落点直接屏幕系
+  // 绘制；外推上限 2.4×→3.4× 扇区半径——锚点西移后到出椭圆缓冲带的距离变长
+  //（fixture 实算 ≈3.1×出带），上限不足时标签停在带内压敌标
   // ═══════════════════════════════════════════════════════
-  _drawSectorLabels(ctx, state, fleetQ, fleetR) {
-    const [fx, fy] = this._hexToPixel(fleetQ, fleetR);
+  _drawSectorLabels(ctx, state, anchor) {
     const sectorRadius = 8 * HEX_SIZE * SQRT3;
     const rx = ChartRenderer.chartNmToPx(34, this.width, this.height);
     const ry = ChartRenderer.chartNmToPx(25, this.width, this.height);
     const ax = this.width * 0.44, ay = this.height * 0.46;
-    // 本方法画在 translate(ox,oy) 本地系；舰队锚点经居中平移恒落在画布中心
-    //（render 构造保证）——外推几何用屏幕系计算（环礁椭圆/画缘均屏幕系），
-    // 落点再换算回本地系（本地 = 锚点本地 +（屏幕 − 画布中心））
-    const cx = this.centerX, cy = this.centerY;
 
     (state.active_scouts ?? []).filter(s => s.status === 'in_flight').forEach(s => {
       const startRad = ((s.search_bearing_min - 90) * Math.PI) / 180;
@@ -976,24 +951,22 @@ class MapRenderer {
 
       // 中线外推：扇区弧外 12px 起步，步进 24px 找环礁椭圆外首个落点；+48px 缓冲
       // （≈5nm）越过外礁圈带（外缘 ≈ 椭圆 1.0，礁带宽 20%）落在开阔水面
-      let sx = cx + (sectorRadius + 12) * Math.cos(midAngle);
-      let sy = cy + (sectorRadius + 12) * Math.sin(midAngle);
-      for (let extra = sectorRadius + 12; extra <= sectorRadius * 2.4; extra += 24) {
-        sx = cx + extra * Math.cos(midAngle);
-        sy = cy + extra * Math.sin(midAngle);
+      let sx = anchor.x, sy = anchor.y;
+      for (let extra = sectorRadius + 12; extra <= sectorRadius * 3.4; extra += 24) {
+        sx = anchor.x + extra * Math.cos(midAngle);
+        sy = anchor.y + extra * Math.sin(midAngle);
         const nx = (sx - ax) / (rx + 48), ny = (sy - ay) / (ry + 48);
         if (nx * nx + ny * ny > 1) break;
       }
 
-      // 纸色圆角底衬 + 墨字（画缘收编在屏幕系做——本地系 0 是舰队锚点行，不是画缘）
+      // 纸色圆角底衬 + 墨字（投影唯一化后无本地系换算，直接屏幕系绘制）
       ctx.save();
       ctx.font = '10px Caveat, cursive';
       const tw = ctx.measureText(text).width;
       const bw = tw + 12, bh = 16;
       const clX = Math.max(24 + bw / 2, Math.min(this.width - 24 - bw / 2, sx));
       const clY = Math.max(24 + bh / 2, Math.min(this.height - 24 - bh / 2, sy));
-      const lx = fx + (clX - cx), ly = fy + (clY - cy);
-      const bx = lx - bw / 2, by = ly - bh / 2;
+      const bx = clX - bw / 2, by = clY - bh / 2;
       ctx.fillStyle = 'rgba(245,237,214,0.88)';   // 纸色底衬（CHART paper #f5edd6 同源）
       ctx.strokeStyle = 'rgba(42,34,24,0.35)';
       ctx.lineWidth = 0.75;
@@ -1016,8 +989,7 @@ class MapRenderer {
   // ═══════════════════════════════════════════════════════
   // Pending Recon Plan (dashed, semi-transparent)
   // ═══════════════════════════════════════════════════════
-  _drawPendingRecon(ctx, state, fleetQ, fleetR) {
-    const [fx, fy] = this._hexToPixel(fleetQ, fleetR);
+  _drawPendingRecon(ctx, state, anchor) {
     const pending = state.pending_suggestions || [];
 
     pending.forEach(sug => {
@@ -1055,17 +1027,17 @@ class MapRenderer {
       ctx.setLineDash([8, 4]);
       const routeAngle = midRad;
       ctx.beginPath();
-      ctx.moveTo(fx, fy);
-      ctx.lineTo(fx + sectorRadius * 0.9 * Math.cos(routeAngle),
-                 fy + sectorRadius * 0.9 * Math.sin(routeAngle));
+      ctx.moveTo(anchor.x, anchor.y);
+      ctx.lineTo(anchor.x + sectorRadius * 0.9 * Math.cos(routeAngle),
+                 anchor.y + sectorRadius * 0.9 * Math.sin(routeAngle));
       ctx.stroke();
       ctx.setLineDash([]);
 
       // Sector wedge (dashed border, semi-transparent fill)
       ctx.fillStyle = 'rgba(200,160,60,0.12)';
       ctx.beginPath();
-      ctx.moveTo(fx, fy);
-      ctx.arc(fx, fy, sectorRadius, drawStart, drawEnd);
+      ctx.moveTo(anchor.x, anchor.y);
+      ctx.arc(anchor.x, anchor.y, sectorRadius, drawStart, drawEnd);
       ctx.closePath();
       ctx.fill();
 
@@ -1073,8 +1045,8 @@ class MapRenderer {
       ctx.lineWidth = 1.5;
       ctx.setLineDash([5, 3]);
       ctx.beginPath();
-      ctx.moveTo(fx, fy);
-      ctx.arc(fx, fy, sectorRadius, drawStart, drawEnd);
+      ctx.moveTo(anchor.x, anchor.y);
+      ctx.arc(anchor.x, anchor.y, sectorRadius, drawStart, drawEnd);
       ctx.closePath();
       ctx.stroke();
       ctx.setLineDash([]);
@@ -1084,8 +1056,8 @@ class MapRenderer {
       // fix: 本函数扇区中点角变量为 midRad（原引用未定义的 midAngle，launch_scout
       // 待定建议一出现即抛 ReferenceError 使整帧渲染崩溃）
       const iconAngle = midRad;
-      const iconX = fx + iconR * Math.cos(iconAngle);
-      const iconY = fy + iconR * Math.sin(iconAngle);
+      const iconX = anchor.x + iconR * Math.cos(iconAngle);
+      const iconY = anchor.y + iconR * Math.sin(iconAngle);
 
       const svgIcon = getIcon('aircraft_topdown');
       if (svgIcon) {
@@ -1148,7 +1120,7 @@ class MapRenderer {
 
       // PENDING stamp
       ctx.save();
-      ctx.translate(fx + 20, fy - 30);
+      ctx.translate(anchor.x + 20, anchor.y - 30);
       ctx.rotate(-0.15);
       ctx.strokeStyle = 'rgba(200,160,60,0.5)';
       ctx.lineWidth = 1;
@@ -1336,35 +1308,10 @@ class MapRenderer {
 
   // ═══════════════════════════════════════════════════════
   // Coordinate utilities
+  // fix Loop3-F1 投影唯一化：_worldToHex/_hexToPixel/_hexToWorld 十边形量化体系随
+  // 舰队居中 translate 一并退役（CHART_SYSTEM.md §四 M.4 口径）——实体定位唯一入口
+  // = this._project（ChartRenderer.makeProjector 构造，见 render）
   // ═══════════════════════════════════════════════════════
-  _hexToPixel(q, r) {
-    return [
-      HEX_SIZE * (SQRT3 * q + SQRT3 / 2 * r),
-      HEX_SIZE * (3 / 2 * r),
-    ];
-  }
-
-  _worldToHex(lat, lon) {
-    const dlat = lat - REF_LAT;
-    const dlon = lon - REF_LON;
-    const nmNorth = dlat * 60;
-    const nmEast = dlon * 60 * Math.cos(REF_LAT * Math.PI / 180);
-    let q = nmEast / CELL_NM;
-    let r = nmNorth / CELL_NM;
-    const s = -q - r;
-    let rq = Math.round(q), rr = Math.round(r), rs = Math.round(s);
-    const qd = Math.abs(rq - q), rd = Math.abs(rr - r), sd = Math.abs(rs - s);
-    if (qd > rd && qd > sd) rq = -rr - rs;
-    else if (rd > sd) rr = -rq - rs;
-    return [rq, rr];
-  }
-
-  _hexToWorld(q, r) {
-    return [
-      REF_LAT + (r * CELL_NM) / 60,
-      REF_LON + (q * CELL_NM) / (60 * Math.cos(REF_LAT * Math.PI / 180)),
-    ];
-  }
 
 
 }

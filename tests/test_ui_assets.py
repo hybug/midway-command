@@ -194,11 +194,11 @@ def test_input_bar_and_button_focus_styles():
 
 
 def test_index_html_cache_version_consistent():
-    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（保真度修正 T4 → 1780997990，B1 → 1780997991，B3 → 1780997992，C4 → 1780997993，loop1 L4 → 1780997994，loop2 L4 → 1780997995，loop3 F1-F5 → 1780997996，终审修复 → 1780997997，成品图复现 D1/D2 → 1780997998，D4 → 1780997999，E1/E2 → 1780998000，EB2（E3 标签/E4 齿轮/E7 按钮三态）→ 1780998001，EB3（E6 占位卡/E8 布局 60px/320px）→ 1780998002，G1（舰队标记空心圆圈+双虚线矢量）→ 1780998003，GB 批次（G2 侦察机剪影/G3 敌标勘误/G4 SECRET 章+字幕移除）→ 1780998004，GC 批次（G5 圆规道具/G6 尺铅笔移位/G7 东岛近景/顺修 midAngle）→ 1780998005，成品图基准 Loop1 F1-F8（胶囊/罗盘/标注群/敌标位/扇区/细网格/纸签/内阴影）→ 1780998006，F8 重做（纸面晕影改 #chart-area::after 覆层 22px，设计师验收 REJECT 返工）→ 1780998007，Loop2 L4（F1 舰队对位/F3 纸面暖黄/F4 扇区标签外推/F5 细网格提存在感/F6 罗盘避让经度标注）→ 1780998008）。"""
+    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（保真度修正 T4 → 1780997990，B1 → 1780997991，B3 → 1780997992，C4 → 1780997993，loop1 L4 → 1780997994，loop2 L4 → 1780997995，loop3 F1-F5 → 1780997996，终审修复 → 1780997997，成品图复现 D1/D2 → 1780997998，D4 → 1780997999，E1/E2 → 1780998000，EB2（E3 标签/E4 齿轮/E7 按钮三态）→ 1780998001，EB3（E6 占位卡/E8 布局 60px/320px）→ 1780998002，G1（舰队标记空心圆圈+双虚线矢量）→ 1780998003，GB 批次（G2 侦察机剪影/G3 敌标勘误/G4 SECRET 章+字幕移除）→ 1780998004，GC 批次（G5 圆规道具/G6 尺铅笔移位/G7 东岛近景/顺修 midAngle）→ 1780998005，成品图基准 Loop1 F1-F8（胶囊/罗盘/标注群/敌标位/扇区/细网格/纸签/内阴影）→ 1780998006，F8 重做（纸面晕影改 #chart-area::after 覆层 22px，设计师验收 REJECT 返工）→ 1780998007，Loop2 L4（F1 舰队对位/F3 纸面暖黄/F4 扇区标签外推/F5 细网格提存在感/F6 罗盘避让经度标注）→ 1780998008，Loop3 L4（F1 实体层投影唯一化拔舰队居中疣/F4 route_display 直接投影期望/design-state 真实经纬）→ 1780998009）。"""
     html = (BASE / "static" / "index.html").read_text()
     versions = set(re.findall(r'\?v=(\d+)', html))
     assert len(versions) == 1, f"index.html 缓存号不一致: {versions}"
-    assert versions == {"1780998008"}, f"index.html 缓存号未递增到 1780998008: {versions}"
+    assert versions == {"1780998009"}, f"index.html 缓存号未递增到 1780998009: {versions}"
     # 防再漂移：svgLoader.js 内全部带 ?v= 的资源 URL，版本号必须与 index.html 现值一致
     # （历史漂移：paper_tex ?v=1780997995 与 index.html 1780997996 脱钩，见终审修复项 1）
     loader = (BASE / "static" / "js" / "svgLoader.js").read_text()
@@ -272,15 +272,18 @@ def test_task_force_leader_arrow():
     js = (BASE / "static" / "js" / "chartRenderer.js").read_text()
     assert "atollCenter(w, h)" in js and "closePath" in js, "引导线未指向环礁或缺箭头"
     assert "(tf.x - 60, tf.y + 18)" not in js, "写死方向未移除"
-    # fix round 1：atollCenter 是屏幕系坐标，调用点 ctx 处于舰队本地平移系——
-    # 签名须带 ox/oy，且引导线方向须先换算到本地系（防坐标系回退）
-    assert "drawTaskForceMarker(ctx, tf, w, h, ox = 0, oy = 0)" in js, \
-        "签名缺 ox/oy 本地系换算参数"
-    assert "atollCenter(w, h).x - ox" in js and "atollCenter(w, h).y - oy" in js, \
-        "引导线未做屏幕系→舰队本地系换算（atollCenter - 平移量）"
+    # fix Loop3-F1 投影唯一化：实体层无舰队居中 translate，标记与环礁同屏幕系——
+    # 签名回归 (ctx, tf, w, h)，引导线直接指向屏幕系环礁心
+    #（原 ox/oy 本地系换算参数随 translate 体系删除，防坐标系回退改为防 translate 回潮）
+    assert "drawTaskForceMarker(ctx, tf, w, h)" in js, \
+        "签名应含 (ctx, tf, w, h)（投影唯一化基础形态）"
+    assert "atollCenter(w, h).x - ox" not in js, \
+        "引导线屏幕系→本地系换算残留（translate 体系回潮）"
     map_js = (BASE / "static" / "js" / "mapRenderer.js").read_text()
-    assert "this.width, this.height, ox, oy)" in map_js, \
-        "mapRenderer 调用点未传 ox/oy 舰队居中平移量"
+    assert "ChartRenderer.makeProjector(" in map_js, \
+        "mapRenderer 实体层未接唯一投影（Loop3-F1 投影唯一化缺失）"
+    assert "ctx.translate(ox, oy)" not in map_js, \
+        "实体层舰队居中 translate 残留（投影唯一化回潮，实体将整体出画）"
 
 
 # ── 成品图复现 · G1：ENT/HOR 空心圆圈标记 + 双虚线箭头矢量（计数牌退役）──
@@ -327,7 +330,7 @@ def test_npc_tab_active_lift_enhanced():
 # ── 保真度修正 · Loop2 L4：F1–F9 修复守卫 ──
 
 def test_loop2_fidelity_fix_markers():
-    """Loop2 L4 静态守卫：标记对角错开/岛标签胶囊/细网/纸舌造型/空态纸卡/底栏层次/窄屏断点。"""
+    """Loop2 L4 静态守卫：标记对角错开（→Loop3 退役守卫）/岛标签胶囊/细网/纸舌造型/空态纸卡/底栏层次/窄屏断点。"""
     chart = (BASE / "static" / "js" / "chartRenderer.js").read_text()
     # F2 → Loop1-F1 演进: SAND ISLAND 胶囊 measureText 定宽（文字实宽+16，下限 62px）
     assert "Math.max(sandLblW + 16, 62)" in chart, "沙岛胶囊未按 measureText 定宽"
@@ -338,9 +341,11 @@ def test_loop2_fidelity_fix_markers():
     assert "lat += 0.25" in chart and "lon += 0.25" in chart, "经纬网未加 0.25° 细网"
     assert "lat += 0.5" in chart and "lon += 0.5" in chart, "0.5° 主网须保留"
     map_js = (BASE / "static" / "js" / "mapRenderer.js").read_text()
-    # F1: 舰队标记错开防重叠（成品图复现 G1：计数牌让位 hack 已删，恢复 F2 对角错开
-    # i=0: x-14/y-28、i=1: x+14/y+0——圆圈 r=10 小标记，28px 中心距仍有效）
-    assert "px - 14 : px + 14" in map_js and "py - 28 : py" in map_js, "舰队标记未按 F2 对角错开"
+    # F1 对角错开 → Loop3-F1 退役：真实位天然分离（ENT/HOR 按真实经纬直接投影，
+    # fixture ENT 西外缘/HOR 环礁西缘），标记画在投影点本位——偏移会破坏
+    # 「标记位==逻辑投影」接线断言与悬停命中一致性
+    assert "px - 14 : px + 14" not in map_js and "py - 28 : py" not in map_js, \
+        "F2 对角错开残留（投影唯一化后标记应画在投影点本位）"
     ui = (BASE / "static" / "js" / "uiController.js").read_text()
     # F5: 空态包 intel_card 纸卡；F6: 空态读数 dash-empty
     assert 'class="empty-card"' in ui, "空态未包 intel_card 纸卡"

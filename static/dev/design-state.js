@@ -5,13 +5,13 @@
  * 页面加载渲染器三件套（svgLoader/chartRenderer/mapRenderer）+ uiController 后
  * 以本模块数据 render(state)——不经后端，离线可渲染。仅供像素比对，非游戏页面。
  *
- * 坐标口径（两条投影链，见 tests/ui/route_display.test.mjs）：
- *  - 底图层 chartRenderer：latLonToChartPx，环礁中心固定画在 (w*0.44, h*0.46)；
- *  - 实体层 mapRenderer：_worldToHex/_hexToPixel 十边形量化 + 舰队居中平移
- *    （首航母恒画在画布中心，+lat 向下、+lon 向右）。
- *  已知怪味（known wart，本轮不修）：实体层北向画在屏幕下方——known_enemy /
- *  active_scouts 的 lat/lon 为「成品图像素目标 × 实体层投影」反推值（反推算式见
- *  各条注释），lat/lon 语义与屏幕朝向相反属预期，勿用地理常识"纠正"。
+ * 坐标口径（fix Loop3-F1 投影唯一化后为单参考系）：
+ *  - 底图与实体层共用同一投影（ChartRenderer.makeProjector，等距圆柱 + cos(lat)），
+ *    lat/lon 即真实地理语义：北向上、东向右，无翻转、无反推。
+ *  - 图面双基准：经纬网零点 (28.2,-177.4)→(w/2,h/2)；环礁/距离环绘制基准 →
+ *    (w*0.44, h*0.46)（既有构图位）。1084×657 fixture 画布上两者差 (−65,−26)px，
+ *    故「环礁相对位」以环礁心对应经纬 lat0 ≈ 28.246 / lon0 ≈ −177.529 为原点
+ *    （下述 fleet/enemy 的 nm 距离均对环礁心；画布尺寸变化时偏差 <3px，截图定妆可行）。
  */
 (function () {
   'use strict';
@@ -30,44 +30,41 @@
 
   const NM_TO_DEG_LON = 1 / (60 * Math.cos(DESIGN_THEATER.center.lat * Math.PI / 180));
 
-  // 舰队：course 270 / 30 KTS，按成品图 ENT 图左外缘（环礁西缘外开阔水面）、HOR 环礁
-  // 中心区对位（fix Loop2-F1——原两圈同挤环礁中心）。实体层首航母恒画在画布中心
-  //（known wart，route_display 平移守卫钉住）：数据只能移动次航母，故 Hornet 作锚点
-  //（ carriers[0]，钉在画布中心 (centerX−14, centerY−28)）、Enterprise 挂次位西推。
-  // lat/lon 由 theater 中心反推（存储系「北向画在屏幕下方」，勿用地理常识"纠正"）：
-  //   HOR（锚点）: hex (-4, 0)   ← lon = center.lon − 40×NM_TO_DEG_LON
-  //   ENT（次位）: hex (-24, -2) ← lon = center.lon − 240×NM_TO_DEG_LON、lat = center.lat − 20/60
-  //     无头 Chrome 实测（canvas 1084×657, center (542,328.5)）画布位 ≈ (119, 293)：
-  //     环礁西缘（x≈153）外开阔水面、与 HOR/atoll 近同排（成品图 ENT-HOR-atoll 一条水平线）
-  const HOR_LAT = DESIGN_THEATER.center.lat;
-  const HOR_LON = DESIGN_THEATER.center.lon - 40 * NM_TO_DEG_LON;  // ≈ -178.156 → 锚点量化 (-4, 0)
-  const ENT_LAT = DESIGN_THEATER.center.lat - 20 / 60;             // ≈ 27.867
-  const ENT_LON = DESIGN_THEATER.center.lon - 240 * NM_TO_DEG_LON; // ≈ -181.939 → 量化 (-24, -2)
+  // 舰队：course 270 / 30 KTS。fix Loop3-F1 投影唯一化——「首航母钉画布中心」 wart
+  // 已拔除，按成品图位直给真实经纬（画布位按 1084×657 反推，北向上东向右）：
+  //   HOR（carriers[0]，扇区/底栏首读槽位）: 环礁西 ~25nm（西礁环带上，成品图 HOR 位）
+  //     lat 28.246 / lon −178.002 → 画布 (238.9, 302.2)
+  //   ENT（次位）: 图左外缘开阔水面（环礁西 ~45nm 画内极限；任务书 ~52nm 口径对图心经度）
+  //     lat 28.246 / lon −178.383 → 画布 (47.0, 302.2)，与 HOR/环礁心同一条水平线
+  const HOR_LAT = 28.246;
+  const HOR_LON = -178.002;
+  const ENT_LAT = 28.246;
+  const ENT_LON = -178.383;
 
-  // 敌情 ×2：成品图环礁东北、内外错开（fix Loop1-F2 微调——原位偏正北）。
-  // 图表层目标（1440×900，chart 比例尺 12.22px/nm，环礁心 (633.6,414)）：
-  //   内标 hex (9,-11)  → 画布 (875.9,252.0) ≈ 方位 56° / 23.8nm（礁环内缘）
-  //   外标 hex (10,-17) → 画布 (834.3,144.0) ≈ 方位 37° / 27.5nm（礁环外缘）
-  // 反推（存储系「北向画在屏幕下方」，lat/lon 语义与屏幕朝向相反）：
-  //   lat = 28.2 + r×10/60，lon = -177.4 + q×10/(60×cos28.2°)
+  // 敌情 ×2：成品图环礁东北、内外错开（Loop1-F2 定位延续，改唯一投影真实经纬）：
+  //   内标 ≈ 方位 56° / 23.8nm（礁环内缘）→ lat 28.468 / lon −177.156 → 画布 (664.9, 175.4)
+  //   外标 ≈ 方位 37° / 27.5nm（礁环外缘）→ lat 28.612 / lon −177.216 → 画布 (634.6, 93.1)
+  // （方位/距离对环礁心；1084×657 反推，画布尺寸变化时偏差 <3px）
   const KNOWN_ENEMY = [
     {
       description: '敌航母约 4 艘 - 方位 55° - 距离 150nm',
       confidence: 'high',
       source: 'SCOUT-2',
-      position: { lat: 26.37, lon: -175.7 },
+      position: { lat: 28.468, lon: -177.156 },
     },
     {
       description: '敌航母约 4 艘 - 战列舰 2 艘护航',
       confidence: 'high',
       source: 'TBD-1',
-      position: { lat: 25.37, lon: -175.51 },
+      position: { lat: 28.612, lon: -177.216 },
     },
   ];
 
-  // 在途侦察 ×1：HOR 西南航线、机上 2 架。位置为成品图像素目标 (690,522)
-  //（舰队标记西南方）经实体层反推 → hex (-7,4) → lat 28.87 / lon -178.72。
-  // 搜索扇区 30°-90°（成品图底栏「侦察 30°-90°」读数同源字段）。
+  // 在途侦察 ×1：HOR 西南航线、机上 2 架。位置为成品图像素目标（环礁心西南偏下
+  // ≈(−87,+138)px，避让 SAND ISLAND 胶囊/跑道横带）经唯一投影反推
+  // → lat 28.005 / lon −177.702 → 画布 (390, 440)。
+  // 搜索扇区 30°-90°（成品图底栏「侦察 30°-90°」读数同源字段；direction/heading
+  // 保留成品图字面「southwest/225」——基准图自身即此搭配，见 loop-3.md F3 核对）。
   const ACTIVE_SCOUTS = [
     {
       id: 'SCOUT-2',
@@ -83,7 +80,7 @@
       fuel_pct: 80,
       aircraft_lost: 0,
       loss_reasons: [],
-      position: { lat: 28.87, lon: -178.72 },
+      position: { lat: 28.005, lon: -177.702 },
       search_pattern: 'sector',
     },
   ];
@@ -112,10 +109,11 @@
         name: 'Task Force 16',
         course: 270,
         speed: 30,
-        // 次序即绘制序/仪表序：carriers[0] = 实体层锚点（钉画布中心）。
+        // 次序即绘制序/仪表序：carriers[0] = 扇区/底栏首读槽位（Loop3-F1 拔锚点 wart
+        // 后不再钉画布中心，Hornet 居首沿用 Loop2-F1 安排——搜索扇区楔形随首航母位）。
         // 底栏读数按位取值（uiController：位置/损伤取 carriers[0/1]、甲板按数组序），
-        // 故 damage 1 挂 Hornet 位以保持「企业:LGT 大黄蜂:OK」读数、巡逻 6 CAP 挂锚点位
-        // （合计不变）；甲板合计 14（SBD/TBD）随 Enterprise 位不变，仅企/蜂展示序对调。
+        // damage 1 挂首位保「企业:LGT 大黄蜂:OK」读数、巡逻 6 CAP 同槽位
+        // （合计不变）；甲板合计 14（SBD/TBD），企/蜂展示序残留见 loop-3.md。
         carriers: [
           {
             name: 'USS Hornet (CV-8)',

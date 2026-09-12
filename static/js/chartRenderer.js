@@ -42,13 +42,23 @@ function atollCenter(w, h) {
   return { x: w * 0.44, y: h * 0.46 };
 }
 
-function latLonToChartPx(lat, lon, w, h) {
+// fix Loop3-F1（CHART_SYSTEM.md §四 C3 投影唯一化）：唯一坐标系出入口——
+// makeProjector(view, w, h) -> project(lat, lon) -> {x, y}，等距圆柱 + cos(lat) 纬度修正。
+// view: { center: {lat, lon}, view_nm }（view_nm 预留：v1 取景比例由 chartNmToPx 固定，
+// M.3 TheaterLoader 落地后由 theater.view 直供）。底图 latLonToChartPx 与实体层
+// （mapRenderer）共用本式，「底图与实体两参考系」已知局限就此关闭。
+function makeProjector(view, w, h) {
+  const c = view.center;
   const pxPerDegLat = chartNmToPx(60, w, h); // 1° 纬度 ≈ 60nm
-  const pxPerDegLon = pxPerDegLat * Math.cos(28.2 * Math.PI / 180);
-  return {
-    x: w / 2 + (lon - CHART_CENTER.lon) * pxPerDegLon,
-    y: h / 2 - (lat - CHART_CENTER.lat) * pxPerDegLat,
-  };
+  const pxPerDegLon = pxPerDegLat * Math.cos(c.lat * Math.PI / 180);
+  return (lat, lon) => ({
+    x: w / 2 + (lon - c.lon) * pxPerDegLon,
+    y: h / 2 - (lat - c.lat) * pxPerDegLat,
+  });
+}
+
+function latLonToChartPx(lat, lon, w, h) {
+  return makeProjector({ center: CHART_CENTER }, w, h)(lat, lon);
 }
 
 // Task 7.3 → 保真度修正 B1：纸张底图——米黄底色 + AI 纸纹 createPattern 平铺（SVG 水渍回退）+ 噪点颗粒
@@ -376,9 +386,11 @@ function drawScaleBar(ctx, w, h) {
 
 // 成品图复现 G1：ENT/HOR 舰队标记——空心圆圈 + 字标 + 航向线 + 双虚线箭头矢量指向环礁
 // （计数牌退役：fleet_tag_*.png 光栅素材保留作 tooltip 素材，不再上图）
-function drawTaskForceMarker(ctx, tf, w, h, ox = 0, oy = 0) {
+// fix Loop3-F1 投影唯一化：实体层无舰队居中 translate，标记与环礁同屏幕系——
+// 签名回归 (ctx, tf, w, h)，引导线直接指向屏幕系环礁心（ox/oy 本地系换算删除）
+function drawTaskForceMarker(ctx, tf, w, h) {
   // 空心圆圈标记（成品图形态）：r=10 空心 + 字标 + 航向线 + 双虚线箭头矢量指向环礁
-  const ac = { x: atollCenter(w, h).x - ox, y: atollCenter(w, h).y - oy };
+  const ac = atollCenter(w, h);
   ctx.save();
   ctx.strokeStyle = CHART_STYLE.ink; ctx.lineWidth = 2.5;
   ctx.beginPath(); ctx.arc(tf.x, tf.y, 10, 0, Math.PI * 2); ctx.stroke();       // circle-outline
@@ -474,5 +486,6 @@ const ChartRenderer = {
   drawEnemyContact,
   chartNmToPx,
   latLonToChartPx,
+  makeProjector,
 };
 window.ChartRenderer = ChartRenderer;

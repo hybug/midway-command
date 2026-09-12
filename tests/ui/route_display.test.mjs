@@ -1,4 +1,6 @@
-/** 断言三层：①投影确定性 ②底图层圆心一致 ③实体标记绘制位置==逻辑坐标投影（接线正确）。*/
+/** 断言三层：①唯一投影确定性（makeProjector==latLonToChartPx） ②底图层圆心一致
+ *  ③实体标记绘制位置==逻辑坐标直接投影（fix Loop3-F1 投影唯一化：无 translate 换算、
+ *  无舰队居中平移、无对角错开——「底图与实体两参考系」局限就此关闭）。*/
 import assert from "node:assert/strict";
 import * as vm from "node:vm";
 import { loadGameScripts } from "./dom-stub.mjs";
@@ -9,7 +11,17 @@ const { sandbox, document } = loadGameScripts([
 const canvas = document.getElementById("tacticalMap");
 const renderer = new sandbox.MapRenderer("tacticalMap");
 
-// ── ① 投影确定性（chartRenderer 层）──
+// 最小 state：字段以 mapRenderer.render 实际读取为准，缺啥补啥（systematic-debugging 迭代桩 state）
+function makeState(lat, lon) {
+  return {
+    clock: { game_time: "1942-06-04T04:00:00Z" }, game_phase: "playing",
+    task_forces: [{ name: "Task Force 16", course: 240, speed: 25,
+      carriers: [{ name: "USS Enterprise (CV-6)", position: { lat, lon }, aircraft: [] }] }],
+    known_enemy: [], active_scouts: [], pending_reports: [], pending_suggestions: [],
+  };
+}
+
+// ── ① 唯一投影确定性（chartRenderer 层）──
 // 注：vm 桩上下文返回的对象原型属另一 realm，deepStrictEqual 校验原型，
 // 先摊开成本 realm 普通对象再比较（断言语义不变）
 const p1 = sandbox.ChartRenderer.latLonToChartPx(31.5, -176.0, 1440, 900);
@@ -17,6 +29,20 @@ const p2 = sandbox.ChartRenderer.latLonToChartPx(31.5, -176.0, 1440, 900);
 assert.deepEqual({ ...p1 }, { ...p2 }, "同输入投影必须确定");
 const pFar = sandbox.ChartRenderer.latLonToChartPx(28.2, -177.4, 1440, 900);
 assert.deepEqual({ x: pFar.x, y: pFar.y }, { x: 720, y: 450 }, "图面中心 lat/lon 必须映射到画布中心");
+// Loop3-F1：makeProjector（实体层唯一投影出入口）必须与底图 latLonToChartPx 逐像素一致
+//（防「两参考系」回潮；M.3 TheaterLoader 落地后实体层改消费 theater.view 同式）
+const viaMake = sandbox.ChartRenderer.makeProjector({ center: { lat: 28.2, lon: -177.4 } }, 1440, 900)(31.5, -176.0);
+assert.ok(Math.abs(viaMake.x - p1.x) < 1e-9 && Math.abs(viaMake.y - p1.y) < 1e-9,
+  "makeProjector 与 latLonToChartPx 不一致（投影唯一化被破坏）");
+
+// ── ① 独立公式对照（控制裁定加强）──
+// 公式副本，源码变更时须同步——逐字抄录自 chartRenderer.js 的 chartNmToPx/makeProjector
+//（等距圆柱 + cos(lat) 纬度修正；CHART_VIEW_NM=45、基准半径 min(w,h)/2+100、CHART_CENTER 同源）
+function projectCopy(lat, lon, w, h) {
+  const pxPerDegLat = ((60 / 45) * (Math.min(w, h) / 2 + 100));
+  const pxPerDegLon = pxPerDegLat * Math.cos((28.2 * Math.PI) / 180);
+  return [w / 2 + (lon + 177.4) * pxPerDegLon, h / 2 - (lat - 28.2) * pxPerDegLat];
+}
 
 // ── ② 底图层：环礁中心与距离环圆心一致（真实渲染调用）──
 sandbox.ChartRenderer.drawAll(canvas.__ctx, 1440, 900);
@@ -27,91 +53,41 @@ assert.ok(ringArc, "未找到 60nm 距离环 arc 调用");
 assert.ok(Math.abs(ringArc.args[0] - atollCx) < 1 && Math.abs(ringArc.args[1] - atollCy) < 1,
   `距离环圆心 (${ringArc.args[0]},${ringArc.args[1]}) 偏离环礁中心 (${atollCx},${atollCy})`);
 
-// ── ③ 实体层：舰队标记画在其逻辑坐标的投影处（接线测试）──
-// 最小 state：字段以 mapRenderer.render 实际读取为准，缺啥补啥（systematic-debugging 迭代桩 state）
-function makeState(lat, lon) {
-  return {
-    clock: { game_time: "1942-06-04T04:00:00Z" }, game_phase: "playing",
-    task_forces: [{ name: "Task Force 16", course: 240, speed: 25,
-      carriers: [{ name: "USS Enterprise (CV-6)", position: { lat, lon }, aircraft: [] }] }],
-    known_enemy: [], active_scouts: [], pending_reports: [], pending_suggestions: [],
-  };
-}
+// ── ③ 实体层：舰队标记画在其逻辑坐标的直接投影处（接线测试，无任何平移换算）──
 renderer.render(makeState(31.5, -176.0));
 const drawn = canvas.__ctx.__calls.filter((c) => c.name === "arc" || c.name === "drawImage");
 
-// ── ③ 独立公式对照（控制裁定加强）──
-// 公式副本，源码变更时须同步——逐字抄录自 static/js/mapRenderer.js 的 _worldToHex/_hexToPixel
-// （常量 HEX_SIZE/SQRT3/CELL_NM/REF_LAT/REF_LON 同源；运行时对照断言防抄录漂移，见下）
-const HEX_SIZE = 12, SQRT3 = Math.sqrt(3), CELL_NM = 10, REF_LAT = 28.2, REF_LON = -177.4;
-function worldToHexCopy(lat, lon) {
-  const dlat = lat - REF_LAT;
-  const dlon = lon - REF_LON;
-  const nmNorth = dlat * 60;
-  const nmEast = dlon * 60 * Math.cos(REF_LAT * Math.PI / 180);
-  let q = nmEast / CELL_NM;
-  let r = nmNorth / CELL_NM;
-  const s = -q - r;
-  let rq = Math.round(q), rr = Math.round(r), rs = Math.round(s);
-  const qd = Math.abs(rq - q), rd = Math.abs(rr - r), sd = Math.abs(rs - s);
-  if (qd > rd && qd > sd) rq = -rr - rs;
-  else if (rd > sd) rr = -rq - rs;
-  return [rq, rr];
-}
-function hexToPixelCopy(q, r) {
-  return [HEX_SIZE * (SQRT3 * q + SQRT3 / 2 * r), HEX_SIZE * (3 / 2 * r)];
-}
-
-// 渲染器投影 vs 公式副本：不一致说明源码公式已变更，须同步抄录
-const [q, r] = renderer._worldToHex(31.5, -176.0);
-const [ex, ey] = renderer._hexToPixel(q, r);
-assert.deepEqual([q, r], worldToHexCopy(31.5, -176.0), "_worldToHex 与公式副本不一致（源码已变更，须同步抄录）");
-assert.deepEqual([ex, ey], hexToPixelCopy(q, r), "_hexToPixel 与公式副本不一致（源码已变更，须同步抄录）");
-
-// 舰队居中平移：render 内部局部变量不可读，按公式独立计算（控制裁定）
-const centerX = canvas.width / 2, centerY = canvas.height / 2;
-const ox = centerX - ex, oy = centerY - ey;
-// 录制器记录的是 translate(ox,oy) 本地系坐标；画布位置 = 本地坐标 + (ox,oy)
-const toCanvas = (lx, ly) => [lx + ox, ly + oy];
+// 渲染器内部投影（render 构造的 this._project）vs 公式副本：不一致说明源码公式已变更，须同步抄录
+const proj = renderer._project(31.5, -176.0);
+const [ex, ey] = projectCopy(31.5, -176.0, 1440, 900);
+assert.ok(Math.abs(proj.x - ex) < 1e-9 && Math.abs(proj.y - ey) < 1e-9,
+  "渲染器内部投影与公式副本不一致（源码已变更，须同步抄录）");
 
 // 锚点 1：drawTaskForceMarker 的 CSE 标注画在航向线末端延长处（成品图复现 G1 圆圈形态：
 // 标注 = 标记 + 34px × 航向单位向量（course−90° 修正），34px 与航向线长 30px 同批源码常量）。
-// F2 错位机制（成品图复现 G1 保留）：首舰（i=0）对角偏移 (x-14, y-28)
-// （mapRenderer._drawOwnFleet `i === 0 ? px-14/py-28 : px+14/py`），
-// CSE 标注与双虚线矢量随之整体偏移——本套件只有 i=0 一艘，期望值含此偏移。
-const F2_LEADER_DX = -14;
-const F2_LEADER_DY = -28;
+// fix Loop3-F1：无 translate 换算、无 F2 对角错开——期望值即投影点 + 纯航向向量。
 const cseCalls = canvas.__ctx.__calls.filter((c) => c.name === "fillText" && String(c.args[0]).startsWith("CSE "));
 assert.ok(cseCalls.length >= 1, "未找到 drawTaskForceMarker 的 CSE 标注 fillText 调用");
-const [, cseLx, cseLy] = cseCalls[0].args;
+const [, cseX, cseY] = cseCalls[0].args;
 const hdgRad = ((240 - 90) * Math.PI) / 180; // course=240（makeState 同源，-90° 屏幕系修正）
-const expectedCseX = centerX + F2_LEADER_DX + Math.cos(hdgRad) * 34;
-const expectedCseY = centerY + F2_LEADER_DY + Math.sin(hdgRad) * 34;
-const [drawnCseX, drawnCseY] = toCanvas(cseLx, cseLy);
-assert.ok(Math.abs(drawnCseX - expectedCseX) < 2 && Math.abs(drawnCseY - expectedCseY) < 2,
-  `CSE 标注画布位置 (${drawnCseX.toFixed(1)},${drawnCseY.toFixed(1)}) 偏离逻辑坐标投影 (${expectedCseX.toFixed(1)},${expectedCseY.toFixed(1)}) 超过 2px`);
+const expectedCseX = ex + Math.cos(hdgRad) * 34;
+const expectedCseY = ey + Math.sin(hdgRad) * 34;
+assert.ok(Math.abs(cseX - expectedCseX) < 2 && Math.abs(cseY - expectedCseY) < 2,
+  `CSE 标注画布位置 (${cseX.toFixed(1)},${cseY.toFixed(1)}) 偏离逻辑坐标投影 (${expectedCseX.toFixed(1)},${expectedCseY.toFixed(1)}) 超过 2px`);
 
-// 锚点 2：标记本体（空心圆圈 r=10，成品图复现 G1）应画在投影点 + F2 首舰对角偏移处（舰队居中平移下 x 投影=图面中心）
+// 锚点 2：标记本体（空心圆圈 r=10，成品图复现 G1）应画在投影点本位
 const markerArc = drawn.find((c) => c.name === "arc" && Math.abs(c.args[2] - 10) < 0.5);
 assert.ok(markerArc, "未找到舰队标记空心圆圈（arc r≈10）调用");
-const [drawnMx, drawnMy] = toCanvas(markerArc.args[0], markerArc.args[1]);
-assert.ok(Math.abs(drawnMx - (centerX + F2_LEADER_DX)) < 2 && Math.abs(drawnMy - (centerY + F2_LEADER_DY)) < 2,
-  `舰队标记画布位置 (${drawnMx.toFixed(1)},${drawnMy.toFixed(1)}) 偏离投影点 (${centerX + F2_LEADER_DX},${centerY + F2_LEADER_DY}) 超过 2px`);
+assert.ok(Math.abs(markerArc.args[0] - ex) < 2 && Math.abs(markerArc.args[1] - ey) < 2,
+  `舰队标记画布位置 (${markerArc.args[0].toFixed(1)},${markerArc.args[1].toFixed(1)}) 偏离直接投影 (${ex.toFixed(1)},${ey.toFixed(1)}) 超过 2px`);
 
-// fix Loop1-F5 拆层回归守卫：实体层必须真实应用舰队居中平移——标记 arc 之前最近的
-// translate 必须是 (ox,oy) 本体。本套件的 toCanvas 是代数补偿（记录参数 + ox/oy），
-// 渲染器漏掉 translate 时上述位置断言照常绿（Loop1 截图回归实证），须钉住 translate 调用。
-let tIdx = canvas.__ctx.__calls.indexOf(markerArc);
-while (tIdx-- >= 0 && canvas.__ctx.__calls[tIdx].name !== "translate") { /* 回溯最近 translate */ }
-assert.ok(tIdx >= 0, "标记 arc 之前无任何 translate 调用");
-const [entTx, entTy] = canvas.__ctx.__calls[tIdx].args;
-assert.ok(Math.abs(entTx - ox) < 0.01 && Math.abs(entTy - oy) < 0.01,
-  `实体层 translate 缺失或错位：最近 translate (${entTx.toFixed(1)},${entTy.toFixed(1)}) ≠ 舰队居中平移 (${ox.toFixed(1)},${oy.toFixed(1)})（实体将整体出画）`);
-
-// 松界（任务书原断言，经 translate 修正）：标记相关调用落在投影点邻域
-// 成品图复现 G1：ENT 让位 hack 已删，F2 对角错位 (x-14,y-28) 距投影 31px，邻域 60px 覆盖
-const hit = drawn.some((c) => Math.hypot((c.args[0] ?? 999) + ox - centerX, (c.args[1] ?? 999) + oy - centerY) < 60);
-assert.ok(hit, "舰队标记未绘制在其逻辑投影（图面中心附近）处");
+// Loop3-F1 守卫（替代 Loop1 的 translate 守卫）：舰队居中平移体系已拆除——
+// 渲染帧中不得出现任何等于「画心−投影点」的 translate（回潮即实体整体出画/两参考系复辟）。
+// 位置断言本身已能抓回潮（本地系坐标≠投影），本守卫钉平移调用形态本身。
+const fleetT = canvas.__ctx.__calls.find(
+  (c) => c.name === "translate" && Math.abs(c.args[0] - (720 - ex)) < 0.01
+       && Math.abs(c.args[1] - (450 - ey)) < 0.01);
+assert.ok(!fleetT, "检测到舰队居中 translate（投影唯一化回潮，实体将整体出画）");
 
 // 回归（fix: 缺省列表防御）：render 是公开入口，缺省 active_scouts/known_enemy 的
 // 最小 state 不得让渲染帧抛错（桩环境复现根因：_drawSearchSectors 的
@@ -133,35 +109,32 @@ const beforeCount = arcR10().length;
 assert.ok(beforeCount >= 1, "render(sA) 未产生舰队标记（arc r≈10）");
 const sB = makeState(31.4, -176.1); // 模拟一 tick（advance 15min）后的逻辑位置
 renderer.render(sB);
-// 新逻辑位置 → hex → 像素（本地系；render 每次 resize 重置 centerX/centerY=720/450）
-const [q2, r2] = renderer._worldToHex(31.4, -176.1);
-const [nx, ny] = renderer._hexToPixel(q2, r2);
+// 新逻辑位置 → 唯一投影（屏幕系；render 每次 resize 重置画布 1440×900）
+const [nx, ny] = projectCopy(31.4, -176.1, 1440, 900);
 const fp = renderer._animState.fleetPositions; // 源码现状：空对象（仅声明）；有 lerp 缓存时此处应有 {targetX,targetY}
 const entry = Object.values(fp).find((v) => v && "targetX" in v);
 if (entry) {
-  // 引入了 lerp 缓存的未来实现：目标必须跟随新逻辑位置（舰队居中平移下 target==投影点）
-  assert.ok(Math.abs(entry.targetX - (renderer.centerX - nx)) < 2
-          && Math.abs(entry.targetY - (renderer.centerY - ny)) < 2,
+  // 引入了 lerp 缓存的未来实现：目标必须跟随新逻辑位置的投影（屏幕系，无平移补偿）
+  assert.ok(Math.abs(entry.targetX - nx) < 2 && Math.abs(entry.targetY - ny) < 2,
     "舰队动画目标未跟随新逻辑位置（刷新链路断裂）");
 }
-// 当前实现断言：stateB 渲染帧的标记必须画在 stateB 投影 + F2 首舰对角偏移处（新逻辑位置成为绘制目标）
+// 当前实现断言：stateB 渲染帧的标记必须画在 stateB 直接投影处（新逻辑位置成为绘制目标）
 const bArcs = arcR10();
 assert.ok(bArcs.length > beforeCount, "render(sB) 未产生新的舰队标记帧");
 const [bx, by] = bArcs[bArcs.length - 1].args;
-assert.ok(Math.abs(bx - (nx + F2_LEADER_DX)) < 2 && Math.abs(by - (ny + F2_LEADER_DY)) < 2,
-  `sB 帧标记 (${bx.toFixed(1)},${by.toFixed(1)}) 偏离 sB 投影 (${(nx + F2_LEADER_DX).toFixed(1)},${(ny + F2_LEADER_DY).toFixed(1)})——刷新链路断裂（显示落后于逻辑）`);
+assert.ok(Math.abs(bx - nx) < 2 && Math.abs(by - ny) < 2,
+  `sB 帧标记 (${bx.toFixed(1)},${by.toFixed(1)}) 偏离 sB 投影 (${nx.toFixed(1)},${ny.toFixed(1)})——刷新链路断裂（显示落后于逻辑）`);
 // 位移必须精确等于两次逻辑位置的投影差值（重绘位置精确移动投影差）
-const [qA, rA] = renderer._worldToHex(31.5, -176.0);
-const [axp, ayp] = renderer._hexToPixel(qA, rA);
+const [axp, ayp] = projectCopy(31.5, -176.0, 1440, 900);
 const aArc = arcR10()[beforeCount - 1].args;
-assert.ok(Math.abs((bx - aArc[0]) - (nx - axp)) < 2 && Math.abs((by - aArc[1]) - (ny - ayp)) < 2,
+assert.ok(Math.abs((bx - axp) - (nx - ex)) < 2 && Math.abs((by - ayp) - (ny - ey)) < 2,
   "sA→sB 标记位移 ≠ 逻辑位置投影差（重绘未精确跟随状态变化）");
 // render 已把 _currentState 换成 sB（动画循环每帧 render(_currentState) 的数据源）
 assert.ok(renderer._currentState === sB, "render 后 _currentState 未更新为新 state");
 
 // ── ⑤ 成品图复现 G2：在途侦察机剪影（aircraft_topdown）沿航线叠画 ──
 // 空态无机载（H 批 fixture 未就绪，验收裁定）：桩 state 注入 1 架 active_scout，
-// 断言剪影 drawImage 被调用、锚点==position 投影、尺寸 w≈26px、rotate==航向角。
+// 断言剪影 drawImage 被调用、锚点==position 直接投影、尺寸 w≈26px、rotate==航向角。
 // 剪影注入 vm 上下文：svgLoader 的 loadedIcons 为顶层 const（全局词法环境），
 // 同 context 的后续 runInContext 可读写（桩环境无 Image/fetch，加载器本身不会填充）。
 const seedIcon = vm.runInContext(
@@ -187,9 +160,8 @@ const silCalls = canvas.__ctx.__calls.filter(
 assert.ok(silCalls.length === 1, `侦察机剪影 drawImage 应恰好被调用 1 次，实得 ${silCalls.length}`);
 
 // 位置：_drawScoutAircraft 先 translate(px,py) 再以局部原点为中心画剪影——录制器记的是
-// 原始参数，故剪影锚点 = 紧邻其前的 translate 调用（fleet 本地系下的 position 投影）
-const [sq, sr] = renderer._worldToHex(SCOUT_LAT, SCOUT_LON);
-const [sx, sy] = renderer._hexToPixel(sq, sr);
+// 原始参数，故剪影锚点 = 紧邻其前的 translate 调用（= position 的直接投影，Loop3-F1 无平移系）
+const [scx, scy] = projectCopy(SCOUT_LAT, SCOUT_LON, 1440, 900);
 const [, silDx, silDy, silDw, silDh] = silCalls[0].args;
 assert.ok(Math.abs(silDw - SIL_W) < 0.01 && Math.abs(silDh - SIL_H) < 0.01,
   `剪影应按 w≈26px 等比绘制，实得 ${silDw}x${silDh}`);
@@ -197,8 +169,8 @@ const callsAll = canvas.__ctx.__calls;
 let trIdx = callsAll.indexOf(silCalls[0]);
 while (trIdx-- > 0 && callsAll[trIdx].name !== "translate") { /* 回溯最近 translate */ }
 const [trX, trY] = callsAll[trIdx].args;
-assert.ok(Math.abs(trX - sx) < 0.01 && Math.abs(trY - sy) < 0.01,
-  `剪影 translate 锚点 (${trX.toFixed(1)},${trY.toFixed(1)}) 偏离插值位置投影 (${sx.toFixed(1)},${sy.toFixed(1)})`);
+assert.ok(Math.abs(trX - scx) < 0.01 && Math.abs(trY - scy) < 0.01,
+  `剪影 translate 锚点 (${trX.toFixed(1)},${trY.toFixed(1)}) 偏离直接投影 (${scx.toFixed(1)},${scy.toFixed(1)})`);
 
 // 航向：bearing 250–290 中点 270° → (270−90)°=π 屏幕角；剪影本征朝上（−Y）须再 +π/2 → 3π/2
 const silRotate = canvas.__ctx.__calls.find(
@@ -207,7 +179,7 @@ assert.ok(silRotate, "剪影未按航向 rotate（期望 3π/2 = π 航向角 + 
 
 // ── ⑥ 成品图复现 G3：敌情标记勘误——enemy_marker.svg（红虚线圈+?+ENEMY）上图 ──
 // 原裁定红方块 enemy_tag_q 系判读错误（设计师审计），改回 enemy_marker；空态无敌标，
-// 以桩 state 注入 1 个 known_enemy 断言 drawImage(enemy_marker) 被调用且锚点==投影。
+// 以桩 state 注入 1 个 known_enemy 断言 drawImage(enemy_marker) 被调用且锚点==直接投影。
 const seedMarker = vm.runInContext(
   'loadedIcons["enemy_marker"] = { width: 120, height: 150, __stub: true };'
   + 'getIcon("enemy_marker")', sandbox);
@@ -220,14 +192,13 @@ renderer.render(enemyState);
 const markerCalls = canvas.__ctx.__calls.filter((c) => c.name === "drawImage" && c.args[0] === seedMarker);
 assert.ok(markerCalls.length === 1, `enemy_marker drawImage 应恰好被调用 1 次，实得 ${markerCalls.length}`);
 
-// 位置/尺寸：锚点==known_enemy 投影（_drawEnemyContacts 无 translate，直接画投影点）；
-// 尺寸沿用 confidence 档位映射（high 46）+ 1:1.25 等比（viewBox 120x150）
-const [eq, er] = renderer._worldToHex(ENEMY_LAT, ENEMY_LON);
-const [ex0, ey0] = renderer._hexToPixel(eq, er);
+// 位置/尺寸：锚点==known_enemy 直接投影（_drawEnemyContacts 无 translate，Loop3-F1 起
+// 画在屏幕系投影点本位）；尺寸沿用 confidence 档位映射（high 46）+ 1:1.25 等比（viewBox 120x150）
+const [enx, eny] = projectCopy(ENEMY_LAT, ENEMY_LON, 1440, 900);
 const MK_W = 46, MK_H = 46 * (150 / 120);
 const [, mkDx, mkDy, mkDw, mkDh] = markerCalls[0].args;
-assert.ok(Math.abs(mkDx - (ex0 - MK_W / 2)) < 0.01 && Math.abs(mkDy - (ey0 - MK_H / 2)) < 0.01,
-  `敌标锚点 (${mkDx.toFixed(1)},${mkDy.toFixed(1)}) 偏离投影 (${ex0.toFixed(1)},${ey0.toFixed(1)})`);
+assert.ok(Math.abs(mkDx - (enx - MK_W / 2)) < 0.01 && Math.abs(mkDy - (eny - MK_H / 2)) < 0.01,
+  `敌标锚点 (${mkDx.toFixed(1)},${mkDy.toFixed(1)}) 偏离投影 (${enx.toFixed(1)},${eny.toFixed(1)})`);
 assert.ok(Math.abs(mkDw - MK_W) < 0.01 && Math.abs(mkDh - MK_H) < 0.01,
   `敌标应按 confidence=high 档 46px 等比绘制，实得 ${mkDw}x${mkDh}`);
 
