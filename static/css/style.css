@@ -20,6 +20,10 @@
   --color-reef: #8aaa98;
   --color-sand: #d4c4a0;
   --color-eastern: #c8b890;
+  /* 成品图复现 E1：chrome token 组（采样成品图底栏：深棕黑底 / 浅米字 / 损伤橙红） */
+  --color-bar-dark: #332a20;
+  --color-bar-text: #d8cbb2;
+  --color-damage: #c25b3a;
 
   --font-handwriting: 'Caveat', cursive;
   --font-typewriter: 'Special Elite', monospace;
@@ -188,8 +192,8 @@ html, body {
    ═══════════════════════════════════════════════════════ */
 #bottom {
   grid-area: bottom;
-  background: var(--color-paper-dark);
-  border: 1px solid var(--color-ink-faint);
+  background: var(--color-bar-dark); /* 成品图复现 E1：底栏深色化（原 paper-dark 纸底） */
+  border: 1px solid #2a1a10; /* 深底随侧栏描边（原 ink-faint 亮线在深底上刺眼） */
   border-radius: 0 0 2px 2px;
   display: flex;
   align-items: stretch;
@@ -218,17 +222,28 @@ html, body {
 
 .dash-label {
   font-size: 10px;
-  color: var(--color-ink-fade); /* fix Loop2-F6: 由 ink-faint 加深一档（标签更醒目） */
+  color: var(--color-bar-text); /* 成品图复现 E1：深底浅字（原 ink-fade） */
+  opacity: .65; /* 标签弱化一档（成品图底栏标签/数值层次） */
   letter-spacing: 1px;
   display: block;
 }
 .dash-val {
   font-size: 15px;
-  color: var(--color-ink-main);
+  color: var(--color-bar-text); /* 成品图复现 E1：深底浅字（原 ink-main） */
   font-weight: bold;
   display: block;
 }
 .dash-val-red { color: var(--color-enemy-red); }
+/* 成品图复现 E1：损伤读数非 OK 时挂 .dash-val-damage（renderDashboard），橙红警示 */
+.dash-val-damage { color: var(--color-damage); }
+/* 成品图复现 E1：敌情两行式次行——主行「N CV」下方 (REPORTED) 小字 */
+.dash-val small {
+  display: block;
+  font-size: 9px;
+  font-weight: normal;
+  letter-spacing: 1px;
+  opacity: .7;
+}
 /* fix Loop2-F6: 底栏空态读数弱化——60% 透明斜体（「无/暂无」，renderDashboard 空值时加类） */
 .dash-empty { opacity: 0.6; font-style: italic; }
 

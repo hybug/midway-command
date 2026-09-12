@@ -50,6 +50,10 @@ CSS_TOKENS = {
     "--color-reef": "#8aaa98",
     "--color-sand": "#d4c4a0",
     "--color-eastern": "#c8b890",
+    # 成品图复现 E1：chrome token 组（底栏深棕黑底 / 底栏浅字 / 损伤橙红，采样成品图底栏）
+    "--color-bar-dark": "#332a20",
+    "--color-bar-text": "#d8cbb2",
+    "--color-damage": "#c25b3a",
     "--font-handwriting": "'Caveat', cursive",
     "--font-typewriter": "'Special Elite', monospace",
 }
@@ -328,9 +332,9 @@ def test_loop2_fidelity_fix_markers():
     assert "intel_card_light.svg" in empty_seg and "width: 88%" in empty_seg, "空态纸卡样式缺失"
     idle_seg = css[css.rindex(".idle-stamp {"):]
     assert "position: absolute" in idle_seg and "right: 8px" in idle_seg, "SECRET 章未移纸卡右上角"
-    # F6: .dash-label 加深一档
-    assert "color: var(--color-ink-fade)" in css[css.rindex(".dash-label {"):], \
-        ".dash-label 未加深为 ink-fade"
+    # F6 → 成品图复现 E1：底栏深色化后标签改 bar-text（叠加 opacity .65 弱化，层次保留）
+    assert "color: var(--color-bar-text)" in css[css.rindex(".dash-label {"):], \
+        ".dash-label 未随底栏深色化改为 bar-text"
     # F7: ≤1360px 断点
     assert "@media (max-width: 1360px)" in css, "缺 ≤1360px 窄屏断点"
 

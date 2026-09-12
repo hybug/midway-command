@@ -181,6 +181,9 @@ class UIController {
     this._setText('d-speed', tf.speed);
     this._setText('d-pos', c1.position.lat.toFixed(1) + '°N ' + Math.abs(c1.position.lon).toFixed(1) + '°W');
     this._setText('d-dmg', `企业:${dmgMap[c1.damage_level] || '?'} 大黄蜂:${dmgMap[c2.damage_level] || '?'}`);
+    // 成品图复现 E1：任一航母损伤非 OK → .dash-val-damage 橙红警示
+    const dmgEl = document.getElementById('d-dmg');
+    if (dmgEl) dmgEl.classList.toggle('dash-val-damage', c1.damage_level > 0 || c2.damage_level > 0);
 
     // Deck info
     // fix L4-F9: 读数缩短为「企 80/80·0」格式（去「备/飞」字），配合 .dash-item nowrap/flex 1.6 防底栏裁切
@@ -211,10 +214,19 @@ class UIController {
     this._setDashEmpty('d-scout', scouts.length === 0);
 
     // Enemy
+    // 成品图复现 E1：敌情两行式——主行「N CV」+ 次行 (REPORTED) 小字（.dash-val small）。
+    // 数据端描述为「敌航母约 N 艘 - 方位… - 距离…」（scouting.py / render/chart.py），
+    // 无「/ N BB」段（known_enemy 不含战列舰数），故解析 N 后只出 CV 段；
+    // 非标格式回退为截断描述。innerHTML 内容经 escapeHtml 转义防注入。
     const enemyEl = document.getElementById('d-enemy');
     if (state.known_enemy.length > 0) {
-      this._setText('d-enemy', state.known_enemy[0].description.substring(0, 15));
-      if (enemyEl) enemyEl.style.color = 'var(--color-enemy-red)';
+      const desc = state.known_enemy[0].description;
+      const m = desc.match(/敌航母约\s*(\d+)\s*艘/);
+      const mainLine = escapeHtml(m ? `${m[1]} CV` : desc.substring(0, 15));
+      if (enemyEl) {
+        enemyEl.innerHTML = `${mainLine}<small>(REPORTED)</small>`;
+        enemyEl.style.color = 'var(--color-enemy-red)';
+      }
     } else {
       this._setText('d-enemy', '暂无');
       if (enemyEl) enemyEl.style.color = '';
