@@ -79,3 +79,13 @@
 
 ## 提交（L5.5 续）
 - fix: 扇区方向标签由 search_bearing 派生（设计师验收 F3-R）（未 push）
+
+## L5.5 设计师验收（硬门）
+- F1 投影唯一化+对位 ACCEPT（wart 视觉签名消失）F2 中心减密 ACCEPT（四层→基准双层）F3-R REJECT→修复→**ACCEPT**（northeast 派生+底栏消歧）
+- NEW-1 敌标双红圈东北保持 ✓ NEW-2 空态表现 ACCEPT（M.4 scenario 化已登记）
+- DESIGN-SCORE：8.3/10（7.2→7.3→7.8→8.3，↑+0.5；达实施前预期 ≥8）
+- **VERDICT: LOOP-CLOSED**（F3-R 修复后）
+- 遗留转 Loop 4：CSE 270° 标签锚圈左侧压尾字符（NEW-1）/PENDING 金色扇区大部出画（随 M.4 scenario 复检）/甲板企蜂展示序（登记）
+
+## 提交
+- 599bff0 / 95d8379 / 8c7f45b
