@@ -190,11 +190,11 @@ def test_input_bar_and_button_focus_styles():
 
 
 def test_index_html_cache_version_consistent():
-    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（保真度修正 T4 → 1780997990，B1 → 1780997991，B3 → 1780997992，C4 → 1780997993，loop1 L4 → 1780997994，loop2 L4 → 1780997995，loop3 F1-F5 → 1780997996，终审修复 → 1780997997，成品图复现 D1/D2 → 1780997998，D4 → 1780997999，E1/E2 → 1780998000）。"""
+    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（保真度修正 T4 → 1780997990，B1 → 1780997991，B3 → 1780997992，C4 → 1780997993，loop1 L4 → 1780997994，loop2 L4 → 1780997995，loop3 F1-F5 → 1780997996，终审修复 → 1780997997，成品图复现 D1/D2 → 1780997998，D4 → 1780997999，E1/E2 → 1780998000，EB2（E3 标签/E4 齿轮/E7 按钮三态）→ 1780998001）。"""
     html = (BASE / "static" / "index.html").read_text()
     versions = set(re.findall(r'\?v=(\d+)', html))
     assert len(versions) == 1, f"index.html 缓存号不一致: {versions}"
-    assert versions == {"1780998000"}, f"index.html 缓存号未递增到 1780998000: {versions}"
+    assert versions == {"1780998001"}, f"index.html 缓存号未递增到 1780998001: {versions}"
     # 防再漂移：svgLoader.js 内全部带 ?v= 的资源 URL，版本号必须与 index.html 现值一致
     # （历史漂移：paper_tex ?v=1780997995 与 index.html 1780997996 脱钩，见终审修复项 1）
     loader = (BASE / "static" / "js" / "svgLoader.js").read_text()
@@ -353,6 +353,22 @@ def test_loop2_fidelity_fix_markers():
 
 
 # ── 成品图复现 · D1：45nm 近景取景重构 ──
+
+# ── 成品图复现 · E7：按钮三态（对齐概念图 BUTTON STATES） ──
+
+def test_button_three_states():
+    """全局 .btn 三态：Normal 现状 / Hover 提亮一阶 / Pressed 下压 1px + 再暗一档；
+    .btn-execute/.btn-revise/#btn-advance 经共享 .btn 类各自适用（Pressed 用 brightness 在各自配色上叠加）。"""
+    css = (BASE / "static" / "css" / "style.css").read_text()
+    btn_seg = css[css.rindex(".btn {"):css.rindex("::-webkit-scrollbar")]
+    assert ".btn:hover" in btn_seg, "缺少 Hover 态"
+    assert "background: var(--color-paper-edge);" in btn_seg, "Hover 应在现有配色上提亮一阶（paper-edge）"
+    active_seg = css[css.rindex(".btn:active"):]
+    assert "transform: translateY(1px);" in active_seg, "Pressed 应下压 1px（translateY，原斜向 translate 废弃）"
+    assert "filter: brightness(0.9);" in active_seg, "Pressed 应再暗一档（brightness 叠加各自现有配色）"
+    for anchor in [".btn-execute:hover", ".btn-revise:hover", "#btn-advance:hover"]:
+        assert anchor in css, f"缺少 {anchor} 各自 hover 变体"
+
 
 def test_close_framing_constants():
     js = (BASE / "static" / "js" / "chartRenderer.js").read_text()

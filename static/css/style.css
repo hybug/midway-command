@@ -482,8 +482,11 @@ html, body {
   background: var(--color-paper-edge);
   border-color: var(--color-ink-main);
 }
+/* 成品图复现 E7：按钮三态（对齐概念图 BUTTON STATES——Normal 现状 / Hover 提亮一阶（上条 paper-edge）
+   / Pressed 下压 1px + 再暗一档）。brightness 让 .btn-execute/.btn-revise/#btn-advance 在各自现有配色上叠加压暗 */
 .btn:active {
-  transform: translate(1px, 1px);
+  transform: translateY(1px);
+  filter: brightness(0.9);
 }
 .btn:focus-visible {
   outline: 2px dashed var(--color-ink-fade);
