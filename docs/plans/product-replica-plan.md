@@ -24,11 +24,20 @@
 - A1 ENT/HOR 空心圆圈标记+双虚线箭头矢量（替换计数牌）；A2 飞机剪影上航线；A3 敌标双红圈；A4 SECRET 章上地图左上（横版大章）；A5 黄铜圆规道具左下；A6 尺移右侧竖放+铅笔右下；A7 NE 角 hatch 块+环礁放射细线；A8 损伤红字样式（12% (Minor)）；A9 标签深色白字（INTEL 白底激活）
 - B1 齿轮图标（顶栏右）；B2 底栏敌情「4 CV / 2 BB (REPORTED)」两行式；B3 EA STERN ISLAND 黄底标注块（现已有文字）
 
+## 设计审计结论（2026-09-12，游戏 UI 设计师 agent）
+
+- **最大遗漏**：右下角 SECRET–INTERCEPTION PLAN 命令卡整块（含按钮三态+手写签名）原计划零覆盖——已新增 E6/E7。
+- **G3 判读修正**：成品图敌标实为「红虚线圈+?+下方 ENEMY 红字」，原裁定红方块双重偏离——G3 已改用 enemy_marker.svg（本就是该形态）。
+- **新增**：东岛近景细节（G7）、按钮三态（E7）、布局合规断言（E8：TOP BAR 60pxH/SIDEBAR 320pxW——当前实为 48px/360px）、CHART 字幕移除、敌情两行式。
+- **Scope-Deferred（需用户拍板，默认不纳入本计划）**：概念图三个弹窗（INTEL REPORT / MISSION PLAN / FLEET STATUS）+ DATA FIELDS 表单控件 + 机型分型（Zero 等）——属二级界面，建议单列「弹窗批次」。
+- **核心回路裁定**：成品图右栏底部被命令卡占据、无 ADVANCE/聊天输入；实现取折中——**命令卡常驻右栏底部**（空态显示 NO PENDING ORDERS 占位），**ADVANCE/SITREP 保留**（融入深色底栏），**聊天输入保留**（命令卡下方）。功能完整性与视觉复现兼得。
+
 ## Global Constraints（沿用 v3 工程）
 
 - 零新增依赖；色值新 token 先登记（新增 chrome token 组见 E 批）；缓存号递增纪律（现值 1780997997）；每任务六步+评审；不 push；目检无头 Chrome（`--timeout=12000`，**禁用 `--virtual-time-budget`**——rAF 循环会挂）。
 - **基准态 fixture 纪律**：凡「设计中局要素」（敌标/飞机/损伤值）的比对一律在 fixture 渲染下进行，空态截图不得作为这些要素的验收证据。
 - 计数牌退役后文件保留（`fleet_tag_*.png` 留作战情 tooltip 素材），地图不再引用。
+- **AI 伪影政策**：设计图乱文（命令卡 "CARRIE MNI'E FORCE"、重复 "20nm" 标注等）一律**几何照抄、文案按语义重写**；重复标注错位排布。
 
 ## 工作量核算表（≥10h 双保险）
 
@@ -36,12 +45,12 @@
 |------|------|------|
 | P0 | 基准登记+比对报告落盘+fixture 设计 | 0.8h |
 | 批次 D 构图取景（D1 近景/D2 色调/D3 画框/D4 hatch） | 4 任务 | 2.0h |
-| 批次 E Chrome 深色化（E1 底栏/E2 右栏+INTEL/E3 标签/E4 损伤红字/E5 齿轮） | 5 任务 | 2.2h |
-| 批次 G 地图要素（G1 圆圈矢量/G2 飞机/G3 敌标/G4 章上图/G5 圆规/G6 尺铅笔） | 6 任务 | 2.5h |
+| 批次 E Chrome 深色化+命令卡+三态+布局合规（E1–E8） | 8 任务 | 3.2h |
+| 批次 G 地图要素（G1 圆圈矢量/G2 飞机/G3 敌标勘误/G4 章上图/G5 圆规/G6 尺铅笔/G7 东岛细节） | 7 任务 | 3.0h |
 | H 基准态 fixture+比对流水线 | 2 任务 | 1.0h |
 | Loop ×5（实拍→分级→设计师→实施→存档） | 5 轮 | 5.0h |
 | V 终验（全分支审查+修复波次+收口） | 3 | 1.0h |
-| **合计** | | **≥14.5h** ✓（预算保护同 v3：提前收敛则 Loop 加深、B/D-B 解禁至 10h 下限） |
+| **合计** | | **≥16.3h** ✓（预算保护同 v3：提前收敛则 Loop 加深、B/D-B 解禁至 10h 下限） |
 
 ---
 
@@ -78,7 +87,7 @@ def test_close_framing_constants():
     assert "CHART_VIEW_NM = 45" in js, "视野常量未提取"
 ```
 
-- [ ] 实现：`const CHART_VIEW_NM = 45;`，`chartNmToPx(nm, w, h) { return (nm / CHART_VIEW_NM) * (Math.min(w, h) / 2 - 30); }`；`drawRangeRings` 中 60nm 环允许出画（设计即如此，不加特判）；环礁 rx/ry 由 `chartNmToPx(23/17)` 自动放大，目检微调至「20nm 环贯穿环礁内部、40nm 出上缘」。
+- [ ] 实现：`const CHART_VIEW_NM = 45;`，`chartNmToPx(nm, w, h) { return (nm / CHART_VIEW_NM) * (Math.min(w, h) / 2 - 30); }`；`drawRangeRings` 中 60nm 环允许出画（设计即如此，不加特判）；环礁 rx/ry 由 `chartNmToPx(23/17)` 自动放大，目检微调至「20nm 环贯穿环礁内部、40nm 出上缘」。**边缘经纬刻度近景淡出**（B5，设计审计 MISSING-11）：drawLatLonGrid 的度分标注 opacity 0.35→0.15 或仅保留四角——近景后边缘刻度与设计构图冲突，验收口径=「可辨但不抢主体」。
 - [ ] `node --check` + pytest + 无头 Chrome 目检（环礁占比 ~70% 图表面积）。
 - [ ] Commit `feat: 45nm 近景取景重构`；**派评审**。
 
@@ -114,7 +123,7 @@ def test_close_framing_constants():
 **Files:** Modify: `static/css/style.css`、`tests/test_ui_assets.py`（token 断言扩充）
 
 - [ ] **红测**：CSS_TOKENS 增 `--color-bar-dark: #332a20`、`--color-bar-text: #d8cbb2`、`--color-damage: #c25b3a`（采样成品图底栏底色/文字/损伤橙红）。
-- [ ] `#bottom { background: var(--color-bar-dark); }`、`.dash-label { color: var(--color-bar-text); opacity: .65; }`、`.dash-val { color: var(--color-bar-text); }`、损伤值红字样式 `.dash-val-damage { color: var(--color-damage); }`（uiController 损伤非 OK 时挂类）。
+- [ ] `#bottom { background: var(--color-bar-dark); }`、`.dash-label { color: var(--color-bar-text); opacity: .65; }`、`.dash-val { color: var(--color-bar-text); }`、损伤值红字样式 `.dash-val-damage { color: var(--color-damage); }`（uiController 损伤非 OK 时挂类）；敌情格两行式「4 CV / 2 BB」+「(REPORTED)」小字（`.dash-val small` 样式）。
 - [ ] 转绿+目检（底栏深棕黑+浅字+橙红损伤）→ Commit `feat: 底栏深色化（chrome token 组）`；**派评审**。
 
 ### Task E2: 右栏深色化 + INTEL 深卡（S3）
@@ -130,6 +139,29 @@ def test_close_framing_constants():
 
 - [ ] `.npc-tab::before { background: #2b2118; }`、`.npc-tab { color: var(--color-bar-text); }`、`.npc-tab.active::before { background: var(--color-paper-base); } .npc-tab.active { color: var(--color-ink-main); }`（INTEL 式白底激活）。
 - [ ] 目检 → Commit `feat: 标签深色白字（INTEL 白底激活）`；**派评审**。
+
+### Task E6: 命令卡常驻化（A10，设计审计最大遗漏）
+
+**Files:** Modify: `static/js/uiController.js`、`static/css/style.css`、`static/index.html`
+
+- [ ] **红测**：test_ui_assets.py 追加 `assert "NO PENDING ORDERS" in js`。
+- [ ] 实现：renderSuggestions 空态时右栏底部常驻渲染 `.order-note.placeholder`（复用 A8 军令纸全套样式：SECRET 头/签名行，正文显示「NO PENDING ORDERS — AWAITING STAFF PROPOSAL」，按钮禁用态）；有建议时正常渲染命令卡（既有行为）。
+- [ ] ADVANCE/SITREP 融合深色底栏（E1 样式：墨色主操作保留）；聊天输入框保留于命令卡下方（核心回路裁定）。
+- [ ] 转绿 + fixture 目检（对照成品图右栏底部）→ Commit `feat: 命令卡常驻化（设计审计 A10）`；**派评审**。
+
+### Task E7: 按钮三态（A11）
+
+**Files:** Modify: `static/css/style.css`
+
+- [ ] 全局 `.btn` 补 Hover/Pressed 三态（对齐概念图 BUTTON STATES：Normal 墨色/Hover 提亮 +1 阶/Pressed 下压 1px + 再暗一档）；`.btn-execute/.btn-revise/#btn-advance` 各自适用。
+- [ ] 目检三态 → Commit `feat: 按钮三态（对齐 BUTTON STATES 规范）`；**派评审**。
+
+### Task E8: 布局合规断言（审计 PLAN-DEFECT-4）
+
+**Files:** Modify: `tests/test_ui_assets.py`、`static/css/style.css`
+
+- [ ] 断言：style.css 的 #topbar 高度 60px（现 48px——**布局调整**：grid 行 48px→60px）、右栏宽 320px（现 360px——**调整**：360→320）。同步依赖这两个值的既有断言（route_display 的 1440×900 桩、chartNmToPx 目检参数不受影响——纯 CSS）。
+- [ ] 调整后全量目检（顶栏/右栏/底栏在 1440+1280 两档不破版）→ Commit `feat: 布局对齐概念图规范（60px/320px）`；**派评审**。
 
 ### Task E4: 顶栏齿轮图标（B1）
 
@@ -201,14 +233,14 @@ function drawTaskForceMarker(ctx, tf, w, h, ox = 0, oy = 0) {
 
 **Files:** Modify: `static/js/mapRenderer.js`（_drawEnemyContacts 已有——核对成品图形态：红色虚线圈+?, 非 ENEMY 字样版）
 
-- [ ] 成品图敌标 = 红色虚线圆圈 + 中央红 ？（无 ENEMY 字）。enemy_marker.svg（带 ENEMY 字样）保留给战报；地图标记改用 `enemy_tag_q.png`（红底白？方块）或新画红虚线圈？裁定：**用 enemy_tag_q 红方块**（已入库、质量门 PASS）+ 缩放 0.8，保持现渲染调用。若目检与成品图圆形差异明显，再补红色虚线圈 SVG（新资产走质量门）。
-- [ ] fixture 下目检双红圈 → Commit `feat: 敌情标记对齐成品图形态`；**派评审**。
+- [ ] **勘误（设计师审计）**：成品图敌标实为「红虚线圈 + 中央 ? + 下方 ENEMY 红字」——原裁定红方块系判读错误。改用 `enemy_marker.svg`（本就是此形态：双虚线圈+?+ENEMY，质量门 PASS），渲染调用改回 `getIcon('enemy_marker')`；`enemy_tag_q.png` 保留为战报方框变体。
+- [ ] fixture 下目检双红圈对照成品图 → Commit `fix: 敌情标记改用红虚线圈+ENEMY 字（对齐成品图）`；**派评审**。
 
 ### Task G4: SECRET 章上地图左上（A4）
 
 **Files:** Modify: `static/js/chartRenderer.js`（drawAll 尾部）
 
-- [ ] `drawAll` 末尾（比例尺后）：`const stamp = getIcon('secret_stamp'); if (stamp) ctx.drawImage(stamp, 24, 20, 180, 76);`（横版大章，rotate 用 ctx 变换 -10°）。
+- [ ] `drawAll` 末尾（比例尺后）：`const stamp = getIcon('secret_stamp'); if (stamp) ctx.drawImage(stamp, 24, 20, 180, 76);`（横版大章，rotate 用 ctx 变换 -10°）。同步：**index.html 删除「海图（CHART）」字幕 div**（成品图该位置是 SECRET 章，字幕保留会穿帮——设计审计 MISSING-6）。
 - [ ] 目检 → Commit `feat: SECRET 章上地图左上`；**派评审**。
 
 ### Task G5: 黄铜圆规道具（A5）
@@ -227,6 +259,14 @@ function drawTaskForceMarker(ctx, tf, w, h, ox = 0, oy = 0) {
 - [ ] **成品图实际布局**（勘测修正，推翻 v1 草案「尺竖放右缘」）：**木尺横放左下**（压海图左缘，与圆规同侧）、**铅笔竖放右缘**（笔尖朝下）、右侧另有一把斜放直尺（不再新造，ruler_wood 横放即可）。当前实现：尺/铅笔均横放底部中央——需移位。
 - [ ] `.desk-ruler { left: 6px; right: auto; bottom: 54px; transform: rotate(-3deg); }`（横放左下压图缘）；`.desk-pencil { right: 14px; left: auto; bottom: 120px; transform: rotate(180deg) 或垂直翻转; height: 200px; width: auto; }`（竖放右缘笔尖朝下，以目检调优）。限制：不遮比例尺/罗盘/经纬标注。
 - [ ] 目检对照成品图 → Commit `feat: 尺与铅笔按成品图布局移位`；**派评审**。
+
+### Task G7: 东岛近景细节（A12）
+
+**Files:** Modify: `static/js/chartRenderer.js`（drawIslands 扩充）
+
+- [ ] **红测**：test_ui_assets.py 追加 `assert "EASTERN ISLAND" in js`（应已有）+ `assert "parked" in js or "ramp" in js` 形态锚点（停机坪绘制函数锚）。
+- [ ] 实现：近景后东岛放大 ~3 倍——岛内补 ①跑道横带（SAND ISLAND 侧，浅色横带+中线）②EASTERN ISLAND 三角场站符号（既有三跑道保留）③停机剪影 2-3 架（复用 aircraft_topdown 图标缩小 60%，深灰 fill 排列在跑道旁）。EASTERN ISLAND 黄底标注块（B3 升级项）一并实现（黄底墨字矩形，成品图形态）。
+- [ ] fixture 目检对照成品图东南部 → Commit `feat: 东岛近景细节（跑道/停机剪影/黄底标注）`；**派评审**。
 
 ---
 
@@ -250,7 +290,7 @@ function drawTaskForceMarker(ctx, tf, w, h, ox = 0, oy = 0) {
 
 ## Loop ×5（同 v3 纪律）
 
-- 每轮 L1 实拍（**fixture 页 + 游戏空态页双截图**）→ L2 对照分级（对照基准=成品图）→ L3 设计师 agent（prompt 模板沿用，基准图替换为 u1fak0）→ L4 方案 → L5 实施 → L6 存档。
+- 每轮 L1 实拍（**fixture 页 + 游戏空态页双截图**）→ L2 对照分级（对照基准=成品图）→ L3 设计师 agent（prompt 模板沿用，基准图替换为 u1fak0）→ L4 方案 → L5 实施 → **L5.5 设计师验收（硬门，控制者明示要求）**：设计师 agent 对本轮「实施后实拍」做验收裁决——逐条 ACCEPT / REJECT+改进意见；**任何 REJECT 未消化前 Loop 不得关闭**（REJECT 项进修复轮，同轮内闭合后才可存档）；L6 存档必须含设计师验收签字记录。
 - Fidelity 评分基准换为成品图 15 项新映射表（Loop 1 的 L2 重建该表——原表以物料板为准，作废重评）。
 - 预算保护：S/A/D-S 清零且工时 <10h → 加深轮次、B/D-B 解禁至 10h 下限。
 
@@ -267,6 +307,11 @@ function drawTaskForceMarker(ctx, tf, w, h, ox = 0, oy = 0) {
 | S2/S3 底/右栏深色化 | E1/E2 | token 红绿+目检 |
 | A9 标签深色/A8 损伤红字/B1 齿轮 | E3/E1/E4 | 目检 |
 | A1 圆圈标记+矢量 | G1 | 红测+录制器+目检 |
+| A10 命令卡常驻 | E6 | 红测+设计师验收 |
+| A11 按钮三态 | E7 | 目检三态 |
+| 布局合规 60px/320px | E8 | 断言+双档目检 |
+| A12 东岛细节 | G7 | 红测+fixture 目检 |
+| **每轮设计师验收签字** | Loop L5.5 | REJECT 未清零不得关轮 |
 | A2 飞机剪影 | G2 | 录制器断言+fixture 目检 |
 | A3 敌标 | G3 | fixture 目检 |
 | A4 章上图 / A5 圆规 / A6 尺铅笔 | G4/G5/G6 | 质量门+目检 |
@@ -276,7 +321,9 @@ function drawTaskForceMarker(ctx, tf, w, h, ox = 0, oy = 0) {
 
 ## Self-Review 记录
 
-- **基准切换的连锁影响已穷举**：15 项映射表作废重评（Loop 1 L2）、计数牌退役、 troops fixture 纪律、 Loop 实拍双页（fixture+空态）。
+- **基准切换的连锁影响已穷举**：15 项映射表作废重评（Loop 1 L2）、计数牌退役、troops fixture 纪律、Loop 实拍双页（fixture+空态）。
+- **设计师审计（2026-09-12）已消化**：命令卡常驻（E6）/按钮三态（E7）/布局合规断言（E8）/东岛细节（G7）/G3 敌标勘误/CHART 字幕移除/敌情两行式/经纬刻度淡出——17 项发现中 13 项纳入本计划，4 项二级界面单列 Scope-Deferred 待用户拍板。
+- **设计师验收硬门**：Loop L5.5 每轮设计师逐条 ACCEPT/REJECT，REJECT 未清零不得关轮（用户明示要求）。
 - **占位符扫描**：G1/G2/H1 核心代码完整；G3 两方案（红方块沿用/补虚线圈）给了裁决规则；「参数名以源码为准」处均附 grep 程序。
 - **依赖一致性**：D1 改变全部地图几何 → 必须先于 G（G 的坐标断言依赖新取景）；H1 依赖 G2/G3 的状态字段消费；Loop 依赖 D/E/G/H；V 收尾。顺序执行无环。
 - **已知代价（登记）**：近景后 60nm 环出画、远处舰队不可见——战术信息让位于构图复现（成品图即此取舍）；fixture 页为 dev 工件常驻 static/dev/。
