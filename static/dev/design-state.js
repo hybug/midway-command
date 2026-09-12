@@ -63,8 +63,11 @@
   // 在途侦察 ×1：HOR 西南航线、机上 2 架。位置为成品图像素目标（环礁心西南偏下
   // ≈(−87,+138)px，避让 SAND ISLAND 胶囊/跑道横带）经唯一投影反推
   // → lat 28.005 / lon −177.702 → 画布 (390, 440)。
-  // 搜索扇区 30°-90°（成品图底栏「侦察 30°-90°」读数同源字段；direction/heading
-  // 保留成品图字面「southwest/225」——基准图自身即此搭配，见 loop-3.md F3 核对）。
+  // 搜索扇区 30°-90°（成品图底栏「侦察 30°-90°」读数同源字段；标签/底栏读数一律
+  // 由 search_bearing 派生——扇区方向词 bearingToDirection((30+90)/2)=northeast，
+  // 底栏定妆「1 架 · 30°-90°」，见 bootDesignFixture 消歧钉）；direction/heading
+  // 保留出航航段语义（southwest/225，成品图字面），仅驱动剪影航向，不再驱动扇区
+  // 标签/底栏方向词（L5.5 F3-R 设计师验收裁定）。
   const ACTIVE_SCOUTS = [
     {
       id: 'SCOUT-2',
@@ -182,6 +185,14 @@
     const clockEl = document.getElementById('clock');
     if (clockEl) {
       clockEl.innerHTML = '09:45<span class="topbar-clock-suffix"> Z</span>';
+    }
+    // L5.5 F3-R 消歧定妆：底栏侦察槽回归成品图基准字面（搜索扇区 30°-90° 口径），
+    // 不随 uiController 的 direction 文案（出航航段 southwest→「1 西南 ETA:45分」）
+    // 同源混入——uiController 属本轮文件白名单外，此处按 fixture 既有时钟钉模式改写
+    const scoutEl = document.getElementById('d-scout');
+    if (scoutEl) {
+      scoutEl.textContent = '1 架 · 30°-90°';
+      scoutEl.classList.remove('dash-empty');
     }
     ui.renderSuggestions(window.DESIGN_STATE, function () {}, function () {});
     renderCannedChat();

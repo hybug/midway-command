@@ -37,6 +37,15 @@ const COL = {
   confirmGold: '#c8a020',
 };
 
+// ── L5.5 F3-R（设计师验收裁定）：扇区方向词由 search_bearing 派生 ──
+// 8 方位词映射（compass bearing → 45° 楔形词，边界 22.5°/67.5°/… 归入顺时针侧）。
+// s.direction 是出航航段文案（如 southwest），与搜索扇区几何不同源，不再驱动标签
+//（字段保留供剪影航向/底栏等既有消费方使用）。
+function bearingToDirection(bearing) {
+  const dirs = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest'];
+  return dirs[Math.round((((bearing % 360) + 360) % 360) / 45) % 8];
+}
+
 // ── Perlin Noise (简化版) ──
 class PerlinNoise {
   constructor(seed = 0) {
@@ -927,7 +936,7 @@ class MapRenderer {
   }
 
   // ═══════════════════════════════════════════════════════
-  // 成品图复现 Loop2-F4：搜索扇区方向词标签（southwest 等方向词）
+  // 成品图复现 Loop2-F4：搜索扇区方向词标签（northeast 等方向词）
   // 绘制位：实体层（drawLandmarks 之后、本舰队之前）——不再被陆地填充盖掉。
   // 沿扇区中线从扇区弧外起步向外推，直至落点出环礁椭圆（+14px 缓冲）即开阔水面；
   // 纸色圆角底衬 + 墨字（设计裁定「外推+纸色 halo」：底衬形态，压 hatch/细网格仍可读）。
@@ -935,6 +944,9 @@ class MapRenderer {
   // fix Loop3-F1 投影唯一化：锚点为首航母真实投影位（不再恒等画心），落点直接屏幕系
   // 绘制；外推上限 2.4×→3.4× 扇区半径——锚点西移后到出椭圆缓冲带的距离变长
   //（fixture 实算 ≈3.1×出带），上限不足时标签停在带内压敌标
+  // fix L5.5 F3-R（设计师验收 REJECT 返工）：标签文字改由 search_bearing_min/max
+  // 中点经 bearingToDirection 派生（30°-90° 楔形在东北 → northeast），
+  // 不再消费 s.direction（出航航段文案，与扇区楔形不同源）
   // ═══════════════════════════════════════════════════════
   _drawSectorLabels(ctx, state, anchor) {
     const sectorRadius = 8 * HEX_SIZE * SQRT3;
@@ -946,7 +958,9 @@ class MapRenderer {
       const startRad = ((s.search_bearing_min - 90) * Math.PI) / 180;
       const endRad = ((s.search_bearing_max - 90) * Math.PI) / 180;
       const midAngle = (startRad + endRad) / 2;
-      const text = String(s.direction || '');
+      // L5.5 F3-R：方向词 = 扇区 bearing 中点的 8 方位映射（bearing 缺省时中点为
+      // NaN → 映射返回 undefined → 走原 !text 防御返回，不出标签）
+      const text = bearingToDirection((s.search_bearing_min + s.search_bearing_max) / 2);
       if (!text) return;
 
       // 中线外推：扇区弧外 12px 起步，步进 24px 找环礁椭圆外首个落点；+48px 缓冲

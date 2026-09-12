@@ -58,3 +58,24 @@
 
 ## 提交
 - 599bff0（F1+F4+缓存号 1780998009，未 push）/ 2d1a149（本存档）
+
+## L5.5 验收与修复（2026-09-13，设计师裁决：F1/F2/NEW 全 ACCEPT，F3-R REJECT）
+
+**REJECT 内容（改法已采纳）**：Loop3 L4 的 F3「语义正确，不改」裁定被推翻——扇区方向标签文字来源 `s.direction`（fixture 文案为侦察机出航航段 southwest）与 30°-90° 楔形（在东北）同图互斥属**同源混入**；底栏侦察槽「1 西南 ETA:45分」同为 `s.direction` 混入。改法：方向词一律由 `search_bearing` 派生；底栏回归基准字面消歧。
+
+### 修复清单
+
+| # | 条目 | 改法 |
+|---|------|------|
+| F3-R1 | 扇区方向标签由 search_bearing 派生 | mapRenderer.js 顶层新增 `bearingToDirection(bearing)`（8 方位词映射，45° 楔形、边界归顺时针侧）；`_drawSectorLabels` 标签文字改 `bearingToDirection((min+max)/2)`（30°-90° 中点 60° → northeast）；bearing 缺省（NaN）时映射返回 undefined，走原 `!text` 防御不出标签；`s.direction` 字段保留（出航航段语义，剪影航向/待定卡等既有消费方不受影响），不再驱动标签 |
+| F3-R2 | 底栏侦察槽消歧 | design-state.js `bootDesignFixture` 按既有「时钟定妆钉」模式改写 `#d-scout` → 「1 架 · 30°-90°」（uiController 属本轮文件白名单外，其 direction 文案格式改进留待后续）；fixture 注释同步：direction/heading 保留出航航段语义（southwest/225），仅驱动剪影航向 |
+| F3-R3 | 测试同步 | route_display.test.mjs 新增 ⑨：`bearingToDirection` 全局导出 + 5 组方位映射断言（0/60/225/270/315）；桩 state 注入 `direction: "southwest"` + `search_bearing 30/90` 冲突字段，断言帧内 fillText 含 northeast、不含 southwest（回潮守卫） |
+| F3-R4 | 缓存号收口 | 1780998009→1780998010（index.html 全部 ?v= + svgLoader paper_tex 同步 + test_ui_assets 断言/历史注释登记） |
+
+### 验证与取证
+
+- `node --check` mapRenderer/svgLoader/design-state 通过；`node tests/ui/route_display.test.mjs` **PASS**；全量 pytest **285 passed / 0 failed**。
+- 截图自查（Read）：loop-3-after2-fixture-1440.png——NE 楔形（30°-90°，锚 HOR）中线外推落点标签「northeast」在环礁东北开阔水面（原 southwest 位），不压双红圈/罗盘；底栏侦察槽「1 架 · 30°-90°」消歧落位；其余读数（270°/30/28.2°N 178.0°W/企业:LGT 大黄蜂:OK/蜂 0/0·0 企 14/14·0/6）与 09:45Z 时钟全保持，SCOUT-2 剪影环礁西南泻湖位不变。
+
+## 提交（L5.5 续）
+- fix: 扇区方向标签由 search_bearing 派生（设计师验收 F3-R）（未 push）

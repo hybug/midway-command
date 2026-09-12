@@ -247,4 +247,30 @@ const pendingWing = canvas.__ctx.__calls.filter(
 assert.ok(pendingLead.length === 1 && pendingWing.length === 2,
   `待定侦察建议应绘制 1 领队机(16px)+2 翼机(11.2px)，实得 ${pendingLead.length}+${pendingWing.length}`);
 
+// ── ⑨ L5.5 F3-R（设计师验收 REJECT 返工）：扇区方向词标签由 search_bearing 派生 ──
+// 30°-90° 楔形在东北 → 标签必须 northeast；s.direction（出航航段文案 southwest）
+// 与扇区几何不同源，不得再驱动标签（字段保留供剪影航向等既有消费方）。
+assert.equal(typeof sandbox.bearingToDirection, "function", "bearingToDirection 未导出（须为 mapRenderer 顶层函数）");
+assert.equal(sandbox.bearingToDirection(0), "north", "bearing 0 → north");
+assert.equal(sandbox.bearingToDirection(60), "northeast", "bearing 60（fixture 扇区 30-90 中点）→ northeast");
+assert.equal(sandbox.bearingToDirection(225), "southwest", "bearing 225 → southwest");
+assert.equal(sandbox.bearingToDirection(270), "west", "bearing 270（⑤ 桩扇区 250-290 中点）→ west");
+assert.equal(sandbox.bearingToDirection(315), "northwest", "bearing 315 → northwest");
+
+const dirState = makeState(31.5, -176.0);
+dirState.active_scouts = [{
+  id: "SCOUT-9", status: "in_flight", phase: "outbound", direction: "southwest",
+  position: { lat: SCOUT_LAT, lon: SCOUT_LON },
+  search_bearing_min: 30, search_bearing_max: 90,
+  fuel_pct: 80, aircraft_lost: 0,
+}];
+const callsBeforeDir = canvas.__ctx.__calls.length;
+renderer.render(dirState);
+const dirTexts = canvas.__ctx.__calls.slice(callsBeforeDir)
+  .filter((c) => c.name === "fillText").map((c) => String(c.args[0]));
+assert.ok(dirTexts.includes("northeast"),
+  `扇区方向词标签应派生自 search_bearing 中点（northeast），实得 fillText=${JSON.stringify(dirTexts)}`);
+assert.ok(!dirTexts.includes("southwest"),
+  "s.direction（southwest）不得再驱动扇区方向词标签（F3-R 回潮）");
+
 console.log("ROUTE-DISPLAY PASS");
