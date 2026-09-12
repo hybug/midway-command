@@ -55,3 +55,12 @@
 - HOR 锚点圈在环礁中心东侧（成品图在环礁西缘）——需实体层「舰队居中平移」改锚（连动 route_display 守卫与 ox/oy 语义），非数据可解，建议 Loop 3 立项修 wart；
 - 甲板读数企/蜂展示序对调（蜂 0/0·0 企 14/14·0）——F1 换位副作用，数值合计不变；
 - ENT 存储经度 −181.9°（跨 ±180 反推值，渲染/仪表无影响，已知怪味文档化）。
+
+## L5.5 设计师验收（硬门）
+- F1 ACCEPT（ENT 落图左外缘✓；HOR 残差根因=首航母钉中心 wart，Loop 3 已立项）F2 ACCEPT F3 ACCEPT（半程达标）F4 ACCEPT F5 ACCEPT F6 ACCEPT
+- DESIGN-SCORE：7.8/10（7.2 → 7.3 → 7.8，↑+0.5）
+- NEW-ISSUES 转 Loop 3：① southwest 方向词语义疑对角（核对扇区中线定义）② 空态双舰标拥挤（wart 表现面）③ 甲板企/蜂展示序对调（已登记）
+- **VERDICT: LOOP-CLOSED**
+
+## 提交
+- 05f4065 / 9ae43f1 / 92dd416 / 35cace9
