@@ -168,14 +168,18 @@ scoutState.active_scouts = [{
   fuel_pct: 80, aircraft_lost: 0,
 }];
 renderer.render(scoutState);
-const silCalls = canvas.__ctx.__calls.filter((c) => c.name === "drawImage" && c.args[0] === seedIcon);
+// fix（随 G7）：drawParkingRamp（东岛停机剪影）也以 aircraft_topdown drawImage 上图，
+// 剪影计数按本节锚定尺寸 w≈26px 过滤（停机剪影 w=15.6px、待定建议机群 w=16px，不混淆）
+const SIL_W = 26, SIL_H = 26 * (115 / 158); // 源码 w=26，等比高（viewBox 158x115）
+const silCalls = canvas.__ctx.__calls.filter(
+  (c) => c.name === "drawImage" && c.args[0] === seedIcon
+      && Math.abs(c.args[3] - SIL_W) < 0.01);
 assert.ok(silCalls.length === 1, `侦察机剪影 drawImage 应恰好被调用 1 次，实得 ${silCalls.length}`);
 
 // 位置：_drawScoutAircraft 先 translate(px,py) 再以局部原点为中心画剪影——录制器记的是
 // 原始参数，故剪影锚点 = 紧邻其前的 translate 调用（fleet 本地系下的 position 投影）
 const [sq, sr] = renderer._worldToHex(SCOUT_LAT, SCOUT_LON);
 const [sx, sy] = renderer._hexToPixel(sq, sr);
-const SIL_W = 26, SIL_H = 26 * (115 / 158); // 源码 w=26，等比高（viewBox 158x115）
 const [, silDx, silDy, silDw, silDh] = silCalls[0].args;
 assert.ok(Math.abs(silDw - SIL_W) < 0.01 && Math.abs(silDh - SIL_H) < 0.01,
   `剪影应按 w≈26px 等比绘制，实得 ${silDw}x${silDh}`);
@@ -240,5 +244,26 @@ assert.deepEqual(stampImg.args.slice(1), [-90, -38, 180, 76], "SECRET 章 drawIm
 // 顺序：章在比例尺标注（末位 fillText 'nm'）之后（drawAll 末尾=比例尺后）
 const nmIdx = drawAllCalls.map((c) => c.name === "fillText" && c.args[0] === "nm").lastIndexOf(true);
 assert.ok(stampIdx > nmIdx, "SECRET 章未画在比例尺之后（drawAll 末尾裁定）");
+
+// ── ⑧ 回归（fix: _drawPendingRecon 缺失 midAngle 定义）──
+// 真实 state 出现 launch_scout 待定建议时，_drawPendingRecon 引用未定义的 midAngle
+// （本函数内扇区中点变量实为 midRad）→ ReferenceError 使整帧渲染崩溃。
+// 桩 state 注入 1 条 launch_scout，断言 render 不抛错且飞机剪影按扇区中点角绘制。
+const pendingState = makeState(31.5, -176.0);
+pendingState.pending_suggestions = [{
+  action_type: "launch_scout",
+  details: { direction: "northwest", aircraft_count: 4, sector_start: 280, sector_end: 340,
+             range_nm: 200, pattern: "sector" },
+}];
+assert.doesNotThrow(() => renderer.render(pendingState),
+  "render 遇 launch_scout 待定建议不得抛错（midAngle ReferenceError 回归）");
+// 修复路径实际出图：领队机 16px ×1 + 翼机 16*0.7=11.2px ×2（源码 _drawPendingRecon 绘制参数）；
+// 东岛停机剪影（G7）w=15.6px 不与 16px 混淆
+const pendingLead = canvas.__ctx.__calls.filter(
+  (c) => c.name === "drawImage" && c.args[0] === seedIcon && c.args[3] === 16);
+const pendingWing = canvas.__ctx.__calls.filter(
+  (c) => c.name === "drawImage" && c.args[0] === seedIcon && Math.abs(c.args[3] - 11.2) < 0.01);
+assert.ok(pendingLead.length === 1 && pendingWing.length === 2,
+  `待定侦察建议应绘制 1 领队机(16px)+2 翼机(11.2px)，实得 ${pendingLead.length}+${pendingWing.length}`);
 
 console.log("ROUTE-DISPLAY PASS");

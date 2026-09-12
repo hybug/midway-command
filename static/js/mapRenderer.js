@@ -988,7 +988,9 @@ class MapRenderer {
 
       // Aircraft icons (SVG or fallback triangles)
       const iconR = sectorRadius * 0.6;
-      const iconAngle = midAngle;
+      // fix: 本函数扇区中点角变量为 midRad（原引用未定义的 midAngle，launch_scout
+      // 待定建议一出现即抛 ReferenceError 使整帧渲染崩溃）
+      const iconAngle = midRad;
       const iconX = fx + iconR * Math.cos(iconAngle);
       const iconY = fy + iconR * Math.sin(iconAngle);
 
