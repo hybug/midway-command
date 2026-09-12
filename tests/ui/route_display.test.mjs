@@ -98,6 +98,16 @@ const [drawnMx, drawnMy] = toCanvas(markerArc.args[0], markerArc.args[1]);
 assert.ok(Math.abs(drawnMx - (centerX + F2_LEADER_DX)) < 2 && Math.abs(drawnMy - (centerY + F2_LEADER_DY)) < 2,
   `舰队标记画布位置 (${drawnMx.toFixed(1)},${drawnMy.toFixed(1)}) 偏离投影点 (${centerX + F2_LEADER_DX},${centerY + F2_LEADER_DY}) 超过 2px`);
 
+// fix Loop1-F5 拆层回归守卫：实体层必须真实应用舰队居中平移——标记 arc 之前最近的
+// translate 必须是 (ox,oy) 本体。本套件的 toCanvas 是代数补偿（记录参数 + ox/oy），
+// 渲染器漏掉 translate 时上述位置断言照常绿（Loop1 截图回归实证），须钉住 translate 调用。
+let tIdx = canvas.__ctx.__calls.indexOf(markerArc);
+while (tIdx-- >= 0 && canvas.__ctx.__calls[tIdx].name !== "translate") { /* 回溯最近 translate */ }
+assert.ok(tIdx >= 0, "标记 arc 之前无任何 translate 调用");
+const [entTx, entTy] = canvas.__ctx.__calls[tIdx].args;
+assert.ok(Math.abs(entTx - ox) < 0.01 && Math.abs(entTy - oy) < 0.01,
+  `实体层 translate 缺失或错位：最近 translate (${entTx.toFixed(1)},${entTy.toFixed(1)}) ≠ 舰队居中平移 (${ox.toFixed(1)},${oy.toFixed(1)})（实体将整体出画）`);
+
 // 松界（任务书原断言，经 translate 修正）：标记相关调用落在投影点邻域
 // 成品图复现 G1：ENT 让位 hack 已删，F2 对角错位 (x-14,y-28) 距投影 31px，邻域 60px 覆盖
 const hit = drawn.some((c) => Math.hypot((c.args[0] ?? 999) + ox - centerX, (c.args[1] ?? 999) + oy - centerY) < 60);

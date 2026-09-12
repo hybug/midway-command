@@ -291,6 +291,11 @@ class MapRenderer {
 
       ChartRenderer.drawLandmarks(ctx, W, H);
 
+      // 实体层：恢复舰队居中平移（translate 与 save/restore 必须成对——
+      // fix Loop1-F5 重构回归：漏掉本层 translate 使实体画在屏幕系原点附近全部出画）
+      ctx.save();
+      ctx.translate(ox, oy);
+
       // Draw layers in order (back to front)
       // Task 7.8：旧地形/六边形网格/距离环/环礁已被 ChartRenderer 取代（保留代码备查）
       // this._drawDepthContours(ctx, fpx, fpy);
@@ -304,6 +309,8 @@ class MapRenderer {
 
       // 绘制确认动画
       this._drawConfirmAnimations(ctx, ox, oy);
+
+      ctx.restore();
     } else {
       ChartRenderer.drawLandmarks(ctx, W, H);
       // Task 7.8：旧底图层已被 ChartRenderer.drawAll 取代（保留代码备查）

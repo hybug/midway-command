@@ -395,15 +395,21 @@ function drawTaskForceMarker(ctx, tf, w, h, ox = 0, oy = 0) {
   // 双虚线矢量：两条平行虚线从圈缘指向环礁，末端双箭头
   const dx = ac.x - tf.x, dy = ac.y - tf.y, len = Math.hypot(dx, dy) || 1;
   const ux = dx / len, uy = dy / len, px = -uy, py = ux;
-  ctx.setLineDash([5, 4]); ctx.strokeStyle = CHART_STYLE.inkFade; ctx.lineWidth = 1.2;
-  for (const side of [-4, 4]) {
-    ctx.beginPath();
-    ctx.moveTo(tf.x + ux * 14 + px * side, tf.y + uy * 14 + py * side);
-    ctx.lineTo(tf.x + ux * 70 + px * side, tf.y + uy * 70 + py * side);
-    ctx.stroke();
+  // fix Loop1-F4: 矢量虚线/箭头钳制在环礁心之前——近景下圈标距心可不足 80px，
+  // 固定 70/74px 长度会过冲环礁心、箭头压中心标注群与坐标行（fixture 实证）
+  const dashEnd = Math.min(70, len - 18);
+  const arrowBase = Math.min(74, len - 12);
+  if (dashEnd > 14) {
+    ctx.setLineDash([5, 4]); ctx.strokeStyle = CHART_STYLE.inkFade; ctx.lineWidth = 1.2;
+    for (const side of [-4, 4]) {
+      ctx.beginPath();
+      ctx.moveTo(tf.x + ux * 14 + px * side, tf.y + uy * 14 + py * side);
+      ctx.lineTo(tf.x + ux * dashEnd + px * side, tf.y + uy * dashEnd + py * side);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
   }
-  ctx.setLineDash([]);
-  const tx = tf.x + ux * 74, ty = tf.y + uy * 74;
+  const tx = tf.x + ux * arrowBase, ty = tf.y + uy * arrowBase;
   ctx.beginPath();
   ctx.moveTo(tx + ux * 6, ty + uy * 6);
   ctx.lineTo(tx - ux * 4 + px * 5, ty - uy * 4 + py * 5);
