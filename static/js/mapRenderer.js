@@ -303,6 +303,8 @@ class MapRenderer {
       // this._drawDistanceRings(ctx, fpx, fpy, 8);
       this._drawPendingRecon(ctx, state, fqr, frr);
       this._drawScoutAircraft(ctx, state, fqr, frr);
+      // fix Loop2-F4: 扇区方向词标签在实体层补画（陆地填充之后，开阔水面+纸色底衬）
+      this._drawSectorLabels(ctx, state, fqr, frr);
       // this._drawMidway(ctx, 0, 0, 1.5);
       this._drawOwnFleet(ctx, tf, ox, oy);
       this._drawEnemyContacts(ctx, state);
@@ -872,14 +874,15 @@ class MapRenderer {
   // ═══════════════════════════════════════════════════════
   // 成品图复现 Loop1-F6：纸面 10nm 细网格（survey 绘图感）
   // 绘制位：纹理（drawBase）之后、距离环/陆地（drawLandmarks）之前；
-  // 1px rgba(90,70,40,0.10)，间距经 ChartRenderer.chartNmToPx 换算 nm→px，
+  // 1px rgba(90,70,40,·)，间距经 ChartRenderer.chartNmToPx 换算 nm→px，
   // 锚定环礁中心（chartRenderer atollCenter 同式 0.44w/0.46h，与距离环同轴）
+  // fix Loop2-F5: alpha 0.10→0.16（设计师评审：细网格存在感不足，提至可辨不抢主体）
   // ═══════════════════════════════════════════════════════
   _drawFineGrid(ctx, W, H) {
     const step = ChartRenderer.chartNmToPx(10, W, H);
     const ax = W * 0.44, ay = H * 0.46;
     ctx.save();
-    ctx.strokeStyle = 'rgba(90,70,40,0.10)';
+    ctx.strokeStyle = 'rgba(90,70,40,0.16)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (let x = ax % step; x < W; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
@@ -939,14 +942,73 @@ class MapRenderer {
       }
       ctx.restore();
 
-      // Sector label (priority: low — can be hidden)
-      const midAngle = (startRad + endRad) / 2;
-      const labelR = sectorRadius * 0.7;
-      const lx = fx + labelR * Math.cos(midAngle);
-      const ly = fy + labelR * Math.sin(midAngle);
-      this._tryPlaceLabel(ctx, s.direction, lx, ly, '10px Caveat, cursive', COL.inkMain,
-        [[0, 0], [0, -14], [14, 0], [-14, 0]], 1);
+      // Sector label（方向词）→ fix Loop2-F4：改由 _drawSectorLabels 在实体层补画
+      //（扇区层画在陆地填充之前（Loop1-F5 拆层裁定），标签原被环礁/陆地覆盖不可见；
+      // 现沿扇区中线外推至开阔水面 + 纸色圆角底衬，见 _drawSectorLabels）
+      ctx.restore();
+    });
+  }
 
+  // ═══════════════════════════════════════════════════════
+  // 成品图复现 Loop2-F4：搜索扇区方向词标签（southwest 等方向词）
+  // 绘制位：实体层（drawLandmarks 之后、本舰队之前）——不再被陆地填充盖掉。
+  // 沿扇区中线从扇区弧外起步向外推，直至落点出环礁椭圆（+14px 缓冲）即开阔水面；
+  // 纸色圆角底衬 + 墨字（设计裁定「外推+纸色 halo」：底衬形态，压 hatch/细网格仍可读）。
+  // 环礁基准与 _drawFineGrid 同源（0.44w/0.46h + chartNmToPx(34/25) 半轴）
+  // ═══════════════════════════════════════════════════════
+  _drawSectorLabels(ctx, state, fleetQ, fleetR) {
+    const [fx, fy] = this._hexToPixel(fleetQ, fleetR);
+    const sectorRadius = 8 * HEX_SIZE * SQRT3;
+    const rx = ChartRenderer.chartNmToPx(34, this.width, this.height);
+    const ry = ChartRenderer.chartNmToPx(25, this.width, this.height);
+    const ax = this.width * 0.44, ay = this.height * 0.46;
+    // 本方法画在 translate(ox,oy) 本地系；舰队锚点经居中平移恒落在画布中心
+    //（render 构造保证）——外推几何用屏幕系计算（环礁椭圆/画缘均屏幕系），
+    // 落点再换算回本地系（本地 = 锚点本地 +（屏幕 − 画布中心））
+    const cx = this.centerX, cy = this.centerY;
+
+    (state.active_scouts ?? []).filter(s => s.status === 'in_flight').forEach(s => {
+      const startRad = ((s.search_bearing_min - 90) * Math.PI) / 180;
+      const endRad = ((s.search_bearing_max - 90) * Math.PI) / 180;
+      const midAngle = (startRad + endRad) / 2;
+      const text = String(s.direction || '');
+      if (!text) return;
+
+      // 中线外推：扇区弧外 12px 起步，步进 24px 找环礁椭圆外首个落点；+48px 缓冲
+      // （≈5nm）越过外礁圈带（外缘 ≈ 椭圆 1.0，礁带宽 20%）落在开阔水面
+      let sx = cx + (sectorRadius + 12) * Math.cos(midAngle);
+      let sy = cy + (sectorRadius + 12) * Math.sin(midAngle);
+      for (let extra = sectorRadius + 12; extra <= sectorRadius * 2.4; extra += 24) {
+        sx = cx + extra * Math.cos(midAngle);
+        sy = cy + extra * Math.sin(midAngle);
+        const nx = (sx - ax) / (rx + 48), ny = (sy - ay) / (ry + 48);
+        if (nx * nx + ny * ny > 1) break;
+      }
+
+      // 纸色圆角底衬 + 墨字（画缘收编在屏幕系做——本地系 0 是舰队锚点行，不是画缘）
+      ctx.save();
+      ctx.font = '10px Caveat, cursive';
+      const tw = ctx.measureText(text).width;
+      const bw = tw + 12, bh = 16;
+      const clX = Math.max(24 + bw / 2, Math.min(this.width - 24 - bw / 2, sx));
+      const clY = Math.max(24 + bh / 2, Math.min(this.height - 24 - bh / 2, sy));
+      const lx = fx + (clX - cx), ly = fy + (clY - cy);
+      const bx = lx - bw / 2, by = ly - bh / 2;
+      ctx.fillStyle = 'rgba(245,237,214,0.88)';   // 纸色底衬（CHART paper #f5edd6 同源）
+      ctx.strokeStyle = 'rgba(42,34,24,0.35)';
+      ctx.lineWidth = 0.75;
+      ctx.beginPath();
+      ctx.moveTo(bx + 3, by);
+      ctx.arcTo(bx + bw, by, bx + bw, by + bh, 3);
+      ctx.arcTo(bx + bw, by + bh, bx, by + bh, 3);
+      ctx.arcTo(bx, by + bh, bx, by, 3);
+      ctx.arcTo(bx, by, bx + bw, by, 3);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = COL.inkMain;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, bx + bw / 2, by + bh / 2 + 0.5);
       ctx.restore();
     });
   }
