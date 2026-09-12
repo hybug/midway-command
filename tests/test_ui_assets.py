@@ -305,19 +305,21 @@ def test_range_ring_25nm_label_offset():
 
 def test_npc_tab_active_lift_enhanced():
     """.npc-tab 段 isolation: isolate——底色移交 ::before 伪元素，激活凸起增强。
-    成品图复现 E3：非激活深色舌 #2b2118 + bar-text 浅字，激活 paper-base 白底 + ink 墨字（INTEL 式白底激活）。"""
+    成品图复现 Loop1-F7：页签回归纸签隐喻（成品图基准整排米色纸签）——非激活米色纸签
+    #e8dcc3 + ink 深棕墨字，激活 paper-base 加高（padding-bottom）+ 底边无缝连面板。"""
     css = (BASE / "static" / "css" / "style.css").read_text()
     # fix Loop2-F7: 文件尾新增 @media 断点也含 ".npc-tab {"，锚点改钉 Phase 8a 块签名
     npc_seg = css[css.rindex(".npc-tab { position: relative"):]
     assert "isolation: isolate" in npc_seg, ".npc-tab 段缺 isolation: isolate（::before 双底色隔离）"
-    # 成品图复现 E3：标签深色白字
+    # Loop1-F7：非激活米色纸签 + 深棕墨字
     before_seg = css[css.rindex(".npc-tab::before"):]
-    assert "background: #2b2118;" in before_seg, "非激活纸舌应为深色 #2b2118（成品图 A9）"
+    assert "background: #e8dcc3;" in before_seg, "非激活纸签应为米色纸底 #e8dcc3（Loop1-F7 推翻 E3 深舌）"
     base_seg = css[css.index(".npc-tab {"):css.index(".npc-tab:hover")]
-    assert "color: var(--color-bar-text);" in base_seg, "非激活标签字应为 bar-text 浅字（深舌白字）"
+    assert "color: var(--color-ink-main);" in base_seg, "非激活纸签字应为 ink 深棕墨字（Loop1-F7）"
     active_seg = css[css.rindex(".npc-tab.active {"):]
-    assert "color: var(--color-ink-main);" in active_seg, "激活标签须显式回 ink 墨字（白底激活，防 bar-text 泄漏）"
-    # 成品图复现 E3：hover 旧纸色遗留清除——深色系提亮（rgba(245,237,214,.5) 为深舌前的死值）
+    assert "color: var(--color-ink-main);" in active_seg, "激活标签须显式回 ink 墨字（防基础色回退）"
+    assert "padding-bottom: 6px;" in active_seg, "激活纸签加高缺失（padding-bottom 补 -6px 上浮底缝，无缝连面板）"
+    # 成品图复现 E3 → Loop1-F7：hover 底为深色系遗留弱化值（被不透明 ::before 覆盖，保留不动）
     hover_seg = css[css.index(".npc-tab:hover"):css.index(".npc-tab.active")]
     assert "rgba(216, 203, 178, 0.12)" in hover_seg, "hover 底应为深色系提亮 rgba(216,203,178,0.12)"
 

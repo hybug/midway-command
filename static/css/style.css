@@ -176,7 +176,7 @@ html, body {
   border-radius: 2px;
   box-shadow:
     2px 2px 8px rgba(0,0,0,0.3),
-    inset 0 0 20px rgba(0,0,0,0.03);
+    inset 0 0 12px rgba(42,34,24,0.18); /* fix Loop1-F8: 纸面内阴影 12px（桌面陈旧纸质感） */
 }
 
 #tacticalMap {
@@ -293,7 +293,8 @@ html, body {
   padding: 8px 4px;
   border: none;
   background: transparent;
-  color: var(--color-bar-text); /* 成品图复现 E3：深舌白字（原 ink-main 墨字随浅舌废弃） */
+  /* fix Loop1-F7: 页签回归纸签隐喻（成品图基准：整排米色纸签，推翻 E3 深舌白字）——深棕墨字 */
+  color: var(--color-ink-main);
   font-family: var(--font-typewriter);
   font-size: 10px;
   letter-spacing: 1px;
@@ -303,13 +304,13 @@ html, body {
   white-space: nowrap;
 }
 .npc-tab:hover {
-  color: var(--color-bar-text);
-  /* 成品图复现 E3：hover 旧纸色遗留清除——深色系提亮（注：元素底在隔离层内被不透明
-     ::before 纸舌覆盖，实际 hover 反馈由 Phase 9.3 的 -1px 上浮承载） */
+  color: var(--color-ink-main);
+  /* 注：元素底在隔离层内被不透明 ::before 纸签覆盖，实际 hover 反馈由 Phase 9.3
+     的 -1px 上浮承载（此底色为深色系遗留弱化值，Loop1-F7 纸签方向保留不动） */
   background: rgba(216, 203, 178, 0.12);
 }
 .npc-tab.active {
-  color: var(--color-ink-main); /* 成品图复现 E3：白底激活须显式回墨字（基础色改 bar-text 后防泄漏） */
+  color: var(--color-ink-main); /* fix Loop1-F7: 纸签方向下激活仍须显式回墨字（防基础色回退泄漏） */
   border-bottom-color: var(--color-ink-main);
   /* 保真度修正 T4：底色移交 ::before 伪元素（Phase 8a 段），避免元素矩形底色从切角漏出 */
   font-weight: bold;
@@ -543,11 +544,12 @@ html, body {
   content: ""; position: absolute; inset: 0; z-index: -1;
   /* fix Loop2-F4: 纸舌造型对照 tab_bg.svg——clip-path 切角改圆角纸舌（上角 4px 圆角） */
   border-radius: 4px 4px 0 0;
-  background: #2b2118; /* 成品图复现 E3：非激活深色舌（同海图厚画框色，白字对比） */
-  transform: translateY(2px); /* 非激活纸舌下沉 2px（active 态由下条复位，不受影响） */
+  background: #e8dcc3; /* fix Loop1-F7: 非激活回归米色纸签（成品图整排米色纸签，推翻 E3 深舌 #2b2118） */
+  transform: translateY(2px); /* 非激活纸签下沉 2px（active 态由下条复位，不受影响） */
 }
 .npc-tab.active::before { background: var(--color-paper-base); transform: none; }
-.npc-tab.active { transform: translateY(-6px); box-shadow: 0 -3px 6px rgba(0, 0, 0, 0.25); }
+/* fix Loop1-F7: 激活纸签加高 + 底边无缝连面板——padding-bottom 补足 -6px 上浮让出的底缝 */
+.npc-tab.active { transform: translateY(-6px); box-shadow: 0 -3px 6px rgba(0, 0, 0, 0.25); padding-bottom: 6px; }
 /* Phase 9.3：标签 hover 上浮 1px（:not(.active) 保证 active 态 -6px 上浮不被覆盖） */
 .npc-tab:hover:not(.active) { transform: translateY(-1px); }
 
