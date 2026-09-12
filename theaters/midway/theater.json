@@ -1,0 +1,54 @@
+{
+  "id": "midway",
+  "name": "中途岛",
+  "name_en": "Midway",
+  "date": "1942-06-04",
+  "timezone_offset": 12,
+  "view": {
+    "center": {
+      "lat": 28.2,
+      "lon": -177.4
+    },
+    "view_nm": 45,
+    "rotation": 0
+  },
+  "graticule": {
+    "minor_step": 0.25,
+    "major_step": 1.0,
+    "label_format": "dms"
+  },
+  "range_rings": {
+    "origin": {
+      "lat": 28.2,
+      "lon": -177.4
+    },
+    "rings_nm": [
+      20,
+      25,
+      40,
+      60
+    ],
+    "labels": true
+  },
+  "bases": [
+    {
+      "id": "midway",
+      "name": "中途岛机场",
+      "lat": 28.2072,
+      "lon": -177.3735,
+      "type": "airfield",
+      "capacity": 113
+    }
+  ],
+  "sectors": [
+    {
+      "id": "east-quad",
+      "name": "东侧扇区",
+      "origin_ref": "ENT",
+      "bearing_min": 30,
+      "bearing_max": 90
+    }
+  ],
+  "units": "nm",
+  "scenario": "scenario.json"
+}

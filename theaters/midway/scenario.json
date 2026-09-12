@@ -1,0 +1,117 @@
+{
+  "id": "midway",
+  "date": "1942-06-04",
+  "clock_start": "1942-06-04T04:00:00Z",
+  "task_forces": [
+    {
+      "callsign": "ENT",
+      "name": "Task Force 16",
+      "lat": 28.2,
+      "lon": -178.251012,
+      "course": 270,
+      "speed": 25,
+      "damage_level": 0,
+      "deck_status": "ready",
+      "patrol": {
+        "cap_strength": 12,
+        "pattern": "sector",
+        "bearing_min": 30,
+        "bearing_max": 90,
+        "radius_nm": 60
+      },
+      "carriers": [
+        {
+          "name": "USS Enterprise (CV-6)",
+          "damage_level": 0,
+          "deck_status": "ready",
+          "cap_strength": 12,
+          "air_groups": [
+            {
+              "type": "fighter",
+              "squadron": "VF-6",
+              "count": 27
+            },
+            {
+              "type": "dive_bomber",
+              "squadron": "VB-6/VS-6",
+              "count": 38
+            },
+            {
+              "type": "torpedo",
+              "squadron": "VT-6",
+              "count": 15
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "callsign": "HOR",
+      "name": "Task Force 17",
+      "lat": 28.2,
+      "lon": -177.929519,
+      "course": 270,
+      "speed": 25,
+      "damage_level": 0,
+      "deck_status": "ready",
+      "patrol": {
+        "cap_strength": 12,
+        "pattern": "sector",
+        "bearing_min": 30,
+        "bearing_max": 90,
+        "radius_nm": 60
+      },
+      "carriers": [
+        {
+          "name": "USS Hornet (CV-8)",
+          "damage_level": 0,
+          "deck_status": "ready",
+          "cap_strength": 12,
+          "air_groups": [
+            {
+              "type": "fighter",
+              "squadron": "VF-8",
+              "count": 27
+            },
+            {
+              "type": "dive_bomber",
+              "squadron": "VB-8/VS-8",
+              "count": 38
+            },
+            {
+              "type": "torpedo",
+              "squadron": "VT-8",
+              "count": 15
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "enemy_fleet": {
+    "name": "Kido Butai",
+    "lat": 31.0,
+    "lon": -180.0,
+    "course": 135,
+    "speed": 25,
+    "carriers": [
+      "Akagi",
+      "Kaga",
+      "Soryu",
+      "Hiryu"
+    ]
+  },
+  "npc_roster": {
+    "co_staff": "Spruance 参谋团",
+    "intel": "Nimitz 情报组（Pearl）",
+    "air_officer": "Halsey 航空参谋（代理）"
+  },
+  "victory": {
+    "primary": "重创日军航母编队",
+    "secondary": "保住中途岛机场"
+  },
+  "event_seeds": [
+    "鹦鹉螺号潜艇接敌报告",
+    "日军对中途岛第一波空袭"
+  ]
+}
