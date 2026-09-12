@@ -32,6 +32,7 @@ ASSET_MANIFEST = {
     "A14_ruler":         ("ruler.svg",          ["viewBox"]),
     "A15_pencil":        ("pencil.svg",         ["viewBox"]),
     "EX_flag48":         ("flag48.svg",         ["viewBox"]),
+    "B1_gear":           ("gear.svg",           ["viewBox"]),  # 成品图复现 E4：顶栏齿轮（8 齿，ink 色）
 }
 
 CSS_TOKENS = {
