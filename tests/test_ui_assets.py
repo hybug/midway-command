@@ -447,3 +447,21 @@ def test_compass_brass_desk_prop():
     assert 'src="/static/assets/ui/icons/compass_brass.png"' in html, "index.html 未接入圆规桌面道具"
     css = (BASE / "static" / "css" / "style.css").read_text()
     assert ".desk-compass" in css and "rotate(15deg)" in css, "style.css 缺 .desk-compass 左下布局"
+
+
+# ── 成品图复现 · G6：尺与铅笔按成品图布局移位 ──
+
+def test_desk_ruler_pencil_product_layout():
+    """G6 勘测修正：木尺横放左下（压海图左缘，与圆规同侧）、铅笔竖放右缘（笔尖朝下）。
+    原布局尺/铅笔均横放底部中央，与成品图不符。
+    铅笔 SVG 为横向（420×36、笔尖朝左），rotate(-90°) 转竖后笔尖朝下（裁定 rotate(180deg)
+    对横图几何不成立，按裁定预留的「目检调优」修正）。"""
+    css = (BASE / "static" / "css" / "style.css").read_text()
+    ruler_seg = css[css.rindex(".desk-ruler"):]
+    ruler_seg = ruler_seg[:ruler_seg.index("\n")]
+    for token in ["left: 6px", "right: auto", "bottom: 54px", "rotate(-3deg)"]:
+        assert token in ruler_seg, f".desk-ruler 缺成品图布局 {token}"
+    pencil_seg = css[css.rindex(".desk-pencil"):]
+    pencil_seg = pencil_seg[:pencil_seg.index("\n")]
+    for token in ["right: 14px", "left: auto", "bottom: 120px", "rotate(-90deg)", "width: 200px"]:
+        assert token in pencil_seg, f".desk-pencil 缺成品图布局 {token}"

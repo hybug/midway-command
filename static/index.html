@@ -38,6 +38,10 @@
     <!-- 成品图复现 G4（设计审计 MISSING-6）：原左上海图字幕 div 已删除——
          成品图地图左上角该位置是 SECRET 章（chartRenderer.drawSecretStamp 绘制），字幕保留会穿帮 -->
     <canvas id="tacticalMap"></canvas>
+    <!-- 桌面道具（G5/G6）：置于 #chart-area 内做图内绝对定位——fixed 视口定位会被底栏/右栏遮挡 -->
+    <img class="desk-prop desk-ruler" src="/static/assets/ui/ruler_wood.svg" alt="" aria-hidden="true">
+    <img class="desk-prop desk-pencil" src="/static/assets/ui/pencil.svg" alt="" aria-hidden="true">
+    <img class="desk-prop desk-compass" src="/static/assets/ui/icons/compass_brass.png" alt="" aria-hidden="true">
   </main>
 
   <!-- ═══ Bottom Dashboard + Controls ═══ -->
@@ -70,10 +74,6 @@
       <button class="btn btn-send" id="btn-send">发送</button>
     </div>
   </aside>
-
-  <img class="desk-prop desk-ruler" src="/static/assets/ui/ruler_wood.svg" alt="" aria-hidden="true">
-  <img class="desk-prop desk-pencil" src="/static/assets/ui/pencil.svg" alt="" aria-hidden="true">
-  <img class="desk-prop desk-compass" src="/static/assets/ui/icons/compass_brass.png" alt="" aria-hidden="true">
 
 </div>
 
