@@ -1,5 +1,6 @@
 /** 断言三层：①投影确定性 ②底图层圆心一致 ③实体标记绘制位置==逻辑坐标投影（接线正确）。*/
 import assert from "node:assert/strict";
+import * as vm from "node:vm";
 import { loadGameScripts } from "./dom-stub.mjs";
 
 const { sandbox, document } = loadGameScripts([
@@ -147,5 +148,47 @@ assert.ok(Math.abs((bx - aArc[0]) - (nx - axp)) < 2 && Math.abs((by - aArc[1]) -
   "sA→sB 标记位移 ≠ 逻辑位置投影差（重绘未精确跟随状态变化）");
 // render 已把 _currentState 换成 sB（动画循环每帧 render(_currentState) 的数据源）
 assert.ok(renderer._currentState === sB, "render 后 _currentState 未更新为新 state");
+
+// ── ⑤ 成品图复现 G2：在途侦察机剪影（aircraft_topdown）沿航线叠画 ──
+// 空态无机载（H 批 fixture 未就绪，验收裁定）：桩 state 注入 1 架 active_scout，
+// 断言剪影 drawImage 被调用、锚点==position 投影、尺寸 w≈26px、rotate==航向角。
+// 剪影注入 vm 上下文：svgLoader 的 loadedIcons 为顶层 const（全局词法环境），
+// 同 context 的后续 runInContext 可读写（桩环境无 Image/fetch，加载器本身不会填充）。
+const seedIcon = vm.runInContext(
+  'loadedIcons["aircraft_topdown"] = { width: 158, height: 115, __stub: true };'
+  + 'getIcon("aircraft_topdown")', sandbox);
+assert.ok(seedIcon && seedIcon.__stub, "vm 桩：aircraft_topdown 图标注入失败");
+
+const SCOUT_LAT = 30.5, SCOUT_LON = -178.2;
+const scoutState = makeState(31.5, -176.0);
+scoutState.active_scouts = [{
+  id: "SCOUT-1", status: "in_flight", phase: "outbound", direction: "west",
+  position: { lat: SCOUT_LAT, lon: SCOUT_LON },
+  search_bearing_min: 250, search_bearing_max: 290, search_distance_nm: 120,
+  fuel_pct: 80, aircraft_lost: 0,
+}];
+renderer.render(scoutState);
+const silCalls = canvas.__ctx.__calls.filter((c) => c.name === "drawImage" && c.args[0] === seedIcon);
+assert.ok(silCalls.length === 1, `侦察机剪影 drawImage 应恰好被调用 1 次，实得 ${silCalls.length}`);
+
+// 位置：_drawScoutAircraft 先 translate(px,py) 再以局部原点为中心画剪影——录制器记的是
+// 原始参数，故剪影锚点 = 紧邻其前的 translate 调用（fleet 本地系下的 position 投影）
+const [sq, sr] = renderer._worldToHex(SCOUT_LAT, SCOUT_LON);
+const [sx, sy] = renderer._hexToPixel(sq, sr);
+const SIL_W = 26, SIL_H = 26 * (115 / 158); // 源码 w=26，等比高（viewBox 158x115）
+const [, silDx, silDy, silDw, silDh] = silCalls[0].args;
+assert.ok(Math.abs(silDw - SIL_W) < 0.01 && Math.abs(silDh - SIL_H) < 0.01,
+  `剪影应按 w≈26px 等比绘制，实得 ${silDw}x${silDh}`);
+const callsAll = canvas.__ctx.__calls;
+let trIdx = callsAll.indexOf(silCalls[0]);
+while (trIdx-- > 0 && callsAll[trIdx].name !== "translate") { /* 回溯最近 translate */ }
+const [trX, trY] = callsAll[trIdx].args;
+assert.ok(Math.abs(trX - sx) < 0.01 && Math.abs(trY - sy) < 0.01,
+  `剪影 translate 锚点 (${trX.toFixed(1)},${trY.toFixed(1)}) 偏离插值位置投影 (${sx.toFixed(1)},${sy.toFixed(1)})`);
+
+// 航向：bearing 250–290 中点 270° → (270−90)°=π 屏幕角；剪影本征朝上（−Y）须再 +π/2 → 3π/2
+const silRotate = canvas.__ctx.__calls.find(
+  (c) => c.name === "rotate" && Math.abs(c.args[0] - (3 * Math.PI) / 2) < 1e-6);
+assert.ok(silRotate, "剪影未按航向 rotate（期望 3π/2 = π 航向角 + π/2 朝向补偿）");
 
 console.log("ROUTE-DISPLAY PASS");

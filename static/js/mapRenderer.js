@@ -544,25 +544,41 @@ class MapRenderer {
       ctx.save();
       ctx.translate(px, py);
 
-      // Aircraft symbol (small triangle)
       const isReturning = scout.phase === 'returning';
       const fuelColor = scout.fuel_pct > 30 ? COL.inkMain :
                         scout.fuel_pct > 15 ? '#8a6020' : COL.enemyRed;
-
-      ctx.strokeStyle = isReturning ? COL.inkFade : fuelColor;
-      ctx.lineWidth = isReturning ? 1 : 1.5;
-      if (isReturning) ctx.setLineDash([2, 2]);
-
-      // Triangle pointing in direction of travel
+      // 航向：bearing → 屏幕角（-90° 修正）；返航取 return_heading
       const angle = isReturning ? (scout.return_heading - 90) * Math.PI / 180 : midAngle;
-      const size = 6;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(angle) * size, Math.sin(angle) * size);
-      ctx.lineTo(Math.cos(angle + 2.3) * size * 0.6, Math.sin(angle + 2.3) * size * 0.6);
-      ctx.lineTo(Math.cos(angle - 2.3) * size * 0.6, Math.sin(angle - 2.3) * size * 0.6);
-      ctx.closePath();
-      ctx.stroke();
-      ctx.setLineDash([]);
+
+      // 成品图复现 G2：在途侦察机沿航线叠画 aircraft_topdown 剪影（w≈26px），
+      // 复用上方 position 投影/相位插值位置，rotate 朝航向——剪影本征朝向为画布上方
+      // （-Y），须在航向角外再 +90° 朝向补偿；返航机沿用旧三角的弱化语义（alpha 0.55
+      // 替代原 inkFade 虚线）。剪影未就绪时回退旧小三角机形（保留备查）。
+      const silhouette = getIcon('aircraft_topdown');
+      if (silhouette) {
+        const silW = 26;
+        const silH = silW * (silhouette.height / silhouette.width); // viewBox 158x115 → ≈18.9px
+        ctx.save();
+        ctx.rotate(angle + Math.PI / 2);
+        if (isReturning) ctx.globalAlpha = 0.55;
+        ctx.drawImage(silhouette, -silW / 2, -silH / 2, silW, silH);
+        ctx.restore();
+      } else {
+        // Aircraft symbol (small triangle)
+        ctx.strokeStyle = isReturning ? COL.inkFade : fuelColor;
+        ctx.lineWidth = isReturning ? 1 : 1.5;
+        if (isReturning) ctx.setLineDash([2, 2]);
+
+        // Triangle pointing in direction of travel
+        const size = 6;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(angle) * size, Math.sin(angle) * size);
+        ctx.lineTo(Math.cos(angle + 2.3) * size * 0.6, Math.sin(angle + 2.3) * size * 0.6);
+        ctx.lineTo(Math.cos(angle - 2.3) * size * 0.6, Math.sin(angle - 2.3) * size * 0.6);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
 
       // Label
       ctx.fillStyle = fuelColor;
