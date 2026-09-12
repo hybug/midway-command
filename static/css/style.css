@@ -492,6 +492,9 @@ html, body {
   outline: 2px dashed var(--color-ink-fade);
   outline-offset: 2px;
 }
+/* 成品图复现 E6：按钮禁用态（空态占位命令卡常驻按钮）——降低不透明度；
+   pointer-events: none 同时阻断 :hover/:active 提亮/下压反馈（禁用不可交互） */
+.btn:disabled { opacity: 0.45; cursor: default; pointer-events: none; }
 .btn-send { min-width: 52px; }
 
 /* fix L4-F6: ADVANCE 主操作提权——复用 .btn-execute 墨色主操作样式（对齐设计图 EXECUTE ORDER 黑块）；

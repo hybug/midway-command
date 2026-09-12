@@ -254,12 +254,16 @@ class UIController {
   // ═══════════════════════════════════════════════════════
   renderSuggestions(state, onApprove, onReject) {
     const container = document.getElementById('suggestions');
-    if (!state || state.pending_suggestions.length === 0) {
-      container.innerHTML = '';
+    const pending = state ? state.pending_suggestions : [];
+
+    // 成品图复现 E6（A10）命令卡常驻化：空态/非空态互斥渲染——
+    // 空态常驻占位军令纸（右栏底部不再留白），有建议时正常渲染命令卡
+    if (pending.length === 0) {
+      container.innerHTML = this.renderPlaceholderNote();
       return;
     }
 
-    container.innerHTML = state.pending_suggestions
+    container.innerHTML = pending
       .map((sug, i) => this.renderOrderNote(sug, i))
       .join('');
 
@@ -270,6 +274,35 @@ class UIController {
       if (btn.dataset.act === 'approve') btn.addEventListener('click', () => onApprove(idx));
       else if (btn.dataset.act === 'reject') btn.addEventListener('click', () => onReject(idx));
     });
+  }
+
+  // E6 空态占位军令纸（.order-note.placeholder）：复用 A8 军令纸全套样式——
+  // SECRET 头 + 「– STAFF PROPOSAL –」副题 + 正文 + 签名行；
+  // 按钮不带 data-act（不绑回调）且 disabled（禁用态由 .btn:disabled 降低不透明度）
+  renderPlaceholderNote() {
+    return `
+    <article class="order-note placeholder">
+      <header class="order-note-head">
+        <span class="order-stamp-word">SECRET</span>
+        <span class="order-note-subtitle">– STAFF PROPOSAL –</span>
+      </header>
+      <div class="order-note-body">
+        <p class="order-line placeholder-copy">NO PENDING ORDERS — AWAITING STAFF PROPOSAL</p>
+      </div>
+      <footer class="order-note-foot">
+        <div class="order-sig">
+          <span class="order-sig-label">COMMANDER SIGNATURE:</span>
+          <svg class="sig-scrawl" viewBox="0 0 100 32" width="90" height="26" aria-hidden="true">
+            <path d="M4,26 C14,6 20,30 30,14 C36,6 38,22 48,16 C58,10 60,24 72,14 C80,8 86,20 96,12"
+                  fill="none" stroke="#2a2218" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="order-actions">
+          <button class="btn btn-execute" disabled>EXECUTE ORDER</button>
+          <button class="btn btn-revise" disabled>REVISE PLAN</button>
+        </div>
+      </footer>
+    </article>`;
   }
 
   // A8 军令纸卡（SECRET – INTERCEPTION PLAN）

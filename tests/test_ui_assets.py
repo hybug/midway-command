@@ -374,3 +374,16 @@ def test_close_framing_constants():
     js = (BASE / "static" / "js" / "chartRenderer.js").read_text()
     assert "/ 45)" in js, "取景未改 45nm 近景"
     assert "CHART_VIEW_NM = 45" in js, "视野常量未提取"
+
+
+# ── 成品图复现 · E6：命令卡常驻化（设计审计 A10 最大遗漏项） ──
+
+def test_ui_controller_placeholder_order_note():
+    """E6 空态占位军令纸：renderSuggestions 空态常驻渲染 STAFF PROPOSAL 占位卡
+    （复用 A8 军令纸全套样式：SECRET 头/签名行/按钮禁用态），有建议时正常渲染命令卡。"""
+    js = (BASE / "static" / "js" / "uiController.js").read_text()
+    assert "NO PENDING ORDERS" in js, "uiController.js 缺少空态占位卡正文 NO PENDING ORDERS"
+    for kw in ["STAFF PROPOSAL", "order-note placeholder"]:
+        assert kw in js, f"uiController.js 缺少占位军令纸标记 {kw}"
+    css = (BASE / "static" / "css" / "style.css").read_text()
+    assert ".btn:disabled" in css, "style.css 缺少按钮禁用态（降低不透明度）样式"
