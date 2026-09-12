@@ -45,3 +45,26 @@
 
 ## 提交
 - （待 L6）
+
+## L5 实施结果（2026-09-13）
+
+| # | 状态 | 实施 | 证据/备注 |
+|---|------|------|----------|
+| F1 | ✅ | drawIslands：SAND ISLAND 胶囊 10px 字号 + measureText 定宽（文本宽+16，下限 62px）、16px 定高，文字水平/垂直居中；跑道横带随 sandH 联动 | after-fixture 截图胶囊内有字；test_loop2 守卫同步为 `Math.max(sandLblW + 16, 62)` |
+| F2 | ✅ | design-state.js known_enemy 微调：内标 hex (9,-11)→画布 (875.9,252)≈56°/23.8nm（礁环内缘）、外标 hex (10,-17)→(834.3,144)≈37°/27.5nm（礁环外缘），保持「北向画在屏幕下方」存储系约定 | after-fixture：两枚红?标环礁东北、内外错开 |
+| F3 | ✅ | drawCompassRose：110→150px，x=w-170 右移贴缘；罗盘中心 (1345,95) 与 40/60nm 标注带（y≈410）错开 | after-fixture 右上大罗盘 |
+| F4 | ✅ | MIDWAY ATOLL/坐标行锚点偏移 (-48,-16)；ENT/HOR 字标统一圈右下 (tf.x+14, tf.y+20) + 与坐标行 ≥20px 检查（不足下移一行高）；矢量虚线/箭头钳制环礁心前（dashEnd/arrowBase = min(固定值, len-18/-12)），修近景箭头过冲压坐标行 | ATOLLENT 合并消除（before/after 对比）；坐标行 "28°12'N 177°21'W" 完全可读 |
+| F5 | ✅ | ChartRenderer 拆 drawBase（纸底+经纬网）/drawLandmarks（环礁+环+罗盘+尺+章），mapRenderer.render 改三段式：底图→扇区→地标→实体；hatch alpha 0.12→0.06 减半。_drawPendingRecon midAngle 修复未回退 | 扇区被陆地覆盖不压焦点（NE 灰 hatch 消失）；**回归追补**：重构时漏掉的实体层 translate 已恢复并加 route_display 守卫（变异验证有效） |
+| F6 | ✅ | mapRenderer._drawFineGrid：1px rgba(90,70,40,0.10) 10nm 间隔网格，间距经 ChartRenderer.chartNmToPx 换算，锚定环礁心（0.44w/0.46h 与距离环同轴）；绘制位=纹理后、距离环前 | after-fixture 东侧开阔水面细网格可见（间距≈105px 实测吻合），环礁/泻湖下方被覆盖 |
+| F7 | ✅ | .npc-tab 族：未激活 ::before #2b2118→#e8dcc3 米色纸签 + 基础字色 bar-text→ink-main 深棕墨字（伪元素架构 isolation 保留）；激活 padding-bottom:6px 加高 + 底边无缝连面板（-6px 上浮保留） | after-fixture/after-empty：整排米色纸签、激活 COS 亮纸签连面板；test_npc_tab_active_lift_enhanced 同步（#e8dcc3 登记入守卫） |
+| F8 | ✅ | #chart-area box-shadow 加 `inset 0 0 12px rgba(42,34,24,0.18)`（替换原 0.03 弱 inset） | after 双图图缘暗角呈桌面纸感 |
+| F9 | ✅ | 缓存号 1780998005→1780998006：index.html 全部 ?v= + svgLoader paper_tex 同步 + test_ui_assets 断言/历史注释登记 | test_index_html_cache_version_consistent PASS |
+
+**验证**：node --check 四个 JS 通过；`node tests/ui/route_display.test.mjs` PASS（F4 锚点期望值核对无需变更——CSE/标记锚点未动，新增实体层 translate 守卫）；全量 pytest 285 passed / 0 failed。
+**截图**：loop-1-after-fixture-1440.png（设计态 09:45Z）、loop-1-after-empty-1440.png（空态 13:00Z），无头 Chrome 1440×900 实拍并 Read 自查（ATOLLENT 消除/扇区不压焦点/细网格/纸签/内阴影全项在位）。
+**提交**：6 个 commit（F1F3F4 / F2 / F5F6 / F7F8 / F4F5 回归追补 / F9+存档），未 push。
+
+**残留（Loop 2 候选）**：
+- 空态初始位（舰队在环礁正西同纬）下 HOR 矢量箭头尖距坐标行尾 ~2px 擦边——数据相关几何，fixture 基准位无此问题；
+- ENT 的 CSE 270° 读数仍被本舰航向线尾段穿过（G1 既有形态，非本轮改动引入）；
+- 搜索扇区方向标签（southwest 等）随扇区退背景后被陆地遮挡，开放水面扇区可见性待设计裁定。
