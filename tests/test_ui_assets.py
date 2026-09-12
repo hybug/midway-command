@@ -327,9 +327,9 @@ def test_npc_tab_active_lift_enhanced():
 def test_loop2_fidelity_fix_markers():
     """Loop2 L4 静态守卫：标记对角错开/岛标签胶囊/细网/纸舌造型/空态纸卡/底栏层次/窄屏断点。"""
     chart = (BASE / "static" / "js" / "chartRenderer.js").read_text()
-    # F2: SAND ISLAND 字号 7px + 胶囊加宽（文字不出框）
-    assert "Math.max(rx * 0.34, 62)" in chart, "沙岛胶囊宽未加宽"
-    assert "ctx.font = `7px ${CHART_STYLE.fontTypewriter}`" in chart, "SAND ISLAND 标签未缩到 7px"
+    # F2 → Loop1-F1 演进: SAND ISLAND 胶囊 measureText 定宽（文字实宽+16，下限 62px）
+    assert "Math.max(sandLblW + 16, 62)" in chart, "沙岛胶囊未按 measureText 定宽"
+    assert "ctx.font = `7px ${CHART_STYLE.fontTypewriter}`" in chart, "EASTERN ISLAND 黄底标注 7px 字号缺失"
     # F8: 0.25° 细网用 gridLineFaint，0.5° 主网 gridLine 原色保留
     assert "gridLineFaint: 'rgba(160,140,110,0.18)'" in chart, "缺 gridLineFaint 细网色"
     assert "gridLine: 'rgba(160,140,110,0.35)'" in chart, "0.5° 主网原色不得改动"

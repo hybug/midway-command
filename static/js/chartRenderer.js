@@ -171,19 +171,21 @@ function drawIslands(ctx, c, rx, ry) {
   ctx.font = `8px ${CHART_STYLE.fontTypewriter}`;
   // SAND ISLAND — 环礁西侧圆角矩形（下移避让坐标行）
   const sx = c.x - rx * 0.60, sy = c.y + ry * 0.32;
-  // fix Loop2-F2: SAND ISLAND 文字溢出胶囊——字号 8→7px，胶囊宽加宽到至少 62px（1440 布局实测）
-  const sandW = Math.max(rx * 0.34, 62);
+  // fix Loop1-F1: SAND ISLAND 胶囊 measureText 重算宽高——近景尺度下 7px 字在
+  // rx*0.34×ry*0.16 大胶囊内度量失配，目检呈空白胶囊。改 10px 字号，胶囊按文字实宽
+  // +16 定宽（下限 62px）、16px 定高，文字水平/垂直居中，胶囊尺寸随文字走
+  ctx.font = `10px ${CHART_STYLE.fontTypewriter}`;
+  const sandLblW = ctx.measureText(CHART_LABELS.sandIsland).width;
+  const sandW = Math.max(sandLblW + 16, 62);
+  const sandH = 16;
   ctx.fillStyle = CHART_STYLE.paperDark;
   ctx.strokeStyle = CHART_STYLE.ink;
-  roundRect(ctx, sx, sy, sandW, ry * 0.16, 3);
+  roundRect(ctx, sx, sy, sandW, sandH, 3);
   ctx.fill(); ctx.stroke();
   ctx.fillStyle = CHART_STYLE.ink;
-  // fix L4-F7: 标签基线对回胶囊内（垂直居中于圆角矩形；原画在框外下方成空框）
-  ctx.font = `7px ${CHART_STYLE.fontTypewriter}`;
-  ctx.fillText(CHART_LABELS.sandIsland, sx + 4, sy + ry * 0.16 * 0.72);
-  ctx.font = `8px ${CHART_STYLE.fontTypewriter}`;
+  ctx.fillText(CHART_LABELS.sandIsland, sx + (sandW - sandLblW) / 2, sy + sandH * 0.72);
   // 成品图复现 G7②：SAND ISLAND 侧跑道横带——浅色横带 + 墨色虚线中线（成品图沙岛下方长条跑道）
-  const bandY = sy + ry * 0.16 + 8, bandH = 10; // runwayBand
+  const bandY = sy + sandH + 8, bandH = 10; // runwayBand
   ctx.fillStyle = CHART_STYLE.paper;
   ctx.strokeStyle = CHART_STYLE.ink;
   ctx.lineWidth = 1;
@@ -299,12 +301,14 @@ function drawAtoll(ctx, w, h) {
   ctx.strokeStyle = CHART_STYLE.inkFade; ctx.lineWidth = 1; ctx.stroke();
   drawIslands(ctx, c, rx, ry);
   // 中心标注
+  // fix Loop1-F4: 标注群锚点整体偏移左上 (-48,-16)——MIDWAY ATOLL/坐标行原画环礁心正中，
+  // 与 ENT/HOR 圈标及 CSE 读数几何临界相叠；成品图标注群即偏左上位
   ctx.fillStyle = CHART_STYLE.ink;
   ctx.textAlign = 'center';
   ctx.font = `bold 13px ${CHART_STYLE.fontTypewriter}`;
-  ctx.fillText(CHART_LABELS.atoll, c.x, c.y - 8);
+  ctx.fillText(CHART_LABELS.atoll, c.x - 48, c.y - 24);
   ctx.font = `9px ${CHART_STYLE.fontTypewriter}`;
-  ctx.fillText(CHART_LABELS.atollCoords, c.x, c.y + 20);
+  ctx.fillText(CHART_LABELS.atollCoords, c.x - 48, c.y + 4);
   ctx.textAlign = 'left';
 }
 
@@ -338,10 +342,12 @@ function drawRangeRings(ctx, w, h) {
 // Task 7.7：罗盘——右上角光栅罗盘（compass.svg 资产由 svgLoader 提供）
 function drawCompassRose(ctx, w, h) {
   // 保真度修正 B3：AI 雕刻罗盘（亮度反转抠图）优先，compass_raster 回退
+  // fix Loop1-F3: 罗盘 110→150px 放大并右移贴缘（成品图右下大罗盘位；右上罗盘中心
+  // 与 40/60nm 距离环右侧标注带 y≈410 错开，互不压盖）
   const raster = getIcon('compass_engraved') || getIcon('compass_raster');
-  if (raster) { ctx.drawImage(raster, w - 150, 20, 110, 110 * (raster.height / raster.width)); return; }
+  if (raster) { ctx.drawImage(raster, w - 170, 20, 150, 150 * (raster.height / raster.width)); return; }
   const icon = getIcon('compass');
-  if (icon) ctx.drawImage(icon, w - 150, 24, 110, 110);
+  if (icon) ctx.drawImage(icon, w - 170, 24, 150, 150);
 }
 
 // Task 7.7：分段比例尺 0-10-25-50nm——右下角黑白相间分段条
@@ -375,7 +381,12 @@ function drawTaskForceMarker(ctx, tf, w, h, ox = 0, oy = 0) {
   ctx.beginPath(); ctx.arc(tf.x, tf.y, 10, 0, Math.PI * 2); ctx.stroke();       // circle-outline
   ctx.fillStyle = CHART_STYLE.ink;
   ctx.font = `bold 11px ${CHART_STYLE.fontTypewriter}`;
-  ctx.fillText(tf.callsign, tf.x - 14, tf.y - 16);                               // 字标在圈左上
+  // fix Loop1-F4: 字标统一圈右下 (tf.x+14, tf.y+20)——原圈左上字标压 MIDWAY ATOLL 标注群；
+  // 与环礁中心坐标行（ac.y + 4 基线，drawAtoll 同源）保持 ≥20px 矩形避让，不足再下移一行高
+  const lblX = tf.x + 14;
+  let lblY = tf.y + 20;
+  if (Math.abs(lblY - (ac.y + 4)) < 20) lblY += 14;
+  ctx.fillText(tf.callsign, lblX, lblY);
   const rad = ((tf.courseDeg - 90) * Math.PI) / 180;
   ctx.beginPath(); ctx.moveTo(tf.x, tf.y);
   ctx.lineTo(tf.x + Math.cos(rad) * 30, tf.y + Math.sin(rad) * 30); ctx.stroke(); // 航向线
