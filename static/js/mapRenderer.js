@@ -725,7 +725,8 @@ class MapRenderer {
       ctx.restore();
 
       // Task 7.9：敌情标记改由 ChartRenderer.drawEnemyContact 绘制
-      // （enemy_tag_q 光栅优先，大小随置信度 high 46 / medium 34 / low 26）。
+      // （成品图复现 G3 勘误：enemy_marker.svg 红虚线圈+?+ENEMY 上图，
+      // 大小随置信度 high 46 / medium 34 / low 26；enemy_tag_q 红方块退役为战报变体）。
       // 字段映射：known_enemy[].confidence 即置信档字段（'high'|'medium'|'low'，pydantic 默认 "low"；
       // 代码 `|| 'medium'` 仅是字段缺失时的渲染回退）。
       // Phase 9.3：复用 _hoverTarget 悬停机制，命中时放大 10% 重绘该标记作为高亮反馈

@@ -191,4 +191,30 @@ const silRotate = canvas.__ctx.__calls.find(
   (c) => c.name === "rotate" && Math.abs(c.args[0] - (3 * Math.PI) / 2) < 1e-6);
 assert.ok(silRotate, "剪影未按航向 rotate（期望 3π/2 = π 航向角 + π/2 朝向补偿）");
 
+// ── ⑥ 成品图复现 G3：敌情标记勘误——enemy_marker.svg（红虚线圈+?+ENEMY）上图 ──
+// 原裁定红方块 enemy_tag_q 系判读错误（设计师审计），改回 enemy_marker；空态无敌标，
+// 以桩 state 注入 1 个 known_enemy 断言 drawImage(enemy_marker) 被调用且锚点==投影。
+const seedMarker = vm.runInContext(
+  'loadedIcons["enemy_marker"] = { width: 120, height: 150, __stub: true };'
+  + 'getIcon("enemy_marker")', sandbox);
+assert.ok(seedMarker && seedMarker.__stub, "vm 桩：enemy_marker 图标注入失败");
+
+const ENEMY_LAT = 30.0, ENEMY_LON = -178.0;
+const enemyState = makeState(31.5, -176.0);
+enemyState.known_enemy = [{ position: { lat: ENEMY_LAT, lon: ENEMY_LON }, confidence: "high" }];
+renderer.render(enemyState);
+const markerCalls = canvas.__ctx.__calls.filter((c) => c.name === "drawImage" && c.args[0] === seedMarker);
+assert.ok(markerCalls.length === 1, `enemy_marker drawImage 应恰好被调用 1 次，实得 ${markerCalls.length}`);
+
+// 位置/尺寸：锚点==known_enemy 投影（_drawEnemyContacts 无 translate，直接画投影点）；
+// 尺寸沿用 confidence 档位映射（high 46）+ 1:1.25 等比（viewBox 120x150）
+const [eq, er] = renderer._worldToHex(ENEMY_LAT, ENEMY_LON);
+const [ex0, ey0] = renderer._hexToPixel(eq, er);
+const MK_W = 46, MK_H = 46 * (150 / 120);
+const [, mkDx, mkDy, mkDw, mkDh] = markerCalls[0].args;
+assert.ok(Math.abs(mkDx - (ex0 - MK_W / 2)) < 0.01 && Math.abs(mkDy - (ey0 - MK_H / 2)) < 0.01,
+  `敌标锚点 (${mkDx.toFixed(1)},${mkDy.toFixed(1)}) 偏离投影 (${ex0.toFixed(1)},${ey0.toFixed(1)})`);
+assert.ok(Math.abs(mkDw - MK_W) < 0.01 && Math.abs(mkDh - MK_H) < 0.01,
+  `敌标应按 confidence=high 档 46px 等比绘制，实得 ${mkDw}x${mkDh}`);
+
 console.log("ROUTE-DISPLAY PASS");

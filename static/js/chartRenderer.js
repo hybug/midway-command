@@ -357,18 +357,15 @@ function drawTaskForceMarker(ctx, tf, w, h, ox = 0, oy = 0) {
 }
 
 // Task 7.9：敌情接触标记——红圈 ENEMY 标记，大小随置信度（high 46 / medium 34 / low 26）
+// 成品图复现 G3 勘误（设计师审计）：成品图敌标实为「红虚线圈 + 中央 ? + 下方 ENEMY 红字」，
+// 原裁定红方块 enemy_tag_q 系判读错误——改用 enemy_marker.svg（本就是该形态，质量门 PASS）；
+// enemy_tag_q.png 保留为战报方框变体（svgLoader 资产在册），不再上图。
 function drawEnemyContact(ctx, contact) {
   const size = { high: 46, medium: 34, low: 26 }[contact.confidence] || 26;
-  // 优先 Phase 6 光栅 enemy_tag_q（近方形，按素材纵横比绘制防拉伸）
-  const raster = getIcon('enemy_tag_q');
-  if (raster) {
-    const rh = size * (raster.height / raster.width);
-    ctx.drawImage(raster, contact.x - size / 2, contact.y - rh / 2, size, rh);
-    return;
-  }
-  // 回退：enemy_marker.svg（120x150，任务书原尺寸 1:1.25）
   const icon = getIcon('enemy_marker');
-  if (icon) ctx.drawImage(icon, contact.x - size / 2, contact.y - size / 2, size, size * 1.25);
+  if (!icon) return;
+  const ih = size * (icon.height / icon.width); // viewBox 120x150（1:1.25），按素材纵横比绘制防拉伸
+  ctx.drawImage(icon, contact.x - size / 2, contact.y - ih / 2, size, ih);
 }
 
 const ChartRenderer = {

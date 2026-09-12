@@ -398,3 +398,16 @@ def test_ui_controller_placeholder_order_note():
         assert kw in js, f"uiController.js 缺少占位军令纸标记 {kw}"
     css = (BASE / "static" / "css" / "style.css").read_text()
     assert ".btn:disabled" in css, "style.css 缺少按钮禁用态（降低不透明度）样式"
+
+
+# ── 成品图复现 · G3：敌标勘误——红虚线圈+?+ENEMY（enemy_marker.svg 上图） ──
+
+def test_enemy_contact_marker_uses_enemy_marker_svg():
+    """设计师审计勘误：成品图敌标实为「红虚线圈+中央?+下方ENEMY红字」，原裁定红方块
+    enemy_tag_q 系判读错误——改用 enemy_marker.svg（本就是该形态，质量门 PASS）；
+    enemy_tag_q.png 保留为战报方框变体（svgLoader 资产在册），不再上图。"""
+    js = (BASE / "static" / "js" / "chartRenderer.js").read_text()
+    assert "getIcon('enemy_marker')" in js, "敌情标记未使用 enemy_marker.svg（红虚线圈+?+ENEMY 形态）"
+    assert "getIcon('enemy_tag_q')" not in js, "enemy_tag_q 红方块不得再上图（保留为战报方框变体）"
+    # 尺寸沿用 confidence 档位映射（high 46 / medium 34 / low 26）
+    assert "{ high: 46, medium: 34, low: 26 }" in js, "敌标 confidence 尺寸档位映射缺失"
