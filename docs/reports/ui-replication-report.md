@@ -3,6 +3,21 @@
 > 视觉基准：`docs/assets/ChatGPT Image 2026年6月17日 10_55_51.png`（15 项物料板）
 > 流程：docs/plans/ui-replication-plan.md「质量把关体系」三级闸门；本报告为终验级记录。
 
+## 基准升级声明（2026-09-12，product-replica-plan P0.1）
+
+**自 `docs/plans/product-replica-plan.md` 起，视觉基准升级为产品 mockup `docs/assets/Gemini_Generated_Image_u1fak0u1fak0u1fa.png`（2752×1536，下称「成品图」）——成品图为唯一视觉基准。**上文 15 项物料板**降级为切图规范参考**（spritesheet 面板仍是 fleet/aircraft/罗盘资产的出处规范）；概念图 `4d8kly` 为布局标注参考。本报告下文的 15 项验收表与 Loop 记录均为旧基准（物料板）下的历史结论，不作废；按成品图的重验以 product-replica-plan 批次 D/E/G + Loop ≥5 轮 + 终验为准。
+
+### 像素级比对结论（2026-09-12 实测，已存证 `docs/reports/product-compare/`）
+
+统一 1440×900（设计非等比压缩，仅区域粗测）：
+
+- 整体均值色：设计 (169,153,122) vs 当前 (208,199,177)——**设计暗 39/46/55**，整体更黄更旧。
+- 4×4 区域均色差最大热区：**右列 98.7**（右栏：设计深色 vs 当前浅纸）、**底行 74.9/70.8/78.7**（底栏：设计深棕 `#42372C` 系 vs 当前浅纸 `#B8AC9A` 系）。
+- 关键采样：图面空白设计 (231,206,159) vs 当前 (227,220,200)——**设计纸更黄（B 通道差 41）且暗角更重**；顶栏接近（182 vs 186）✓。
+- 构图：设计为**环礁近景**（约 45nm 视野：20nm 环贯穿环礁内部、40nm 出上缘、60nm 贴右缘），环礁占图表面积 ~70%；当前 65nm 远景环礁仅 ~25%。
+
+存证：`docs/reports/product-compare/side-by-side.png`、`design-scaled.png`。
+
 ## 基线（Phase 0, 2026-09-10）
 
 - `baseline-1280.png` / `baseline-1920.png`：复刻前现状截图。
