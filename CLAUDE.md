@@ -74,7 +74,7 @@ All commands assume the virtual environment is activated (`source .venv/bin/acti
 # Run the app — FastAPI backend + static frontend at http://localhost:8000
 uvicorn server:app --reload
 
-# Run all tests (230 collected)
+# Run all tests (以 pytest 实况为准，当前 285 passed)
 pytest tests/
 
 # Run a single test

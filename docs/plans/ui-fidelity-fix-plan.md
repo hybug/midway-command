@@ -1,5 +1,7 @@
 # 保真度修正计划 v3：批次 A（SVG）+ 批次 B（AI 图）+ Loop×5 + 终验 —— ≥10 小时完整执行工程
 
+> **[历史存档 2026-09-12]** 本文档已执行完毕，仅作历史参考（现行计划见 docs/plans/product-replica-plan.md 与仓库实况）。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development（每任务派发实现子代理 + 任务评审，本轮执行的主框架）。完成声明前遵循 superpowers:verification-before-completion（先验证后声明）；终验走 superpowers:requesting-code-review 的全分支审查；Loop 中遇缺陷先 superpowers:systematic-debugging 再修。本计划 v3 取代 v2。
 
 **Goal:** 修复实拍对照发现的 7 处真实差距并系统性收敛：批次 A（SVG/程序化，5 任务）→ 批次 B（AI 生成图集成，4 任务）→ **批次 C（航线模块单元测试与问题修复：舰队航线运动学 + 飞机航线生成/拦截 + UI 显示一致性——「舰队与机群是否按代码逻辑的航线刷新显示」，5 任务）**→ **Loop 模式（「实拍对照→差距分级→设计评审→方案→实施」闭环 ≥5 轮）**→ 终验（全分支审查+修复波次）。总执行工时**自下而上核算 ≥14.7 小时**（见工作量核算表），并有预算保护条款兜底。

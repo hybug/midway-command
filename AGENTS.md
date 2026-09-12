@@ -15,7 +15,7 @@ midway-command/
 ├── tests/             # Pytest test suite
 ├── docs/
 │   ├── design/        # Authoritative design docs (GAME_SPEC.md, UI_DESIGN.md, ART_DIRECTION.md…)
-│   ├── plans/         # Feature implementation plans (e.g. ui-replication-plan.md)
+│   ├── plans/         # Feature implementation plans (e.g. product-replica-plan.md)
 │   └── reference/     # Historical notes for state init and NPC prompts
 ├── plan/              # 10-day MVP iteration plan (status in OVERVIEW.md)
 └── assets/svg/        # Game artwork (SVG icons inlined by static/js/svgLoader.js)
@@ -66,7 +66,7 @@ source .venv/bin/activate
 
 ## Frontend (static/)
 
-Vanilla JS, no framework, no build step; only `/static` is mounted by FastAPI (servable asset files must live under `static/`). `main.js` orchestrates and binds events, `uiController.js` handles panels/tabs, `mapRenderer.js` draws the Canvas map, `svgLoader.js` turns inline SVG strings into `Image` objects for canvas. Map math is prepared server-side in `src/render/`. The visual target is the mockup sheet `docs/assets/ChatGPT Image 2026年6月17日 10_55_51.png` (15-asset "1942 aged-paper chart" board); implementation plan: `docs/plans/ui-replication-plan.md`. Raster material also lives in `docs/assets/`: a green-screen icon sheet (`Gemini_Generated_Icon_Green.png`), the matting script `extract_icons.py`, and `icons_extracted/` (47 transparent PNGs, mixed quality) — curated into `static/assets/ui/icons/` per the plan's raster phase.
+Vanilla JS, no framework, no build step; only `/static` is mounted by FastAPI (servable asset files must live under `static/`). `main.js` orchestrates and binds events, `uiController.js` handles panels/tabs, `mapRenderer.js` draws the Canvas map, `svgLoader.js` turns inline SVG strings into `Image` objects for canvas. Map math is prepared server-side in `src/render/`. The visual target is the product image `docs/assets/Gemini_Generated_Image_u1fak0u1fak0u1fa.png` (the demoted mockup sheet `docs/assets/ChatGPT Image 2026年6月17日 10_55_51.png` remains as the cut-sheet spec reference for the 15-asset "1942 aged-paper chart" board); current implementation plan: `docs/plans/product-replica-plan.md`. Raster material also lives in `docs/assets/`: a green-screen icon sheet (`Gemini_Generated_Icon_Green.png`), the matting script `extract_icons.py`, and `icons_extracted/` (47 transparent PNGs, mixed quality) — curated into `static/assets/ui/icons/` per the plan's raster phase.
 
 ## LLM Provider Gotchas (Kimi Code, not Anthropic)
 

@@ -1,5 +1,7 @@
 # 技术架构文档 · TECH_ARCH.md
 
+> **[历史存档 2026-09-12]** 本文档已被取代（TECH_ARCH 为 Streamlit 时代架构，现役见 docs/design/CHART_SYSTEM.md 与仓库实况），仅作历史参考。
+
 > 描述 Phase 3 阶段的系统设计。
 
 ---

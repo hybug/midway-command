@@ -32,6 +32,18 @@
 | AGENTS.md:18,69 | plans 示例指向已完结的 ui-replication-plan.md；视觉基准声明仍指 15 项物料板（已被成品图取代） | 更新为成品图基准 + product-replica-plan.md 指针 |
 | docs/plans/ui-fidelity-fix-plan.md | 无「已完成/存档」标注，现在时指令体易被误当当前计划拾起；内含过时快照（缓存号 1780997989、paper 目标色、物料板基准映射表） | 顶部加「已完成·历史存档」声明+指向 product-replica-plan.md |
 
+### 处置记录（终审后修复，2026-09-12）
+
+第三节 7 项已全部处置：
+
+1. CLAUDE.md:78 — 「230 collected」已改「以 pytest 实况为准（当前 285 passed）」。
+2. README.md:59 — 「101 tests」已改「285 tests」。
+3. README.md 端点表 — 已补 /plan-strike、/confirm-strike、/reject-strike、/recall、/confirm-contact/{index}（按 server.py 实况核对方法与路径）。
+4. README.md 文档链接 — 6 条失效链接已改为 docs/design/…、docs/reference/… 实际路径。
+5. docs/README.md — 真相来源已改指 GAME_SPEC.md；「最后更新」改 2026-09-12；索引补 plans/、reports/、design/CHART_SYSTEM.md。
+6. AGENTS.md — plans 示例改 product-replica-plan.md；Frontend 视觉目标句改成品图基准 + 现行计划指针。
+7. docs/plans/ui-fidelity-fix-plan.md — 顶部已加历史存档标注（implementation-plan.md、TECH_ARCH.md 同批处理）。
+
 ## 四、需随计划任务同步更新的伴生项（已排期，执行时勿漏）
 
 | 文件 | 冲突项 | 随哪个任务更新 |

@@ -56,7 +56,7 @@ Python: FastAPI (后端)
 | 后端 | Python 3.10+ / FastAPI / Pydantic v2 |
 | 前端 | 原生 JS / CSS / HTML5 Canvas |
 | LLM | Kimi Code API (kimi-for-coding) |
-| 测试 | pytest (101 tests) |
+| 测试 | pytest (285 tests) |
 
 ## 快速开始
 
@@ -87,12 +87,17 @@ uvicorn server:app --reload
 | POST | `/advance` | 推进时间 |
 | POST | `/suggestion/{id}/approve` | 批准方案 |
 | POST | `/suggestion/{id}/reject` | 驳回方案 |
+| POST | `/plan-strike` | 制定空袭方案 |
+| POST | `/confirm-strike` | 确认空袭方案 |
+| POST | `/reject-strike` | 驳回空袭方案 |
+| POST | `/recall` | 召回机群 |
+| POST | `/confirm-contact/{index}` | 确认敌情接触 |
 
 ## 文档
 
-- [游戏设计](docs/GAME_DESIGN_V2.md) — 核心玩法、NPC 性格、骰子系统
-- [UI 设计](docs/UI_DESIGN.md) — 二战海图风格规范
-- [美术方向](docs/ART_DIRECTION.md) — 图像生成 AI 提示词
-- [技术架构](docs/TECH_ARCH.md) — 系统分层、模块职责
-- [历史背景](docs/HISTORICAL_NOTES.md) — 真实战况、人物、电文
-- [NPC 档案](docs/NPC_PROFILES.md) — 人物设定、自主度参数
+- [游戏设计](docs/design/GAME_DESIGN_V2.md) — 核心玩法、NPC 性格、骰子系统
+- [UI 设计](docs/design/UI_DESIGN.md) — 二战海图风格规范
+- [美术方向](docs/design/ART_DIRECTION.md) — 图像生成 AI 提示词
+- [技术架构](docs/design/TECH_ARCH.md) — 系统分层、模块职责
+- [历史背景](docs/reference/HISTORICAL_NOTES.md) — 真实战况、人物、电文
+- [NPC 档案](docs/design/NPC_PROFILES.md) — 人物设定、自主度参数

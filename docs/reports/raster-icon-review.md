@@ -49,7 +49,7 @@ MANUAL：≥2 个面积占比 >20% 的连通域 → 合并切割嫌疑，人工�
 |------|------|--------|-----------|---------------------|
 | aircraft_14_232x161.png | 232x161 | FAIL G4(0.47) | **ENT 名牌 + 飞机顶视图被合并切割**（另含 "32x32px" 标注碎屑）。按 x≈110 分拆：左 → `fleet_tag_ent.png`，右 → `aircraft_topdown.png` | **已修复**：按中缝 x=114 分拆并裁除底部标注（见 3.2.1），两产物均 PASS，已进 6.3 入库 |
 | aircraft_19_234x162.png | 234x162 | FAIL G4(0.47) | **红"？"牌 + 红"！！"牌合并**。分拆 → `enemy_tag_q2.png` / `enemy_tag_alert.png` | **已修复**：按中缝 x=117 分拆并裁除底部标注，两产物均 PASS（源池备查，暂无入库目标） |
-| button_26_88x354.png | 88x354 | FAIL G4(0.42) | 竖条：**铅笔 + 圆规**两件工具。分拆后铅笔由 A15 SVG 顶替，**圆规是素材表独有道具**可作桌面新资产 | **不拆**：铅笔已由 A15 SVG 资产顶替（commit a088fce），圆规暂缓；保持合并原样，登记为弃用档 |
+| button_26_88x354.png | 88x354 | FAIL G4(0.42) | 竖条：**铅笔 + 圆规**两件工具。分拆后铅笔由 A15 SVG 顶替，**圆规是素材表独有道具**可作桌面新资产 | **不拆**：铅笔已由 A15 SVG 资产顶替（commit a088fce），圆规暂缓；保持合并原样，登记为弃用档（更新：圆规段已由 product-replica-plan G5 启用分拆 → compass_brass.png） |
 | fleet_24_176x355.png | 176x355 | FAIL G4(0.12) | **真·罗盘玫瑰矢量画**，顶部 40% 为玫瑰本体，下方 "Vector art, rotation axis" 标注。裁掉标注 → A6 的第二备选 | **部分修复**：裁剪出 `compass_raster_alt.png`（去标题/标注/右缘淡线），但门判定 FAIL G4(0.34)——矢量画由星体+多段刻度环+方位字母构成，主体占比天然 <0.5（目检为单一完整玫瑰，非合并切割）；作 A6 备选保留源池、**不入库**，入库主选 `compass_raster`（text_style_20，PASS） |
 | fleet_25_60x354.png | 60x354 | PASS(需裁) | **竖版地图尺**（金褐色，与美术风格一致），顶部含 "MAP" 字样。裁掉文字 → A14 的实拍质感备选 | **已修复**：裁除顶部 "MAP" 文字 → `map_ruler_alt.png` PASS（A14 实拍质感备选，暂由 SVG 木尺顶替） |
 
@@ -116,7 +116,7 @@ MANUAL：≥2 个面积占比 >20% 的连通域 → 合并切割嫌疑，人工�
 
 - **Task 6.2**：优先处理 3.2 的 5 枚；`aircraft_14` 的分拆建议 x=110（名牌区约占左半）；`fleet_24` 玫瑰本体约在上部 0–40% 高度；`fleet_25` 尺子本体约在下部 8%–100%。（已完成：实测中缝为 x=103–126 / x=106–128，最终分割坐标见 3.2.1）
 - **Task 6.3**：`curate_icons.py` 的 TARGETS 建议在原 4 项基础上扩为：`fleet_tag_ent`（分拆）、`fleet_tag_hor`（aircraft_15）、`fleet_tag_cv`（aircraft_16）、`fleet_tag_bb`（aircraft_17）、`enemy_tag_q`（aircraft_18）、`aircraft_topdown`（分拆）、`compass_raster`（text_style_20）。（已完成，见 `docs/assets/curate_icons.py`）
-- **Task 7.9**：舰队标记的 callsign → 计数牌映射可升级为 ENT/HOR/CV/BB 四牌齐备。
+- **Task 7.9**：舰队标记的 callsign → 计数牌映射可升级为 ENT/HOR/CV/BB 四牌齐备。（更新：G1 计数牌已退役，本条作废）
 
 ## 六、AI 生成素材登记（保真度修正批次 B，2026-09-12）
 
