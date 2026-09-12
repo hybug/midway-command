@@ -1,6 +1,6 @@
 # 海图系统设计（Theater Chart System）
 
-> 状态：设计稿 v1（待评审讨论） · 上游：`docs/plans/product-replica-plan.md`（成品图复现工程） · 关联：`docs/design/GAME_SPEC.md`、`docs/design/TECH_ARCH.md`
+> 状态：设计稿 v1.1（六项开放问题已拍板，见 §九决议记录；待出实施计划） · 上游：`docs/plans/product-replica-plan.md`（成品图复现工程） · 关联：`docs/design/GAME_SPEC.md`、`docs/design/TECH_ARCH.md`
 
 ## 一、目标与设计原则
 
@@ -30,6 +30,7 @@ theaters/
     ├── theater.json              # 战区元数据 + 渲染配置 + 玩法配置（核心，见下）
     ├── geography.geojson         # 地理图层（GeoJSON FeatureCollection）
     ├── assets/                   # 战区专属位图/矢量素材（可选，如大岛纹理）
+    ├── scenario.json               # 战区剧本：初始兵力部署/NPC 名册/胜利条件/历史事件种子
     └── README.md                 # 数据来源、许可证、生成方式（agent 填写）
 ```
 
@@ -64,7 +65,8 @@ theaters/
   "style_overrides": {                       // 战区级风格覆盖（可选，缺省用全局 chart style）
     "sea_tint": "rgba(184,212,200,0.25)",
     "land_fill": "#d4c4a0"
-  }
+  },
+  "scenario": "scenario.json"                // 指向战区剧本（换图=换玩法，见 §5.2）
 }
 ```
 
@@ -181,6 +183,24 @@ append_mission_route(mission)        # 侦察/打击任务自动生成（现有 
 
 样式（对齐 1942 海图语言）：手绘线=Caveat 铅笔灰线；任务线=红/蓝虚线+箭头；航迹=浅墨点线。**这正是成品图里 ENT→环礁双虚线箭头矢量的系统化表达**。
 
+### 5.2 航海参谋航线玩法（已拍板：核心玩法闭环）
+
+**决策回路**：指挥官给出战略意图（自然语言）→ **航海参谋 NPC**（新 LLM 角色）生成结构化航线方案 → 命令卡呈现方案摘要 + **海图同步渲染草案线**（铅笔虚线）→ 指挥官批注修改意见 → 参谋修订（可多轮）→ **批准** → 航线转正式任务线，舰队沿航路点航行，海图自动更新。
+
+```python
+# 新 NPC：src/agents/navigator.py（航海参谋）
+# 工具集（npc_config 注册）：query_own_fleet / query_theater(theater_id) /
+#   query_distance_bearing(a, b) / query_bases() / propose_route(route) —— 全部走 GameState 墙
+NavigatorNPC.propose_route -> PendingRoute(          # 复用 PendingSuggestion 审批架构
+    route=Route(kind="planned", waypoints=[...], speeds=[...]),
+    rationale="抢占东南风位，黎明前封锁珍珠港航道…",   # 史实/战术理由（命令卡展示用）
+    status="proposed")                                # → 玩家批准后 route.status=active
+```
+
+- **海图渲染联动**：`proposed` 状态画**铅笔草案线**（Caveat 灰虚线+航路点小圈）；`active` 转**任务线**（红/蓝虚线+箭头）；舰队航迹叠加浅墨点线。三类线即成品图 ENT→环礁双虚线矢量的系统化。
+- **命令卡联动**：PendingRoute 复用军令纸组件（A8/E6 常驻卡），正文=rationale+航路点表（航向/距离/ETA），按钮=批准实施/驳回/提修改意见（意见走聊天回路给参谋）。
+- **与现有架构的复用关系**：审批流=PendingSuggestion 同构；参谋工具全部经 GameState 墙（不碰真实坐标外泄问题）；NPC 名册在 scenario.json 中按战区配置（珊瑚海=TF17 Fletcher 参谋团，中途岛=Spruance 参谋团）。
+
 ## 六、Agent 换图工作流（条件 1：珊瑚海场景）
 
 ```
@@ -201,6 +221,13 @@ Agent（theater-designer agent，新角色）
         ▼
 游戏热加载（server 端点 POST /theater/{id} → TheaterContext 切换 + 前端 loadTheater）
 ```
+
+**战区包更新标准（agent 产出必须满足的验收规范）**：
+1. **地理精度**：海岸线 0.1°（~6nm）级、单要素 8–30 顶点；关键地理（大岛/基地/礁群）与真实坐标偏差 ≤ 0.3°；
+2. **完整性**：theater.json 全字段 + ≥1 个 land + ≥2 个 base + ≥1 个 sector + scenario.json 全字段；
+3. **史实附注**：README 必须记录数据来源（检索引文/AI 生成声明）与许可证（Natural Earth=PD / AI 生成无第三方）；
+4. **视觉验收**：设计师 agent 对照真实珊瑚海地图审海岸线形态/取景构图（审校分离纪律）；
+5. **玩法自洽**：scenario 双方兵力按史实可对弈（机动路线/侦察扇区/基地覆盖成回路）。
 
 **Agent 可行性关键点**：
 - 数据低精度立场（§三）使 agent 手写 GeoJSON 可行，不依赖 GIS 管线；
@@ -238,18 +265,20 @@ Agent（theater-designer agent，新角色）
 | R2 | **真实历史海图底图** | 公有领域扫描件做 L0 底图（LLC/旧海图档案）——质感天花板 |
 | R3 | **agent 动态事件** | agent 读战区史实库生成历史事件（鹦鹉螺号暴露、运输团转向） |
 
-## 九、开放讨论项（需要拍板）
+## 九、决议记录（2026-09-12 拍板）
 
-1. **换图粒度**：热加载是 dev 工具（`POST /theater/{id}`）还是正式玩法（战役选择菜单）？影响 UI 工作量。
-2. **航线交互形态**：玩家手绘航线的输入方式——图上点选航路点（鼠标）vs 指令文本（"舰队向 320° 航行 60 海里"由 agent 解析）？后者更贴叙事，前者更直接。可两者都做（文本优先）。
-3. **陆地语义强度**：岛屿仅是视觉+基地锚点，还是要参与规则（搁浅/遮蔽/绕飞）？v1 建议仅视觉+锚点，遮蔽留增强层 E3。
-4. **GeoJSON 来源政策**：允许 OSM/外部数据吗（引入许可证审查成本），还是 v1 限定「agent 知识生成 + Natural Earth PD」白名单？
-5. **多级缩放的交互预算**：滚轮连续缩放 vs 三档离散海图（更贴「换一张海图纸」的史实感）？后者实现便宜且风格成立。
-6. **TheaterContext 的后端权威性**：战区包是前端渲染配置 + 后端 Python 各读一份（双解析，需 schema 同步）还是后端单一下发 JSON API（单一来源）？建议后者（`GET /theater` 运行时下发，前端零内置战区）。
+| # | 议题 | 决议 |
+|---|------|------|
+| 1 | 换图粒度 | **正式玩法**——UI 复现完成后整个玩法切换到珊瑚海海战；开局提供战役选择（theater 加载即初始化 scenario） |
+| 2 | 航线输入 | **航海参谋 NPC 提案 → 指挥官修订 → 批准上图**的决策闭环（§5.2），这是游戏核心玩法 |
+| 3 | 陆地语义 | v1 仅视觉+基地锚点（遮蔽/搁浅留增强层 E3） |
+| 4 | 数据来源 | v1 限定「agent 知识生成 + Natural Earth PD」白名单；OSM 暫缓 |
+| 5 | 多级缩放 | 先不做；每战区固定取景（theater.view），camera 口预留 |
+| 6 | 权威源 | **后端单一下发**：theaters/ 归后端，`GET /theater` 运行时下发战区包，前端零内置战区 |
 
 ---
 
 ## 附：与既有工程的关系
 
 - 本设计**不推翻**成品图复现工程——Midway 战区包化后，已收敛的视觉（Loop×5 的 44/50）由 gen_midway_pack 生成器等价保持，作为重构的回归基准。
-- 实施切分建议（讨论后另立计划）：**Phase 1** = Theater Pack + ChartEngine + Midway 包化（重构，视觉零变化）→ **Phase 2** = 航线系统（玩法）→ **Phase 3** = agent 换图工作流（珊瑚海验证）→ **Phase 4** = 增强层按拍板逐个立项。
+- 实施切分（决议后定稿，待出实施计划）：**Phase 1** = Theater Pack + ChartEngine + 中途岛包化（重构，视觉零变化回归）→ **Phase 2** = 航线系统 + 航海参谋 NPC（§5.2 核心玩法闭环，复用审批架构）→ **Phase 3** = 战役选择（正式玩法）+ agent 生成珊瑚海战区包（过 §六 五步验收）→ **Phase 4** = 增强层按拍板逐个立项（缩放暂缓）。
