@@ -98,6 +98,7 @@ SVG_PALETTE = {
     "#c9a76a", "#b08d52", "#8a6b3a", "#4a3820",  # ruler 木尺
     "#e8a33d", "#c8871f", "#b8b8c0", "#8f8f9a", "#d88a7c", "#d4b890", "#3a3228",  # pencil
     "#b22234", "#3c3b6e",  # flag48 旗
+    "#2b2118",  # chart-area 海图厚画框（style.css #chart-area border，成品图复现 D3）
 }
 
 SVG_COLOR_RE = re.compile(r'(?:fill|stroke|stop-color)="(#[0-9a-fA-F]{6})"')
