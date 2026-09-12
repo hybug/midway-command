@@ -77,3 +77,13 @@
 - **取证**：loop-1-after-fixture-1440.png 覆盖重截（无头 Chrome 1440×900，设计态 09:45Z）并 Read 自查——纸缘晕影四边可见。像素级复核（旧图 vs 新图）：差异 82,439px（此前 REJECT 时 diff=0），其中 95% 落在海图内缘 40–60px 边带；边带亮度均值 −6.6（变暗）、图心 0.6% 像素变动（≈0）；角落 −26 vs 向内 60px −19，梯度向内衰减，符合 inset 晕影形态。
 - **验证**：全量 pytest 285 passed / 0 failed；test_index_html_cache_version_consistent PASS（1780998007）。
 - **提交**：`fix: 纸面晕影改 ::after 覆层（设计师验收 F8）`。
+
+## L5.5 设计师验收（硬门）
+- F1–F7 全 ACCEPT（截图裁剪放大逐像素取证）
+- F8 首裁 REJECT（inset 阴影被不透明 canvas 覆盖，diff=0 零效果）→ 重做 ::after 覆层 → 终裁 **ACCEPT**（独立复算 diff=68,166px、边带分布/梯度/角部强化全部符合 inset 晕影特征）
+- DESIGN-SCORE：7.2/10（首评 6.6，↑+0.6）
+- NEW-ISSUES 转 Loop 2：扇区方向标签被陆地遮挡 / 空态中心群拥挤（CSE 穿线+2px 擦边）/ 罗盘压 176°30'W 标注（轻微）
+- **VERDICT: LOOP1-CLOSED**
+
+## 提交
+- 15ed131 / 5f5015e / c2637e8 / 9a92cd1 / 54fbd92 / 1db5964 / 93368b1
