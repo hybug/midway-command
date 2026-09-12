@@ -217,4 +217,28 @@ assert.ok(Math.abs(mkDx - (ex0 - MK_W / 2)) < 0.01 && Math.abs(mkDy - (ey0 - MK_
 assert.ok(Math.abs(mkDw - MK_W) < 0.01 && Math.abs(mkDh - MK_H) < 0.01,
   `敌标应按 confidence=high 档 46px 等比绘制，实得 ${mkDw}x${mkDh}`);
 
+// ── ⑦ 成品图复现 G4：SECRET 章叠在 drawAll 末尾（比例尺后），-10° 倾斜 24,20,180,76 ──
+const seedStamp = vm.runInContext(
+  'loadedIcons["secret_stamp"] = { width: 260, height: 110, __stub: true };'
+  + 'getIcon("secret_stamp")', sandbox);
+assert.ok(seedStamp && seedStamp.__stub, "vm 桩：secret_stamp 图标注入失败");
+
+const callsBefore = canvas.__ctx.__calls.length;
+sandbox.ChartRenderer.drawAll(canvas.__ctx, 1440, 900);
+const drawAllCalls = canvas.__ctx.__calls.slice(callsBefore);
+const stampImg = drawAllCalls.find((c) => c.name === "drawImage" && c.args[0] === seedStamp);
+assert.ok(stampImg, "drawAll 未叠画 SECRET 章");
+// 章心平移 (24+90, 20+38) → rotate(-10°) → drawImage(-90,-38,180,76)（目标矩形 24,20,180,76）
+const stampIdx = drawAllCalls.indexOf(stampImg);
+const stampTranslate = drawAllCalls.slice(0, stampIdx).reverse().find((c) => c.name === "translate");
+assert.deepEqual(stampTranslate.args.map((v) => Math.round(v)), [114, 58],
+  "SECRET 章未绕章心 (114,58) 旋转平移");
+const stampRotate = drawAllCalls.slice(0, stampIdx).reverse().find((c) => c.name === "rotate");
+assert.ok(stampRotate && Math.abs(stampRotate.args[0] - (-10 * Math.PI / 180)) < 1e-9,
+  "SECRET 章缺 -10° rotate");
+assert.deepEqual(stampImg.args.slice(1), [-90, -38, 180, 76], "SECRET 章 drawImage 矩形不符");
+// 顺序：章在比例尺标注（末位 fillText 'nm'）之后（drawAll 末尾=比例尺后）
+const nmIdx = drawAllCalls.map((c) => c.name === "fillText" && c.args[0] === "nm").lastIndexOf(true);
+assert.ok(stampIdx > nmIdx, "SECRET 章未画在比例尺之后（drawAll 末尾裁定）");
+
 console.log("ROUTE-DISPLAY PASS");

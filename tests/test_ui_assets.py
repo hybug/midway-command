@@ -411,3 +411,22 @@ def test_enemy_contact_marker_uses_enemy_marker_svg():
     assert "getIcon('enemy_tag_q')" not in js, "enemy_tag_q 红方块不得再上图（保留为战报方框变体）"
     # 尺寸沿用 confidence 档位映射（high 46 / medium 34 / low 26）
     assert "{ high: 46, medium: 34, low: 26 }" in js, "敌标 confidence 尺寸档位映射缺失"
+
+
+# ── 成品图复现 · G4：SECRET 章上地图左上 + CHART 字幕移除（设计审计 MISSING-6） ──
+
+def test_chart_draws_secret_stamp_top_left():
+    """成品图地图左上角为横版 SECRET 大章（-10° 倾斜），drawAll 末尾（比例尺后）叠画；
+    该位置原「海图（CHART）」字幕随之从 index.html 移除（字幕保留会穿帮）。"""
+    js = (BASE / "static" / "js" / "chartRenderer.js").read_text()
+    assert "getIcon('secret_stamp')" in js, "chartRenderer 未取用 secret_stamp 章"
+    assert "drawSecretStamp(ctx, w, h)" in js, "drawAll 末尾未叠画 SECRET 章"
+    assert "-10 * Math.PI / 180" in js, "SECRET 章缺 -10° 倾斜（rotate 用 ctx 变换）"
+    assert "drawImage(stamp, -90, -38, 180, 76)" in js, "SECRET 章未按 24,20,180,76 目标矩形绘制"
+
+
+def test_index_html_chart_caption_removed():
+    """「海图（CHART）」字幕 div 删除——成品图该位置是 SECRET 章，字幕保留穿帮。"""
+    html = (BASE / "static" / "index.html").read_text()
+    assert "chart-label" not in html, "index.html 仍残留 .chart-label 字幕 div"
+    assert "海图（CHART）" not in html, "index.html 仍残留「海图（CHART）」字幕文案"

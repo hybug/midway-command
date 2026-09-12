@@ -368,6 +368,19 @@ function drawEnemyContact(ctx, contact) {
   ctx.drawImage(icon, contact.x - size / 2, contact.y - ih / 2, size, ih);
 }
 
+// 成品图复现 G4：SECRET 章——地图左上角横版大章（设计审计 MISSING-6：成品图该位置是
+// SECRET 章，原「海图（CHART）」字幕已随之从 index.html 移除，保留会穿帮）。
+// 章目标矩形 24,20,180,76；-10° 倾斜用 ctx 变换绕章心旋转（先 translate 到章心再 rotate）。
+function drawSecretStamp(ctx, w, h) {
+  const stamp = getIcon('secret_stamp');
+  if (!stamp) return;
+  ctx.save();
+  ctx.translate(24 + 180 / 2, 20 + 76 / 2);
+  ctx.rotate(-10 * Math.PI / 180);
+  ctx.drawImage(stamp, -90, -38, 180, 76);
+  ctx.restore();
+}
+
 const ChartRenderer = {
   drawAll(ctx, w, h) {
     drawChartBase(ctx, w, h);
@@ -376,6 +389,7 @@ const ChartRenderer = {
     drawRangeRings(ctx, w, h);
     drawCompassRose(ctx, w, h);
     drawScaleBar(ctx, w, h);
+    drawSecretStamp(ctx, w, h);
   },
   drawTaskForceMarker,
   drawEnemyContact,
