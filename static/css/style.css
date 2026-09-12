@@ -194,17 +194,6 @@ html, body {
   height: 100%;
 }
 
-.chart-label {
-  position: absolute;
-  top: 6px;
-  left: 10px;
-  font-size: 10px;
-  letter-spacing: 3px;
-  color: var(--color-ink-fade);
-  pointer-events: none;
-  z-index: 2;
-}
-
 /* ═══════════════════════════════════════════════════════
    Bottom Dashboard — 底部状态栏（纸张风格）
    ═══════════════════════════════════════════════════════ */
@@ -581,8 +570,8 @@ html, body {
    ═══════════════════════════════════════════════════════ */
 .desk-prop { position: absolute; z-index: 5; pointer-events: none; filter: drop-shadow(2px 3px 3px rgba(0,0,0,0.4)); }
 /* 成品图复现 G6（勘测修正）：木尺横放左下压图缘（与圆规同侧）；铅笔竖放右缘笔尖朝下——
-   铅笔 SVG 为横向 420×36（笔尖朝左），rotate(-90°) 转竖笔尖朝下，translateX 把旋转后的
-   视觉盒（宽≈17px）贴回右缘 14px（布局盒宽 200px，91px = 200/2 − 17/2 − 14） */
+   铅笔 SVG 为横向 420×36（笔尖朝左），rotate(-90°) 转竖笔尖朝下，
+   translateX(91px)：200/2 − 17/2 ≈ 91.4（right 抵消），落位右缘 ≈14px */
 .desk-ruler  { left: 6px; right: auto; bottom: 54px; width: 300px; transform: rotate(-3deg); }
 .desk-pencil { right: 14px; left: auto; bottom: 120px; width: 200px; height: auto; transform: translateX(91px) rotate(-90deg); }
 /* 成品图复现 G5：黄铜圆规道具（button_26 分拆）——桌面左下与木尺同侧，rotate 15°，drop-shadow 走 .desk-prop 同族 */

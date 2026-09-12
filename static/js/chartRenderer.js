@@ -130,7 +130,7 @@ function drawLatLonGrid(ctx, w, h) {
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
       ctx.setLineDash([]);
       if (x > w - 170) continue; // 罗盘占位带（x > w-170）内不画标注
-      ctx.fillText(fmtLon(lon), x + 3, 26); // y=26 下移避让左上角 .chart-label div（fix round 3）
+      ctx.fillText(fmtLon(lon), x + 3, 26); // y=26 经度标注下移（罗盘/章避让，fix round 3）
     }
   ctx.restore();
 }
