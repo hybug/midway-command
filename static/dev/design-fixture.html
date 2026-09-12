@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FIXTURE — 设计态像素比对（非游戏画面）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Special+Elite&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    /* H1 防误认横幅：固定左上小字条，不改变主布局（像素比对基准页） */
+    #fixture-banner {
+      position: fixed;
+      top: 0;
+      left: 8px;
+      z-index: 9999;
+      background: rgba(139, 37, 0, 0.85);
+      color: #f5edd6;
+      font: 9px/1.6 'Special Elite', monospace;
+      letter-spacing: 1px;
+      padding: 0 10px;
+      border-radius: 0 0 6px 6px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+<div id="fixture-banner">FIXTURE — 非游戏画面</div>
+
+<div id="app">
+
+  <!-- ═══ Top Bar（与 index.html 同构）═══ -->
+  <header id="topbar" class="paper-topbar">
+    <div class="topbar-left">
+      <img class="topbar-flag-img" src="/static/assets/ui/flag48.svg" alt="US">
+      <span class="topbar-title">中途岛指挥官</span>
+      <span class="topbar-subtitle">TASK FORCE 16</span>
+    </div>
+    <div class="topbar-center">
+      <span class="topbar-date">04 JUN 1942 · Z+12</span>
+      <span class="topbar-clock" id="clock">09:45<span class="topbar-clock-suffix"> Z</span></span>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-ap">ACTION POINTS: <span class="topbar-ap-val" id="ap-current">14</span>/<span class="topbar-ap-val" id="ap-max">20</span></span>
+      <img class="topbar-gear" src="/static/assets/ui/gear.svg" alt="" aria-hidden="true">
+    </div>
+  </header>
+
+  <!-- ═══ Main Chart Area ═══ -->
+  <main id="chart-area">
+    <div class="chart-light" aria-hidden="true"></div>
+    <div class="chart-scratches" aria-hidden="true"></div>
+    <canvas id="tacticalMap"></canvas>
+    <img class="desk-prop desk-ruler" src="/static/assets/ui/ruler_wood.svg" alt="" aria-hidden="true">
+    <img class="desk-prop desk-pencil" src="/static/assets/ui/pencil.svg" alt="" aria-hidden="true">
+    <img class="desk-prop desk-compass" src="/static/assets/ui/icons/compass_brass.png" alt="" aria-hidden="true">
+  </main>
+
+  <!-- ═══ Bottom Dashboard + Controls ═══ -->
+  <div id="bottom">
+    <div id="dashboard">
+      <div class="dash-item"><span class="dash-label">航向</span><span class="dash-val" id="d-course">270°</span></div>
+      <div class="dash-item"><span class="dash-label">航速</span><span class="dash-val" id="d-speed">30</span></div>
+      <div class="dash-item"><span class="dash-label">位置</span><span class="dash-val" id="d-pos">—</span></div>
+      <div class="dash-item"><span class="dash-label">损伤</span><span class="dash-val" id="d-dmg">—</span></div>
+      <div class="dash-item"><span class="dash-label">甲板</span><span class="dash-val" id="d-deck">—</span></div>
+      <div class="dash-item"><span class="dash-label">巡逻</span><span class="dash-val" id="d-cap">—</span></div>
+      <div class="dash-item"><span class="dash-label">侦察</span><span class="dash-val" id="d-scout">—</span></div>
+      <div class="dash-item"><span class="dash-label">敌情</span><span class="dash-val" id="d-enemy">—</span></div>
+    </div>
+    <div id="controls">
+      <button class="btn" id="btn-advance">ADVANCE +15MIN</button>
+      <button class="btn" id="btn-sitrep">SITUATION REPORT</button>
+    </div>
+  </div>
+
+  <!-- ═══ Right Sidebar ═══ -->
+  <aside id="sidebar">
+    <div id="npc-tabs"></div>
+    <div id="sidebar-content">
+      <div id="chat-log"></div>
+      <div id="suggestions"></div>
+    </div>
+    <div id="input-bar">
+      <input type="text" id="chat-input" placeholder="输入指令..." autocomplete="off">
+      <button class="btn btn-send" id="btn-send">发送</button>
+    </div>
+  </aside>
+
+</div>
+
+<div id="vignette-overlay" aria-hidden="true"></div>
+<div id="noise-overlay" aria-hidden="true"></div>
+
+<!-- 渲染器三件套 + UI 控制器 + 设计态数据（无 main.js，不经后端，离线渲染） -->
+<script src="/static/js/svgLoader.js"></script>
+<script src="/static/js/chartRenderer.js"></script>
+<script src="/static/js/mapRenderer.js"></script>
+<script src="/static/js/uiController.js"></script>
+<script src="/static/dev/design-state.js"></script>
+<script>bootDesignFixture();</script>
+</body>
+</html>

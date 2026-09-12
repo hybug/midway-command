@@ -467,6 +467,26 @@ def test_desk_ruler_pencil_product_layout():
         assert token in pencil_seg, f".desk-pencil 缺成品图布局 {token}"
 
 
+# ── 成品图复现 · H1：设计态 fixture 页面（像素比对专用） ──
+
+def test_design_fixture_present_and_offline():
+    """H 批 fixture：static/dev/ 下设计态渲染页 + canned state 存在，
+    加载真实渲染器三件套与主样式表，且不依赖后端接口（离线可渲染，仅用于像素比对）。"""
+    dev = BASE / "static" / "dev"
+    assert (dev / "design-fixture.html").exists(), "缺少 static/dev/design-fixture.html"
+    assert (dev / "design-state.js").exists(), "缺少 static/dev/design-state.js"
+    assert (dev / "README.md").exists(), "缺少 static/dev/README.md"
+    html = (dev / "design-fixture.html").read_text()
+    assert "FIXTURE" in html and "非游戏画面" in html, "fixture 页缺防误认横幅"
+    for src in ["svgLoader.js", "chartRenderer.js", "mapRenderer.js", "design-state.js"]:
+        assert src in html, f"fixture 页未加载 {src}"
+    assert "/static/css/style.css" in html, "fixture 页未接主样式表"
+    assert "fetch(" not in html, "fixture 页不得含 fetch 调用（离线可渲染）"
+    js = (dev / "design-state.js").read_text()
+    assert "DESIGN_STATE" in js, "design-state.js 缺 DESIGN_STATE canned state"
+    assert "render(" in js, "design-state.js 缺 render(state) 调用"
+
+
 # ── 成品图复现 · G7：东岛近景细节（黄底标注块/跑道横带/停机剪影） ──
 
 def test_chart_eastern_island_closeup_details():
