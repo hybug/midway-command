@@ -465,3 +465,17 @@ def test_desk_ruler_pencil_product_layout():
     pencil_seg = pencil_seg[:pencil_seg.index("\n")]
     for token in ["right: 14px", "left: auto", "bottom: 120px", "rotate(-90deg)", "width: 200px"]:
         assert token in pencil_seg, f".desk-pencil 缺成品图布局 {token}"
+
+
+# ── 成品图复现 · G7：东岛近景细节（黄底标注块/跑道横带/停机剪影） ──
+
+def test_chart_eastern_island_closeup_details():
+    """G7 东岛近景三件：①EASTERN ISLAND 黄底墨字标注块（labelYellow 锚点）
+    ②SAND ISLAND 侧浅色跑道横带+中线（runwayBand 锚点）
+    ③停机剪影 drawParkingRamp——复用 aircraft_topdown 图标缩小 60% 深灰排列。"""
+    js = (BASE / "static" / "js" / "chartRenderer.js").read_text()
+    assert "EASTERN ISLAND" in js, "黄底标注块文字缺失"
+    assert "labelYellow" in js, "缺 EASTERN ISLAND 黄底标注块（labelYellow 锚点）"
+    assert "runwayBand" in js, "缺 SAND ISLAND 侧跑道横带（runwayBand 锚点）"
+    assert "drawParkingRamp" in js, "缺停机剪影绘制函数（drawParkingRamp 锚点）"
+    assert "aircraft_topdown" in js, "停机剪影未复用 aircraft_topdown 图标"

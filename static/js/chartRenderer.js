@@ -9,6 +9,8 @@ const CHART_STYLE = {
   ink: '#2a2218', inkFade: '#6b5d4a', inkFaint: '#a89878',
   lagoon: '#b8d4c8', reef: '#8aaa98', sand: '#d4c4a0', eastern: '#c8b890',
   enemyRed: '#8b2500',
+  // 成品图复现 G7：东岛黄底标注块底色（采样成品图 SAND/EASTERN ISLAND 黄底标注 ≈#dec080）
+  labelYellow: '#dec080',
   gridLine: 'rgba(160,140,110,0.35)',
   gridLineFaint: 'rgba(160,140,110,0.18)', // fix Loop2-F8: 0.25° 细网（alpha 减半，绘图纸质感）
   fontTypewriter: "'Special Elite', monospace",
@@ -148,7 +150,23 @@ function roundRect(ctx, x, y, w2, h2, r) {
   ctx.closePath();
 }
 
+// 成品图复现 G7③：东岛停机剪影——aircraft_topdown 缩小 60%（基准 26px）深灰排列跑道旁
+// （filter brightness 压暗为深灰剪影，本征朝向画布上方 -Y，停放机头朝北）
+function drawParkingRamp(ctx, x, y) {
+  const icon = getIcon('aircraft_topdown');
+  if (!icon) return;
+  const silW = 26 * 0.6;
+  const silH = silW * (icon.height / icon.width);
+  ctx.save();
+  ctx.filter = 'brightness(0.32)';
+  for (let i = 0; i < 3; i++) {
+    ctx.drawImage(icon, x + i * (silW + 6), y - silH / 2, silW, silH);
+  }
+  ctx.restore();
+}
+
 // Task 7.5：双岛——SAND ISLAND 圆角矩形 + EASTERN ISLAND 三角形与三条交叉跑道
+// 成品图复现 G7：近景后东岛放大，补沙岛侧跑道横带 + 东岛黄底标注块 + 停机剪影
 function drawIslands(ctx, c, rx, ry) {
   ctx.font = `8px ${CHART_STYLE.fontTypewriter}`;
   // SAND ISLAND — 环礁西侧圆角矩形（下移避让坐标行）
@@ -164,6 +182,21 @@ function drawIslands(ctx, c, rx, ry) {
   ctx.font = `7px ${CHART_STYLE.fontTypewriter}`;
   ctx.fillText(CHART_LABELS.sandIsland, sx + 4, sy + ry * 0.16 * 0.72);
   ctx.font = `8px ${CHART_STYLE.fontTypewriter}`;
+  // 成品图复现 G7②：SAND ISLAND 侧跑道横带——浅色横带 + 墨色虚线中线（成品图沙岛下方长条跑道）
+  const bandY = sy + ry * 0.16 + 8, bandH = 10; // runwayBand
+  ctx.fillStyle = CHART_STYLE.paper;
+  ctx.strokeStyle = CHART_STYLE.ink;
+  ctx.lineWidth = 1;
+  roundRect(ctx, sx, bandY, sandW, bandH, 3);
+  ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = CHART_STYLE.inkFade;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath();
+  ctx.moveTo(sx + 4, bandY + bandH / 2);
+  ctx.lineTo(sx + sandW - 4, bandY + bandH / 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle = CHART_STYLE.ink;
   // EASTERN ISLAND — 东南侧三角形 + 三条交叉跑道
   const ex = c.x + rx * 0.28, ey = c.y + ry * 0.52, s = rx * 0.26;
   ctx.beginPath();
@@ -181,8 +214,20 @@ function drawIslands(ctx, c, rx, ry) {
     ctx.beginPath(); ctx.moveTo(ex + x1, ey + y1); ctx.lineTo(ex + x2, ey + y2); ctx.stroke();
   });
   ctx.lineWidth = 1;
-  // fix L4-F7: 标注移到三角形右下侧（原坐标被 HOR 计数牌常态遮挡）
-  ctx.fillText(CHART_LABELS.easternIsland, ex + s * 0.6, ey + s * 0.8);
+  // 成品图复现 G7③：停机剪影 3 架排列在跑道下方（三角形底缘外侧沙地）
+  drawParkingRamp(ctx, ex - s * 0.55, ey + s * 0.75);
+  // 成品图复现 G7①：EASTERN ISLAND 黄底标注块（黄底墨字矩形，成品图形态；
+  // 原 L4-F7 右下裸字升级为标注块，位置沿用右下侧避让舰队标记）
+  ctx.font = `7px ${CHART_STYLE.fontTypewriter}`;
+  const lbl = CHART_LABELS.easternIsland;
+  const lblW = ctx.measureText(lbl).width + 8;
+  const lx = ex + s * 0.35, ly = ey + s * 0.62;
+  ctx.fillStyle = CHART_STYLE.labelYellow;
+  ctx.strokeStyle = CHART_STYLE.ink;
+  roundRect(ctx, lx, ly, lblW, 12, 2);
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle = CHART_STYLE.ink;
+  ctx.fillText(lbl, lx + 4, ly + 9);
 }
 
 // Task 7.5：中途岛环礁——礁环沙色 + 泻湖 + SW 斜线阴影 + 双岛 + 中心标注
