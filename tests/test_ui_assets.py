@@ -9,6 +9,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
 BASE = Path(__file__).resolve().parent.parent
 UI = BASE / "static" / "assets" / "ui"
@@ -430,3 +431,19 @@ def test_index_html_chart_caption_removed():
     html = (BASE / "static" / "index.html").read_text()
     assert "chart-label" not in html, "index.html 仍残留 .chart-label 字幕 div"
     assert "海图（CHART）" not in html, "index.html 仍残留「海图（CHART）」字幕文案"
+
+
+# ── 成品图复现 · G5：黄铜圆规桌面道具（button_26 分拆） ──
+
+def test_compass_brass_desk_prop():
+    """G5 桌面道具：compass_brass.png（button_26 圆规段分拆，RGBA ~120px 高）在册，
+    index.html 接入 .desk-compass，style.css 左下 rotate(15°)（drop-shadow 由 .desk-prop 同族提供）。"""
+    p = BASE / "static" / "assets" / "ui" / "icons" / "compass_brass.png"
+    assert p.exists(), "缺少 compass_brass.png（button_26 分拆产物）"
+    im = Image.open(p)
+    assert im.mode == "RGBA", "compass_brass.png 必须为 RGBA 透明底"
+    assert 110 <= im.size[1] <= 130, f"compass_brass.png 高度应约 120px: {im.size}"
+    html = (BASE / "static" / "index.html").read_text()
+    assert 'src="/static/assets/ui/icons/compass_brass.png"' in html, "index.html 未接入圆规桌面道具"
+    css = (BASE / "static" / "css" / "style.css").read_text()
+    assert ".desk-compass" in css and "rotate(15deg)" in css, "style.css 缺 .desk-compass 左下布局"

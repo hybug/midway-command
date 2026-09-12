@@ -571,6 +571,8 @@ html, body {
 .desk-prop { position: fixed; z-index: 5; pointer-events: none; filter: drop-shadow(2px 3px 3px rgba(0,0,0,0.4)); }
 .desk-ruler  { left: 250px; right: auto; bottom: 64px; width: 300px; transform: rotate(-2deg); }
 .desk-pencil { left: 20px; bottom: 60px; width: 220px; transform: rotate(4deg); }
+/* 成品图复现 G5：黄铜圆规道具（button_26 分拆）——桌面左下与木尺同侧，rotate 15°，drop-shadow 走 .desk-prop 同族 */
+.desk-compass { left: 148px; right: auto; bottom: 10px; height: 120px; width: auto; transform: rotate(15deg); }
 
 /* ═══════════════════════════════════════════════════════
    Phase 8c — A8 军令纸卡（SECRET – INTERCEPTION PLAN）
