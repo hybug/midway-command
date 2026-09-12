@@ -614,26 +614,19 @@ class MapRenderer {
       const [px, py] = this._hexToPixel(q, r);
       const short = c.name.includes('Enterprise') ? 'ENT' : 'HOR';
 
-      // fix Loop2-F1: 两航母同位时标记仍大面积重叠（16px 垂直错位对 63×64 计数牌不足）——
-      // 对角错开加大：i=1 偏移 (x+14, y+0)。
-      // fix Loop3-F1: ENT（i=0）让开 MIDWAY ATOLL 标题与坐标行（标题居环礁中心，
-      // 舰队居中下标题带 x ∈ [atollCx-45, atollCx+45]，ENT 旧位 (x-14,y-28) 计数牌盖住标题右端 ~26px）。
-      // 控制清单改法 (x-56,y-30) 经几何验证反向恶化（左移 42px 使计数牌压住标题中部 ~63px）——
-      // 按目标「让开标题与坐标行」改横向右移：ENT (x+80, y-64)，计数牌落在环礁东侧开阔纸面
-      // （tag 左缘 atollCx+0.06w+48.5 > 标题右缘；y 带 [cy-96,cy-32] 避开 25/40nm 环标注），
-      // 与 HOR (x+14,y) 对角错开保留（角接触，矩形不相交）。
-      // x/y 进入标记对象，计数牌、CSE 标注与引导线随之整体偏移（与 Loop1 y 偏移同位置实现）
-      // 让位标题调参基于 1440 视口；视口/舰队位置大幅变化时需按 w 比例重估（终审登记）
-      const mx = i === 0 ? px + 80 : px + 14;
-      const my = i === 0 ? py - 64 : py;
+      // fix Loop2-F1（F2 错位机制，成品图复现 G1 保留）：两航母同位时对角错开——
+      // i=0 偏移 (x-14, y-28)、i=1 偏移 (x+14, y+0)，中心间距 28px（圆圈 r=10 小标记仍有效）。
+      // Loop3-F1 ENT 让位 hack (x+80, y-64) 已随计数牌退役删除——空心圆圈标记回归真实位附近。
+      const mx = i === 0 ? px - 14 : px + 14;
+      const my = i === 0 ? py - 28 : py;
 
-      // Task 7.9：舰队标记改由 ChartRenderer.drawTaskForceMarker 绘制
-      // （光栅计数牌 ENT/HOR + CSE 航向线 + 虚线引导线）。
+      // 成品图复现 G1：舰队标记由 ChartRenderer.drawTaskForceMarker 绘制
+      // （空心圆圈 r=10 + 字标 + CSE 航向线 + 双虚线箭头矢量指向环礁；
+      // 计数牌退役——fleet_tag_*.png 光栅素材保留作 tooltip 素材，不再上图）。
       // 字段映射：数据模型无 callsign 字段，沿用既有 name→ENT/HOR 推导；
       // courseDeg 取 TaskForce.course（与旧航向箭头同源）。
-      // 保真度修正 T3：传 CSS 像素 W/H（= render() 里的 this.width/this.height），
-      // 引导线由此计算指向环礁（atollCenter）的方向。
-      // fix: 加传 ox/oy 舰队居中平移量——atollCenter 是屏幕系，标记绘制在
+      // 传 CSS 像素 W/H（= render() 里的 this.width/this.height）供环礁方向计算；
+      // 加传 ox/oy 舰队居中平移量——atollCenter 是屏幕系，标记绘制在
       // translate(ox,oy) 本地系，不换算方向会反向。
       ChartRenderer.drawTaskForceMarker(ctx, { x: mx, y: my, callsign: short, courseDeg: tf.course }, this.width, this.height, ox, oy);
 

@@ -73,36 +73,33 @@ const ox = centerX - ex, oy = centerY - ey;
 // 录制器记录的是 translate(ox,oy) 本地系坐标；画布位置 = 本地坐标 + (ox,oy)
 const toCanvas = (lx, ly) => [lx + ox, ly + oy];
 
-// 锚点 1：drawTaskForceMarker 的 CSE 标注画在标记外侧、背离引导线方向（fix Loop3-F4）。
-// 独立期望：标注 = 标记投影点 − 44px × û（û 为本地系内指向环礁的单位向量；
-// 本地系环礁中心 = atollCenter(w,h) − translate(ox,oy)，44px 与引导线起距 24px 同批源码常量）。
-// fix Loop3-F1: 首舰（i=0）标记横向右移让位 MIDWAY ATOLL 标题带 (x+80, y-64)
-// （mapRenderer._drawOwnFleet `i === 0 ? px+80/py-64 : px+14/py`），
-// CSE 标注与引导线随之整体偏移——本套件只有 i=0 一艘，期望值含此偏移。
-const F2_LEADER_DX = 80;
-const F2_LEADER_DY = -64;
+// 锚点 1：drawTaskForceMarker 的 CSE 标注画在航向线末端延长处（成品图复现 G1 圆圈形态：
+// 标注 = 标记 + 34px × 航向单位向量（course−90° 修正），34px 与航向线长 30px 同批源码常量）。
+// F2 错位机制（成品图复现 G1 保留）：首舰（i=0）对角偏移 (x-14, y-28)
+// （mapRenderer._drawOwnFleet `i === 0 ? px-14/py-28 : px+14/py`），
+// CSE 标注与双虚线矢量随之整体偏移——本套件只有 i=0 一艘，期望值含此偏移。
+const F2_LEADER_DX = -14;
+const F2_LEADER_DY = -28;
 const cseCalls = canvas.__ctx.__calls.filter((c) => c.name === "fillText" && String(c.args[0]).startsWith("CSE "));
 assert.ok(cseCalls.length >= 1, "未找到 drawTaskForceMarker 的 CSE 标注 fillText 调用");
 const [, cseLx, cseLy] = cseCalls[0].args;
-const acLx = 1440 * 0.44 - ox, acLy = 900 * 0.46 - oy; // atollCenter(1440,900) 换算到本地系（源码同源）
-const glen = Math.hypot(acLx - (ex + F2_LEADER_DX), acLy - (ey + F2_LEADER_DY)) || 1;
-const gux = (acLx - (ex + F2_LEADER_DX)) / glen, guy = (acLy - (ey + F2_LEADER_DY)) / glen;
-const expectedCseX = centerX + F2_LEADER_DX - gux * 44;
-const expectedCseY = centerY + F2_LEADER_DY - guy * 44;
+const hdgRad = ((240 - 90) * Math.PI) / 180; // course=240（makeState 同源，-90° 屏幕系修正）
+const expectedCseX = centerX + F2_LEADER_DX + Math.cos(hdgRad) * 34;
+const expectedCseY = centerY + F2_LEADER_DY + Math.sin(hdgRad) * 34;
 const [drawnCseX, drawnCseY] = toCanvas(cseLx, cseLy);
 assert.ok(Math.abs(drawnCseX - expectedCseX) < 2 && Math.abs(drawnCseY - expectedCseY) < 2,
   `CSE 标注画布位置 (${drawnCseX.toFixed(1)},${drawnCseY.toFixed(1)}) 偏离逻辑坐标投影 (${expectedCseX.toFixed(1)},${expectedCseY.toFixed(1)}) 超过 2px`);
 
-// 锚点 2：标记本体（矢量回退圆 r=7）应画在投影点 + Loop3-F1 首舰偏移处（舰队居中平移下 x 投影=图面中心）
-const markerArc = drawn.find((c) => c.name === "arc" && Math.abs(c.args[2] - 7) < 0.5);
-assert.ok(markerArc, "未找到舰队标记矢量回退圆（arc r≈7）调用");
+// 锚点 2：标记本体（空心圆圈 r=10，成品图复现 G1）应画在投影点 + F2 首舰对角偏移处（舰队居中平移下 x 投影=图面中心）
+const markerArc = drawn.find((c) => c.name === "arc" && Math.abs(c.args[2] - 10) < 0.5);
+assert.ok(markerArc, "未找到舰队标记空心圆圈（arc r≈10）调用");
 const [drawnMx, drawnMy] = toCanvas(markerArc.args[0], markerArc.args[1]);
 assert.ok(Math.abs(drawnMx - (centerX + F2_LEADER_DX)) < 2 && Math.abs(drawnMy - (centerY + F2_LEADER_DY)) < 2,
   `舰队标记画布位置 (${drawnMx.toFixed(1)},${drawnMy.toFixed(1)}) 偏离投影点 (${centerX + F2_LEADER_DX},${centerY + F2_LEADER_DY}) 超过 2px`);
 
 // 松界（任务书原断言，经 translate 修正）：标记相关调用落在投影点邻域
-// fix Loop3-F1: 首舰偏移改为 (x+80, y-64)（让位 MIDWAY ATOLL 标题带），邻域 60→115px 覆盖
-const hit = drawn.some((c) => Math.hypot((c.args[0] ?? 999) + ox - centerX, (c.args[1] ?? 999) + oy - centerY) < 115);
+// 成品图复现 G1：ENT 让位 hack 已删，F2 对角错位 (x-14,y-28) 距投影 31px，邻域 60px 覆盖
+const hit = drawn.some((c) => Math.hypot((c.args[0] ?? 999) + ox - centerX, (c.args[1] ?? 999) + oy - centerY) < 60);
 assert.ok(hit, "舰队标记未绘制在其逻辑投影（图面中心附近）处");
 
 // 回归（fix: 缺省列表防御）：render 是公开入口，缺省 active_scouts/known_enemy 的
@@ -120,9 +117,9 @@ assert.doesNotThrow(() => renderer.render({
 // （若日后给舰队引入 lerp 位置缓存，本组断言会因标记滞后于投影差而红——正是要守的链路。）
 const sA = makeState(31.5, -176.0);
 renderer.render(sA);
-const arcR7 = () => canvas.__ctx.__calls.filter((c) => c.name === "arc" && Math.abs(c.args[2] - 7) < 0.5);
-const beforeCount = arcR7().length;
-assert.ok(beforeCount >= 1, "render(sA) 未产生舰队标记（arc r≈7）");
+const arcR10 = () => canvas.__ctx.__calls.filter((c) => c.name === "arc" && Math.abs(c.args[2] - 10) < 0.5);
+const beforeCount = arcR10().length;
+assert.ok(beforeCount >= 1, "render(sA) 未产生舰队标记（arc r≈10）");
 const sB = makeState(31.4, -176.1); // 模拟一 tick（advance 15min）后的逻辑位置
 renderer.render(sB);
 // 新逻辑位置 → hex → 像素（本地系；render 每次 resize 重置 centerX/centerY=720/450）
@@ -136,8 +133,8 @@ if (entry) {
           && Math.abs(entry.targetY - (renderer.centerY - ny)) < 2,
     "舰队动画目标未跟随新逻辑位置（刷新链路断裂）");
 }
-// 当前实现断言：stateB 渲染帧的标记必须画在 stateB 投影 + F1 首舰对角偏移处（新逻辑位置成为绘制目标）
-const bArcs = arcR7();
+// 当前实现断言：stateB 渲染帧的标记必须画在 stateB 投影 + F2 首舰对角偏移处（新逻辑位置成为绘制目标）
+const bArcs = arcR10();
 assert.ok(bArcs.length > beforeCount, "render(sB) 未产生新的舰队标记帧");
 const [bx, by] = bArcs[bArcs.length - 1].args;
 assert.ok(Math.abs(bx - (nx + F2_LEADER_DX)) < 2 && Math.abs(by - (ny + F2_LEADER_DY)) < 2,
@@ -145,7 +142,7 @@ assert.ok(Math.abs(bx - (nx + F2_LEADER_DX)) < 2 && Math.abs(by - (ny + F2_LEADE
 // 位移必须精确等于两次逻辑位置的投影差值（重绘位置精确移动投影差）
 const [qA, rA] = renderer._worldToHex(31.5, -176.0);
 const [axp, ayp] = renderer._hexToPixel(qA, rA);
-const aArc = arcR7()[beforeCount - 1].args;
+const aArc = arcR10()[beforeCount - 1].args;
 assert.ok(Math.abs((bx - aArc[0]) - (nx - axp)) < 2 && Math.abs((by - aArc[1]) - (ny - ayp)) < 2,
   "sA→sB 标记位移 ≠ 逻辑位置投影差（重绘未精确跟随状态变化）");
 // render 已把 _currentState 换成 sB（动画循环每帧 render(_currentState) 的数据源）

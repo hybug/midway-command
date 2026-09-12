@@ -320,60 +320,39 @@ function drawScaleBar(ctx, w, h) {
   ctx.restore();
 }
 
-// Task 7.9：ENT/HOR 舰队标记——光栅计数牌优先（Phase 6 治理产物），缺失时矢量回退；
-// CSE 航向线与虚线引导线两模式共用（设计图：CSE 270° + 指向环礁的双虚线）
+// 成品图复现 G1：ENT/HOR 舰队标记——空心圆圈 + 字标 + 航向线 + 双虚线箭头矢量指向环礁
+// （计数牌退役：fleet_tag_*.png 光栅素材保留作 tooltip 素材，不再上图）
 function drawTaskForceMarker(ctx, tf, w, h, ox = 0, oy = 0) {
-  const tag = getIcon(tf.callsign === 'ENT' ? 'fleet_tag_ent'
-                    : tf.callsign === 'HOR' ? 'fleet_tag_hor' : 'fleet_counter');
-  ctx.save();
-  if (tag) {
-    // 光栅计数牌（绿幕抠图素材，Phase 6 治理产物）
-    ctx.drawImage(tag, tf.x - tag.width / 2, tf.y - tag.height / 2);
-  } else {
-    // 矢量回退：圆圈标记（设计图 A1 基础样式）
-    ctx.strokeStyle = CHART_STYLE.ink;
-    ctx.fillStyle = CHART_STYLE.paper;
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(tf.x, tf.y, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  }
-  // 航向矢量 + CSE 标注（两模式共用，设计图：CSE 270°）
-  // 航海约定 0°=北朝上：屏幕坐标 y 向下，需 -90° 修正（与 mapRenderer 旧 _drawSingleCourseArrow 一致）
-  const rad = ((tf.courseDeg - 90) * Math.PI) / 180;
-  ctx.strokeStyle = CHART_STYLE.ink;
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(tf.x, tf.y);
-  ctx.lineTo(tf.x + Math.cos(rad) * 34, tf.y + Math.sin(rad) * 34);
-  ctx.stroke();
-  // 指向环礁的虚线引导线 + 箭头（保真度修正 T3：方向由 atollCenter 计算，替代写死偏移）
-  // fix: atollCenter 返回屏幕系坐标，而本函数在 mapRenderer 的 ctx.translate(ox,oy)
-  // 舰队本地系内绘制——先减去平移量换算到本地系，否则方向反向（S 级缺陷修复）
+  // 空心圆圈标记（成品图形态）：r=10 空心 + 字标 + 航向线 + 双虚线箭头矢量指向环礁
   const ac = { x: atollCenter(w, h).x - ox, y: atollCenter(w, h).y - oy };
-  const dx = ac.x - tf.x, dy = ac.y - tf.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const ux = dx / len, uy = dy / len;
-  // fix Loop3-F4: CSE 标注锚到标记外侧、背离引导线方向（-u 侧 44px，避开 63×64 计数牌）。
-  // 控制清单最小改法（背向航向 20px）经几何验证落在光栅计数牌内部（20 < 31.5 半宽），
-  // 与「标记外侧」语义冲突——按清单预案改走「背离方向」方案，此处取背离引导线（=背离环礁）侧。
+  ctx.save();
+  ctx.strokeStyle = CHART_STYLE.ink; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.arc(tf.x, tf.y, 10, 0, Math.PI * 2); ctx.stroke();       // circle-outline
   ctx.fillStyle = CHART_STYLE.ink;
+  ctx.font = `bold 11px ${CHART_STYLE.fontTypewriter}`;
+  ctx.fillText(tf.callsign, tf.x - 14, tf.y - 16);                               // 字标在圈左上
+  const rad = ((tf.courseDeg - 90) * Math.PI) / 180;
+  ctx.beginPath(); ctx.moveTo(tf.x, tf.y);
+  ctx.lineTo(tf.x + Math.cos(rad) * 30, tf.y + Math.sin(rad) * 30); ctx.stroke(); // 航向线
   ctx.font = `9px ${CHART_STYLE.fontTypewriter}`;
-  ctx.fillText(`CSE ${Math.round(tf.courseDeg)}°`, tf.x - ux * 44, tf.y - uy * 44);
-  // fix Loop3-F4: 引导线首段起距 12→24px（缩近标记，留出 CSE 标注空间）
-  ctx.setLineDash([3, 4]);
-  ctx.strokeStyle = CHART_STYLE.inkFade;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(tf.x + ux * 24, tf.y + uy * 24);
-  ctx.lineTo(tf.x + ux * 64, tf.y + uy * 64);
-  ctx.stroke();
+  ctx.fillText(`CSE ${Math.round(tf.courseDeg)}°`, tf.x + Math.cos(rad) * 34, tf.y + Math.sin(rad) * 34);
+  // 双虚线矢量：两条平行虚线从圈缘指向环礁，末端双箭头
+  const dx = ac.x - tf.x, dy = ac.y - tf.y, len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len, px = -uy, py = ux;
+  ctx.setLineDash([5, 4]); ctx.strokeStyle = CHART_STYLE.inkFade; ctx.lineWidth = 1.2;
+  for (const side of [-4, 4]) {
+    ctx.beginPath();
+    ctx.moveTo(tf.x + ux * 14 + px * side, tf.y + uy * 14 + py * side);
+    ctx.lineTo(tf.x + ux * 70 + px * side, tf.y + uy * 70 + py * side);
+    ctx.stroke();
+  }
   ctx.setLineDash([]);
+  const tx = tf.x + ux * 74, ty = tf.y + uy * 74;
   ctx.beginPath();
-  ctx.moveTo(tf.x + ux * 68, tf.y + uy * 68);
-  ctx.lineTo(tf.x + ux * 58 - uy * 4, tf.y + uy * 58 + ux * 4);
-  ctx.lineTo(tf.x + ux * 58 + uy * 4, tf.y + uy * 58 - ux * 4);
-  ctx.closePath();
-  ctx.fillStyle = CHART_STYLE.inkFade;
-  ctx.fill();
+  ctx.moveTo(tx + ux * 6, ty + uy * 6);
+  ctx.lineTo(tx - ux * 4 + px * 5, ty - uy * 4 + py * 5);
+  ctx.lineTo(tx - ux * 4 - px * 5, ty - uy * 4 - py * 5);
+  ctx.closePath(); ctx.fill();
   ctx.restore();
 }
 
