@@ -22,10 +22,11 @@ from src.initial_state import build_initial_state
 from src.llm import ChatResult, ToolCall
 from src.npc_config import NPC_REGISTRY
 from src.routes import (
-    FLEET_SHORT,
     PendingRoute,
     PendingRouteStatus,
+    fleet_short_name,
     full_fleet_name,
+    known_fleet_short_names,
 )
 from src.theater import load_theater
 from src.theater.context import TheaterContext
@@ -267,11 +268,94 @@ class TestProposeRoute:
         assert state.pending_routes[0].status == "proposed"
 
     def test_fleet_short_mapping(self):
-        """短名映射：全名 ↔ 短名（scenario.json 的 name 字段）。"""
-        assert FLEET_SHORT == {"Task Force 16": "TF16", "Task Force 17": "TF17"}
+        """短名映射（O.4 函数化，战区驱动）：midway 全名 → 短名；反查全名。"""
+        assert fleet_short_name("Task Force 16", "midway") == "TF16"
+        assert fleet_short_name("Task Force 17", "midway") == "TF17"
+        assert sorted(known_fleet_short_names("midway")) == ["TF16", "TF17"]
         assert full_fleet_name("TF16") == "Task Force 16"
         assert full_fleet_name("TF17") == "Task Force 17"
         assert full_fleet_name("NOPE") is None
+
+    def test_fleet_short_name_coral_sea(self):
+        """珊瑚海战区短名（O.4 战区解耦）：TG 后缀剧本名前缀命中 + MO 机动部队。"""
+        assert fleet_short_name("Task Force 17", "coral-sea") == "TF17"
+        # scenario.json 实际剧本名带战役番号后缀——前缀命中同一舰队
+        assert fleet_short_name("Task Force 17 (TG 17.5)", "coral-sea") == "TF17"
+        assert fleet_short_name("Task Force 11 (TG 17.8)", "coral-sea") == "TF11"
+        assert fleet_short_name("Task Force 44", "coral-sea") == "TF44"
+        assert fleet_short_name("MO 机动部队", "coral-sea") == "MO"
+        assert sorted(known_fleet_short_names("coral-sea")) == \
+            ["MO", "TF11", "TF17", "TF44"]
+
+    def test_fleet_short_name_unknown_falls_back_to_prefix(self):
+        """未匹配回退全名前 12 字符（短名直传经回退天然透传）。"""
+        assert fleet_short_name("Task Force 99", "midway") == "Task Force 9"
+        assert fleet_short_name("TF16", "midway") == "TF16"     # 短名直传
+        assert fleet_short_name("TF17", "coral-sea") == "TF17"
+        # 无映射表战区同样回退（不抛错）
+        assert fleet_short_name("Enemy Fleet Alpha", "unknown-theater") == "Enemy Fleet "
+
+    def test_propose_route_coral_sea_theater(self):
+        """注入 fake theater（id=coral-sea）→ TG 后缀剧本名归一化 TF17 收单。"""
+        state = _make_state()
+        coral = TheaterContext(
+            id="coral-sea", name="珊瑚海",
+            view={"center": {"lat": -15.2, "lon": 155.5}},
+            bases=[], sectors=[], graticule={}, range_rings={}, scenario={},
+            theater_raw={"name_en": "Coral Sea"}, geography={},
+            pack_dir=Path("."),
+        )
+        args = dict(PROPOSE_ARGS, owner="Task Force 17 (TG 17.5)")
+        out = handle_propose_route(state, theater=coral, **args)
+        assert "已提交" in out
+        assert state.pending_routes[0].owner == "TF17"  # 前缀命中归一化
+
+    def test_propose_route_coral_sea_whitelist_rejects_midway_fleet(self):
+        """注入 fake theater（id=coral-sea）→ midway 专属 TF16 不在白名单，拒绝。"""
+        state = _make_state()
+        coral = TheaterContext(
+            id="coral-sea", name="珊瑚海",
+            view={"center": {"lat": -15.2, "lon": 155.5}},
+            bases=[], sectors=[], graticule={}, range_rings={}, scenario={},
+            theater_raw={"name_en": "Coral Sea"}, geography={},
+            pack_dir=Path("."),
+        )
+        out = handle_propose_route(state, theater=coral, **PROPOSE_ARGS)
+        assert "Error" in out
+        assert "TF17, TF11, TF44, MO" in out
+        assert state.pending_routes == []
+
+    def test_navigator_coral_sea_handlers_propose(self):
+        """注入 coral-sea theater → tool_handlers 的 propose_route 按战区映射归一化。"""
+        nav = NavigatorNPC(
+            client=FakeLLMClient(),
+            theater=TheaterContext(
+                id="coral-sea", name="珊瑚海",
+                view={"center": {"lat": -15.2, "lon": 155.5}},
+                bases=[], sectors=[], graticule={}, range_rings={}, scenario={},
+                theater_raw={"name_en": "Coral Sea"}, geography={},
+                pack_dir=Path("."),
+            ),
+        )
+        handler = nav.tool_handlers["propose_route"]
+        state = _make_state()
+        out = handler(
+            state,
+            owner="Task Force 11 (TG 17.8)",
+            rationale="列克星敦西撤掩护航路，27 节。",
+            waypoints=[{"lat": -15.7, "lon": 154.9}],
+        )
+        assert "已提交" in out
+        assert state.pending_routes[0].owner == "TF11"
+
+    def test_query_own_fleet_coral_sea_real_pack(self):
+        """真实珊瑚海包：query_own_fleet 短名展示 TF17/TF11（战区驱动）。"""
+        pack_dir = Path(__file__).resolve().parents[1] / "theaters" / "coral-sea"
+        ctx = load_theater(pack_dir)
+        state = build_initial_state(pack_dir / "scenario.json")
+        out = handle_query_own_fleet(state, theater=ctx)
+        assert "Task Force 17 (TG 17.5)（TF17）" in out
+        assert "Task Force 11 (TG 17.8)（TF11）" in out
 
 
 # ── 审批流端点（无 LLM 参与）──

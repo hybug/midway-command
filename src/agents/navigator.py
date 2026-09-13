@@ -17,7 +17,12 @@ from typing import Optional
 from src.agents.base import NPCAgent
 from src.llm import LLMClient
 from src.npc_config import NPC_REGISTRY
-from src.routes import FLEET_SHORT, PendingRoute, Waypoint
+from src.routes import (
+    PendingRoute,
+    Waypoint,
+    fleet_short_name,
+    known_fleet_short_names,
+)
 from src.state import GameState
 from src.theater.context import TheaterContext, load_theater
 
@@ -142,8 +147,14 @@ NAVIGATOR_TOOLS_SCHEMA = [
 # Handlers（首参 state，server 侧 wrap 注入）
 # ---------------------------------------------------------------------------
 
-def handle_query_own_fleet(state: GameState) -> str:
-    """本方特混舰队态势（真实经纬度）。不触碰 actual_enemy。"""
+def handle_query_own_fleet(
+    state: GameState, theater: Optional[TheaterContext] = None
+) -> str:
+    """本方特混舰队态势（真实经纬度）。不触碰 actual_enemy。
+
+    theater 缺省 None 时延迟加载缺省战区（O.4：短名展示战区驱动）。
+    """
+    ctx = theater or _default_theater()
     lines = []
     for tf in state.task_forces:
         lead = tf.carriers[0] if tf.carriers else None
@@ -152,7 +163,7 @@ def handle_query_own_fleet(state: GameState) -> str:
             f"{'N' if lead.position.lat >= 0 else 'S'} "
             f"{abs(lead.position.lon):.1f}{'E' if lead.position.lon >= 0 else 'W'}"
         ) if lead else "未知"
-        lines.append(f"{tf.name}（{FLEET_SHORT.get(tf.name, tf.name)}）")
+        lines.append(f"{tf.name}（{fleet_short_name(tf.name, ctx.id)}）")
         lines.append(f"  位置: {pos}，航向 {tf.course}°，航速 {tf.speed} 节")
         for c in tf.carriers:
             lines.append(f"  航母: {c.name}")
@@ -205,11 +216,18 @@ def handle_propose_route(
     owner: str,
     rationale: str,
     waypoints: list[dict],
+    theater: Optional[TheaterContext] = None,
 ) -> str:
-    """提交航线提案 → PendingRoute 落 state.pending_routes。"""
-    short = FLEET_SHORT.get(owner, owner)  # 全名归一化为短名
-    if short not in FLEET_SHORT.values():
-        return f"Error: 未知舰队 '{owner}'，可用: {', '.join(FLEET_SHORT.values())}。"
+    """提交航线提案 → PendingRoute 落 state.pending_routes。
+
+    theater 缺省 None 时延迟加载缺省战区（O.4：短名归一化战区驱动，
+    珊瑚海名册 TF17/TF11/TF44 + MO 不再报「未知舰队」）。
+    """
+    ctx = theater or _default_theater()
+    short = fleet_short_name(owner, ctx.id)  # 全名归一化为短名（战区驱动）
+    known = known_fleet_short_names(ctx.id)
+    if short not in known:
+        return f"Error: 未知舰队 '{owner}'，可用: {', '.join(known)}。"
     if not waypoints:
         return "Error: waypoints 不能为空。"
 
@@ -284,11 +302,21 @@ class NavigatorNPC(NPCAgent):
     def tool_handlers(self) -> dict:
         allowed = set(self._config.allowed_tools)
         handlers = {k: v for k, v in TOOL_HANDLERS.items() if k in allowed}
+        # O.4 收官：舰队短名映射战区驱动——fleet 类工具统一绑定本实例战区
+        # 上下文（注入或缺省延迟加载），propose/query 不再只见 midway 名册
+        theater = self.theater
         if "query_theater" in handlers:
             # 绑定本实例的战区上下文（注入或缺省延迟加载）
-            theater = self.theater
             handlers["query_theater"] = partial(
                 handle_query_theater, theater=theater
+            )
+        if "query_own_fleet" in handlers:
+            handlers["query_own_fleet"] = partial(
+                handle_query_own_fleet, theater=theater
+            )
+        if "propose_route" in handlers:
+            handlers["propose_route"] = partial(
+                handle_propose_route, theater=theater
             )
         return handlers
 
