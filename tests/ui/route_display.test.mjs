@@ -321,4 +321,54 @@ assert.ok(dirTexts.includes("northeast"),
 assert.ok(!dirTexts.includes("southwest"),
   "s.direction（southwest）不得再驱动扇区方向词标签（F3-R 回潮）");
 
+// ── ⑩ N.2 三类航线渲染（CHART_SYSTEM.md §5.1：planned/mission/track 同构异样式）──
+// 三样式以 setLineDash 参数区分（铅笔 [2,3] / 任务 [6,4] / 航迹 [1,3]），
+// 航线坐标 == 航点唯一投影（makeProjector 直绘，无平移换算）；状态过滤：
+// draft 铅笔 / active 完整 / done 淡（alpha 0.35）/ cancelled 不上图。
+const ROUTE_WPS = {
+  planned: [{ lat: 28.0, lon: -178.0 }, { lat: 27.8, lon: -177.75 }],
+  mission: [{ lat: 28.3, lon: -178.1 }, { lat: 28.15, lon: -177.85 }],
+  track:   [{ lat: 28.35, lon: -177.7 }, { lat: 28.25, lon: -177.55 }],
+};
+renderer.setRoutes([
+  { id: "R-PLANNED", kind: "planned", owner: "TF16", status: "draft", waypoints: ROUTE_WPS.planned },
+  { id: "R-MISSION", kind: "mission", owner: "TF16", status: "active", waypoints: ROUTE_WPS.mission },
+  { id: "R-TRACK",   kind: "track",   owner: "TF16", status: "done",   waypoints: ROUTE_WPS.track },
+]);
+const callsBeforeRoutes = canvas.__ctx.__calls.length;
+renderer.render(makeState(28.2, -178.251012));
+const routeCalls = canvas.__ctx.__calls.slice(callsBeforeRoutes);
+const routeDashes = routeCalls.filter((c) => c.name === "setLineDash").map((c) => c.args[0]);
+for (const dash of [[2, 3], [6, 4], [1, 3]]) {
+  assert.ok(routeDashes.some((d) => Array.isArray(d) && d.length === 2 && d[0] === dash[0] && d[1] === dash[1]),
+    `三类航线缺 setLineDash [${dash}] 样式锚点`);
+}
+// 坐标==航点投影：每条航线首航点 moveTo、末航点 lineTo 均落在唯一投影处
+function assertRouteAnchor(kind, wp, fn) {
+  const [wx, wy] = projectCopy(wp.lat, wp.lon, 1440, 900);
+  const hit = routeCalls.find((c) => c.name === fn
+    && Math.abs(c.args[0] - wx) < 0.01 && Math.abs(c.args[1] - wy) < 0.01);
+  assert.ok(hit, `${kind} 航线 ${fn} 未落在航点唯一投影 (${wx.toFixed(1)},${wy.toFixed(1)})`);
+}
+assertRouteAnchor("planned", ROUTE_WPS.planned[0], "moveTo");
+assertRouteAnchor("planned", ROUTE_WPS.planned[1], "lineTo");
+assertRouteAnchor("mission", ROUTE_WPS.mission[0], "moveTo");
+assertRouteAnchor("mission", ROUTE_WPS.mission[1], "lineTo");
+assertRouteAnchor("track", ROUTE_WPS.track[0], "moveTo");
+assertRouteAnchor("track", ROUTE_WPS.track[1], "lineTo");
+// done 淡：航迹线以 0.35 alpha 绘制（「done 画淡」裁定值）
+assert.ok(routeCalls.some((c) => c.name === "set:globalAlpha" && c.args[0] === 0.35),
+  "done 航线应以 globalAlpha 0.35 淡化绘制");
+// cancelled 不上图
+renderer.setRoutes([
+  { id: "R-CANCELLED", kind: "planned", owner: "TF16", status: "cancelled", waypoints: ROUTE_WPS.planned },
+]);
+const callsBeforeCancelled = canvas.__ctx.__calls.length;
+renderer.render(makeState(28.2, -178.251012));
+const cancelledCalls = canvas.__ctx.__calls.slice(callsBeforeCancelled);
+const [ccx, ccy] = projectCopy(ROUTE_WPS.planned[0].lat, ROUTE_WPS.planned[0].lon, 1440, 900);
+assert.ok(!cancelledCalls.some((c) => c.name === "moveTo"
+    && Math.abs(c.args[0] - ccx) < 0.01 && Math.abs(c.args[1] - ccy) < 0.01),
+  "cancelled 航线不得上图");
+
 console.log("ROUTE-DISPLAY PASS");

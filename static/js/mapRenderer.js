@@ -33,6 +33,10 @@ const COL = {
   depth: 'rgba(80,120,160,0.25)',
   secretRed: '#c0392b',
   confirmGold: '#c8a020',
+  // N.2 三类航线（CHART_SYSTEM.md §5.1）：铅笔灰 / 美方任务墨蓝 / 浅墨航迹
+  routePencil: '#5f5546',
+  routeBlue: '#3d5a73',
+  routeTrack: 'rgba(107,93,74,0.55)',
 };
 
 // ── L5.5 F3-R（设计师验收裁定）：扇区方向词由 search_bearing 派生 ──
@@ -104,6 +108,10 @@ class MapRenderer {
     this._hoverTarget = null;  // {type, data, x, y}
     this._clickHandlers = [];
     this._setupInteraction();
+
+    // ── N.2 航线数据（GET /routes，节流拉取）──
+    this._routes = [];
+    this._routesFetchedAt = -Infinity;
   }
 
   resize() {
@@ -301,6 +309,11 @@ class MapRenderer {
       this._drawSectorLabels(ctx, state, anchor);
       this._drawOwnFleet(ctx, tf);
       this._drawEnemyContacts(ctx, state);
+      // N.2 三类航线：实体层内、敌标之后（层序裁定）。数据源为 GET /routes——
+      // loadState 每 tick 经 render 触发节流拉取（main.js 不改，数据通道收敛在渲染器内），
+      // 桩环境无 fetch 自动跳过
+      this._maybeRefreshRoutes();
+      this.drawRoutes(this._routes);
 
       // 绘制确认动画
       this._drawConfirmAnimations(ctx);
@@ -762,6 +775,115 @@ class MapRenderer {
       // this._tryPlaceLabel(ctx, 'ENEMY', px, py + 24, '10px Caveat, cursive', COL.enemyRed,
       //   [[0, 24], [16, 18], [-16, 18], [0, -26]], 2);
     });
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // N.2 三类航线数据通道（GET /routes）
+  // 数据源：loadState 每 tick 经 render 触发本方法，5s 节流防动画循环每帧 fetch；
+  // 桩环境（Node 录制器测试）无 fetch 自动跳过；拉取失败静默维持既有航线。
+  // 结果经 setRoutes 注入，下一动画帧 drawRoutes 上图。
+  // ═══════════════════════════════════════════════════════
+  _maybeRefreshRoutes() {
+    if (typeof fetch !== 'function') return;
+    const now = performance.now();
+    if (now - this._routesFetchedAt < 5000) return;
+    this._routesFetchedAt = now;
+    fetch('/routes').then(r => r.json()).then(data => {
+      this.setRoutes((data && data.routes) || []);
+    }).catch(() => { /* /routes 不可用时维持既有航线，不阻塞本地渲染 */ });
+  }
+
+  // 航线注入（公开入口；GET /routes 响应与测试桩共用）
+  setRoutes(routes) {
+    this._routes = Array.isArray(routes) ? routes : [];
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // N.2 三类航线渲染（CHART_SYSTEM.md §5.1：planned/mission/track 同构异样式）
+  // 层序：实体层内、敌标之后；航点经唯一投影（this._project）屏幕系直绘，无平移换算。
+  // 样式裁定（任务书 N.2）：
+  //   planned（或任何 draft 草案）= Caveat 铅笔灰虚线 setLineDash [2,3] + 航点小圈
+  //   mission（active）= 红/蓝虚线 [6,4] + 末端箭头（美方舰队蓝 / 其他红）
+  //   track = 浅墨点线 [1,3]
+  // 状态过滤：draft 铅笔 / active 完整样式 / done 淡（alpha 0.35）/ cancelled 不上图。
+  // ═══════════════════════════════════════════════════════
+  drawRoutes(routes) {
+    const ctx = this.ctx;
+    (routes || []).forEach((route) => {
+      const wps = route.waypoints || [];
+      if (wps.length < 2) return;               // 少于 2 航点不成线
+      if (route.status === 'cancelled') return; // 撤销航线不上图
+
+      const draft = route.status === 'draft';
+      const faded = route.status === 'done';
+      const pencil = route.kind === 'planned' || draft;
+      const pts = wps.map((w) => this._project(w.lat, w.lon));
+
+      ctx.save();
+      if (faded) ctx.globalAlpha = 0.35;
+
+      if (pencil) {
+        ctx.strokeStyle = COL.routePencil;
+        ctx.lineWidth = 1.2;
+        ctx.setLineDash([2, 3]);
+      } else if (route.kind === 'mission') {
+        ctx.strokeStyle = this._routeColor(route.owner);
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 4]);
+      } else { // track 历史航迹
+        ctx.strokeStyle = COL.routeTrack;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([1, 3]);
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // mission 末端箭头（沿末段方向，与 _drawSingleCourseArrow 同形 8px/0.4rad）
+      if (!pencil && route.kind === 'mission') {
+        const a = pts[pts.length - 2], b = pts[pts.length - 1];
+        const rad = Math.atan2(b.y - a.y, b.x - a.x);
+        const hl = 8, ha = 0.4;
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y);
+        ctx.lineTo(b.x - hl * Math.cos(rad - ha), b.y - hl * Math.sin(rad - ha));
+        ctx.moveTo(b.x, b.y);
+        ctx.lineTo(b.x - hl * Math.cos(rad + ha), b.y - hl * Math.sin(rad + ha));
+        ctx.stroke();
+      }
+
+      // 航点小圈（铅笔航线；纸色芯 + 铅笔灰描边）
+      if (pencil) {
+        ctx.fillStyle = 'rgba(245,237,214,0.9)';
+        pts.forEach((p) => {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = COL.routePencil;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        });
+        // Caveat 铅笔手写体 owner 标注（首航点右上）
+        if (route.owner) {
+          ctx.fillStyle = COL.routePencil;
+          ctx.font = '10px Caveat, cursive';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(route.owner, pts[0].x + 5, pts[0].y - 4);
+        }
+      }
+
+      ctx.restore();
+    });
+  }
+
+  // mission 航线红/蓝分色：美方舰队（TF 短名/全名）墨蓝，其余敌红
+  _routeColor(owner) {
+    const o = String(owner || '');
+    return (o.startsWith('TF') || o.includes('Task Force')) ? COL.routeBlue : COL.enemyRed;
   }
 
   // ═══════════════════════════════════════════════════════
