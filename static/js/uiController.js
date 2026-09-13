@@ -464,6 +464,63 @@ class UIController {
   }
 
   // ═══════════════════════════════════════════════════════
+  // O.1 开局层：战役选择卡（成品图深色 chrome 风格 — 深底+米色卡+墨字+SECRET 章）
+  // 数据源 GET /theaters（theaters/ 全包摘要）；开始按钮由 main.js 绑定回调
+  // ═══════════════════════════════════════════════════════
+  renderCampaignList(theaters, onStart) {
+    const container = document.getElementById('campaign-list');
+    if (!container) return;
+    if (!theaters || theaters.length === 0) {
+      container.innerHTML = '<p class="campaign-loading">NO THEATER FILES FOUND</p>';
+      return;
+    }
+    container.innerHTML = theaters.map(t => this.renderTheaterCard(t)).join('');
+    container.querySelectorAll('.btn-campaign-start').forEach(btn => {
+      btn.addEventListener('click', () => onStart(btn.dataset.theater, btn));
+    });
+  }
+
+  // 战区卡：SECRET 章字 + 战区名/日期 + 简介（双方兵力名/胜利条件）+ 开始按钮
+  renderTheaterCard(t) {
+    const scen = t.scenario || {};
+    const enemy = scen.enemy_force || {};
+    const friendly = scen.friendly_forces || [];
+    const victory = scen.victory || {};
+    const friendlyLine = friendly.map(tf =>
+      `${escapeHtml(tf.callsign || '')} ${escapeHtml(tf.name || '')}（${(tf.carriers || []).map(c => escapeHtml(c)).join(' / ')}）`
+    ).join('<br>') || '—';
+    const enemyLine = enemy.name
+      ? `${escapeHtml(enemy.name)}（${(enemy.carriers || []).map(c => escapeHtml(c)).join(' / ')}）`
+      : '—';
+    const objective = victory.primary
+      ? `<p class="campaign-kw">OBJECTIVE</p><p class="campaign-line">${escapeHtml(victory.primary)}</p>`
+      : '';
+    return `
+    <article class="campaign-card" data-theater="${escapeHtml(t.id)}">
+      <header class="campaign-card-head">
+        <span class="campaign-card-stamp">SECRET</span>
+        <h2 class="campaign-card-name">${escapeHtml(t.name)}</h2>
+        <span class="campaign-card-date">${escapeHtml(t.date || '')}</span>
+      </header>
+      <div class="campaign-card-body">
+        <p class="campaign-kw">FRIENDLY FORCES</p>
+        <p class="campaign-line">${friendlyLine}</p>
+        <p class="campaign-kw">ENEMY FORCE</p>
+        <p class="campaign-line">${enemyLine}</p>
+        ${objective}
+      </div>
+      <footer class="campaign-card-foot">
+        <button class="btn btn-execute btn-campaign-start" data-theater="${escapeHtml(t.id)}">开始战役</button>
+      </footer>
+    </article>`;
+  }
+
+  showCampaignError(msg) {
+    const el = document.getElementById('campaign-error');
+    if (el) el.textContent = msg;
+  }
+
+  // ═══════════════════════════════════════════════════════
   // Input state
   // ═══════════════════════════════════════════════════════
   setInputEnabled(enabled) {

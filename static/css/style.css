@@ -670,3 +670,128 @@ html, body {
 @media (max-width: 1360px) {
   .npc-tab { font-size: 9px; padding: 8px 3px; }
 }
+
+/* ═══════════════════════════════════════════════════════
+   O.1 — 开局层：战役选择（成品图深色 chrome 风格：
+   深底 + 米色卡 + 墨字 + SECRET 章点缀）
+   z-index 50：盖过 #app 各区（≤10），落在暗角/噪点氛围层（90/91）之下
+   ——开局画面同样吃旧纸氛围（fixed 覆层 pointer-events:none 不拦点击）
+   ═══════════════════════════════════════════════════════ */
+#campaign-select {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 深底：右栏同族深棕黑 + 中上部弱暖光（台灯隐喻），压住底层已初始化的游戏画面 */
+  background:
+    radial-gradient(90% 90% at 50% 38%, rgba(74, 53, 40, 0.5) 0%, rgba(0, 0, 0, 0) 62%),
+    #241c14;
+}
+/* 进游戏后 main.js 置 hidden——display:flex 会压掉 UA 的 [hidden] 缺省样式，须显式恢复 */
+#campaign-select[hidden] { display: none; }
+
+.campaign-panel {
+  width: min(860px, 92vw);
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 8px;
+}
+.campaign-head {
+  position: relative;
+  text-align: center;
+  margin-bottom: 20px;
+}
+.campaign-stamp {
+  position: absolute;
+  top: -8px;
+  right: 4px;
+  width: 92px;
+  transform: rotate(-8deg);
+  opacity: .8; /* 红章直出深底（透明底红章，不需 multiply/screen 混合） */
+  pointer-events: none;
+}
+.campaign-title {
+  font-size: 30px;
+  font-weight: bold;
+  letter-spacing: 10px;
+  color: var(--color-paper-base);
+  text-indent: 10px; /* 抵消末字 letter-spacing，视觉居中 */
+}
+.campaign-subtitle {
+  margin-top: 8px;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--color-bar-text);
+  opacity: .7;
+}
+
+/* 战区卡列表：单包单卡（O.2 起多包自动成排） */
+.campaign-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 16px;
+}
+.campaign-card {
+  display: flex;
+  flex-direction: column;
+  background: url('/static/assets/textures/paper_tex.jpg') repeat;
+  box-shadow: 2px 3px 8px rgba(0, 0, 0, 0.45);
+  padding: 14px 16px;
+}
+.campaign-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  border-bottom: 1px solid var(--color-ink-main);
+  padding-bottom: 6px;
+}
+.campaign-card-stamp {
+  font-family: var(--font-handwriting);
+  font-weight: bold;
+  font-size: 15px;
+  color: var(--color-secret-red);
+  letter-spacing: 2px;
+}
+.campaign-card-name {
+  font-size: 20px;
+  letter-spacing: 3px;
+  color: var(--color-ink-main);
+}
+.campaign-card-date {
+  margin-left: auto;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--color-ink-fade);
+}
+.campaign-card-body { flex: 1; padding: 6px 0 2px; }
+.campaign-kw {
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: var(--color-ink-main);
+  margin: 7px 0 2px;
+}
+.campaign-line {
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--color-ink-fade);
+}
+.campaign-card-foot {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--color-ink-faint);
+  padding-top: 10px;
+}
+
+.campaign-loading, .campaign-error {
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--color-bar-text);
+  opacity: .75;
+  padding: 24px 0 0;
+}
+.campaign-error { color: var(--color-damage); opacity: 1; }
+.campaign-error:empty { display: none; }

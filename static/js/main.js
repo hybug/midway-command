@@ -63,12 +63,54 @@ async function init() {
   ui.renderChat(activeNpc, histories[activeNpc], gameState?.clock?.game_time);
   bindEvents();
 
+  // O.1 开局层：默认显示，选战区开始后才隐藏（不阻塞底层游戏初始化）
+  initCampaignSelect();
+
   // 启动动画循环
   mapRenderer.startAnimationLoop();
 
   window.__ui = { mapRenderer }; // 测试/调试钩子（批次 C4）
 
   console.log('[MAIN] 中途岛指挥官 · 初始化完成');
+}
+
+// ═══════════════════════════════════════════════════════
+// Campaign select（O.1 战役选择）
+// 开局层 #campaign-select 默认显示：拉 /theaters 渲染战区卡，
+// 点击开始 → POST /game/new（服务端重建 GameState + NPC 会话清空）
+// → 隐藏开局层，客户端历史/状态全量重载
+// ═══════════════════════════════════════════════════════
+async function initCampaignSelect() {
+  const layer = document.getElementById('campaign-select');
+  if (!layer || layer.hidden) return;
+  try {
+    const data = await api('/theaters');
+    ui.renderCampaignList(data.theaters, startCampaign);
+  } catch (e) {
+    ui.showCampaignError('战区列表加载失败: ' + e.message);
+  }
+}
+
+async function startCampaign(theaterId, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'LOADING...'; }
+  try {
+    await api('/game/new', {
+      method: 'POST',
+      body: JSON.stringify({ theater_id: theaterId }),
+    });
+    // 服务端已重建 GameState 并清空 NPC 会话 → 客户端历史缓存作废全量重载
+    histories = {};
+    activeNpc = 'browning';
+    const layer = document.getElementById('campaign-select');
+    if (layer) layer.hidden = true;
+    ui.renderNpcTabs(activeNpc, switchNpc);
+    await loadState();
+    await loadHistory(activeNpc);
+    ui.renderChat(activeNpc, histories[activeNpc], gameState?.clock?.game_time);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = '开始战役'; }
+    ui.showCampaignError('开战失败: ' + e.message);
+  }
 }
 
 // ═══════════════════════════════════════════════════════

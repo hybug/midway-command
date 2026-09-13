@@ -8,9 +8,24 @@
   <title>中途岛指挥官</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Special+Elite&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=1780998015">
+  <link rel="stylesheet" href="/static/css/style.css?v=1780998016">
 </head>
 <body>
+
+<!-- ═══ 开局层：战役选择（O.1）— 默认显示，进游戏后由 main.js 置 hidden ═══ -->
+<div id="campaign-select">
+  <div class="campaign-panel">
+    <header class="campaign-head">
+      <img class="campaign-stamp" src="/static/assets/ui/secret_stamp.svg" alt="">
+      <h1 class="campaign-title">中途岛指挥官</h1>
+      <p class="campaign-subtitle">PACIFIC OCEAN AREAS · COMMANDER TASK FORCE — CAMPAIGN SELECT</p>
+    </header>
+    <div class="campaign-list" id="campaign-list">
+      <p class="campaign-loading">SCANNING THEATER FILES ...</p>
+    </div>
+    <p class="campaign-error" id="campaign-error"></p>
+  </div>
+</div>
 
 <div id="app">
 
@@ -80,11 +95,11 @@
 <div id="vignette-overlay" aria-hidden="true"></div>
 <div id="noise-overlay" aria-hidden="true"></div>
 
-<script src="/static/js/svgLoader.js?v=1780998015"></script>
-<script src="/static/js/theaterLoader.js?v=1780998015"></script>
-<script src="/static/js/chartRenderer.js?v=1780998015"></script>
-<script src="/static/js/mapRenderer.js?v=1780998015"></script>
-<script src="/static/js/uiController.js?v=1780998015"></script>
-<script src="/static/js/main.js?v=1780998015"></script>
+<script src="/static/js/svgLoader.js?v=1780998016"></script>
+<script src="/static/js/theaterLoader.js?v=1780998016"></script>
+<script src="/static/js/chartRenderer.js?v=1780998016"></script>
+<script src="/static/js/mapRenderer.js?v=1780998016"></script>
+<script src="/static/js/uiController.js?v=1780998016"></script>
+<script src="/static/js/main.js?v=1780998016"></script>
 </body>
 </html>

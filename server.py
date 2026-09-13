@@ -3,6 +3,7 @@
 Serves the static HTML/CSS/JS frontend and exposes REST APIs
 for game state, NPC chat, time advancement, and suggestion management.
 """
+import json
 import logging
 import os
 from datetime import datetime
@@ -104,6 +105,10 @@ class NavigatorProposeRequest(BaseModel):
 
 class RouteCommentRequest(BaseModel):
     feedback: str
+
+
+class NewGameRequest(BaseModel):
+    theater_id: str
 
 
 # ── Routes ──
@@ -377,6 +382,110 @@ async def get_theater():
     return {
         "theater": theater_ctx.theater_raw,
         "geography": theater_ctx.geography,
+    }
+
+
+# ── 战役选择（O.1：theaters/ 包发现 + 开新局重建）──
+
+
+def _iter_theater_packs():
+    """扫描 theaters/ 目录：含 theater.json + scenario.json 的包目录（id 序）。"""
+    root = BASE_DIR / "theaters"
+    for pack_dir in sorted(root.iterdir()):
+        if pack_dir.is_dir() \
+                and (pack_dir / "theater.json").exists() \
+                and (pack_dir / "scenario.json").exists():
+            yield pack_dir
+
+
+def _read_theater_json(pack_dir: Path) -> dict:
+    return json.loads((pack_dir / "theater.json").read_text(encoding="utf-8"))
+
+
+def _scenario_summary(scenario: dict) -> dict:
+    """scenario.json → 开局层摘要：双方兵力名 + 胜利条件（不含坐标军情）。"""
+    enemy = scenario.get("enemy_fleet", {})
+    return {
+        "friendly_forces": [
+            {
+                "callsign": tf.get("callsign"),
+                "name": tf.get("name"),
+                "carriers": [c.get("name") for c in tf.get("carriers", [])],
+            }
+            for tf in scenario.get("task_forces", [])
+        ],
+        "enemy_force": {
+            "name": enemy.get("name"),
+            "carriers": list(enemy.get("carriers", [])),
+        },
+        "victory": scenario.get("victory", {}),
+    }
+
+
+@app.get("/theaters")
+async def list_theaters():
+    """战役选择列表：theaters/ 全包摘要（O.2 起珊瑚海等包自动入列）。"""
+    theaters = []
+    for pack_dir in _iter_theater_packs():
+        theater = _read_theater_json(pack_dir)
+        scenario = json.loads((pack_dir / "scenario.json").read_text(encoding="utf-8"))
+        view = theater.get("view", {})
+        theaters.append({
+            "id": theater["id"],
+            "name": theater["name"],
+            "date": theater.get("date"),
+            "view": view.get("center"),
+            "view_nm": view.get("view_nm"),
+            "scenario": _scenario_summary(scenario),
+        })
+    return {"theaters": theaters}
+
+
+@app.post("/game/new")
+async def new_game(req: NewGameRequest):
+    """开新局：按战区包 scenario 重建 GameState（O.1）。
+
+    build_initial_state 每次现读 scenario.json（M.4 布兵唯一来源，可重入）——
+    重置即整体重建：时钟/AP/敌情（known+actual）/航线/提案全部回到初始态；
+    NPC 会话清空，航海参谋战区上下文热替换。
+    """
+    pack_dir = None
+    for candidate in _iter_theater_packs():
+        if _read_theater_json(candidate).get("id") == req.theater_id:
+            pack_dir = candidate
+            break
+    if pack_dir is None:
+        raise HTTPException(404, f"战区 '{req.theater_id}' 不存在。")
+
+    global game_state, theater_ctx
+    theater_ctx = load_theater(pack_dir)  # 包校验失败抛 ValueError（fail-fast 同启动语义）
+    game_state = build_initial_state()
+
+    for npc in npcs.values():
+        npc.messages = []  # NPC 会话清空（每 NPC 独立 LLM 会话历史）
+    # 航海参谋战区热替换（theater 为无 setter 的 property；navigator.py 在本任务白名单外）
+    npcs["navigator"]._theater = theater_ctx
+
+    return {
+        "ok": True,
+        "state": {
+            "theater_id": theater_ctx.id,
+            "clock": {"game_time": game_state.clock.game_time.isoformat()},
+            "ap": get_ap_status(game_state),
+            "task_forces": [
+                {
+                    "name": tf.name,
+                    "carriers": [
+                        {
+                            "name": c.name,
+                            "position": {"lat": c.position.lat, "lon": c.position.lon},
+                        }
+                        for c in tf.carriers
+                    ],
+                }
+                for tf in game_state.task_forces
+            ],
+        },
     }
 
 
