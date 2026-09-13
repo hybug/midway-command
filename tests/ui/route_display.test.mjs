@@ -11,6 +11,20 @@ const { sandbox, document } = loadGameScripts([
 const canvas = document.getElementById("tacticalMap");
 const renderer = new sandbox.MapRenderer("tacticalMap");
 
+// ── M.3：注入固定 theater JSON（与 theaters/midway/theater.json 关键字段同值）──
+// 桩环境未载 theaterLoader.js（chartRenderer init 的 loader 拉取自动跳过），
+// 显式注入锁定数据通道语义：取景/经纬网/距离环/环礁公式/标注全部消费本对象。
+sandbox.ChartRenderer.setTheater({
+  view: { center: { lat: 28.2, lon: -177.4 }, view_nm: 45,
+          atoll_screen_frac: { x: 0.44, y: 0.46 } },
+  graticule: { minor_step: 0.25, major_step: 0.5, label_format: "dms",
+               extent: { lat_min: 26.0, lat_max: 30.0, lon_min: -183.0, lon_max: -172.0 } },
+  range_rings: { origin: { lat: 28.2, lon: -177.4 }, rings_nm: [20, 25, 40, 60], labels: true },
+  atoll: { radius_nm: { x: 34, y: 25 }, rim: { x: 0.94, y: 0.90 }, lagoon: { x: 0.80, y: 0.74 } },
+  labels: { atoll: "MIDWAY ATOLL", atoll_coords: "28°12'N 177°21'W",
+            sand_island: "SAND ISLAND", eastern_island: "EASTERN ISLAND" },
+});
+
 // 最小 state：字段以 mapRenderer.render 实际读取为准，缺啥补啥（systematic-debugging 迭代桩 state）
 function makeState(lat, lon) {
   return {
@@ -21,23 +35,31 @@ function makeState(lat, lon) {
   };
 }
 
-// ── ① 唯一投影确定性（chartRenderer 层）──
+// ── ① 唯一投影确定性（chartRenderer 层，M.3 数据驱动语义）──
 // 注：vm 桩上下文返回的对象原型属另一 realm，deepStrictEqual 校验原型，
 // 先摊开成本 realm 普通对象再比较（断言语义不变）
 const p1 = sandbox.ChartRenderer.latLonToChartPx(31.5, -176.0, 1440, 900);
 const p2 = sandbox.ChartRenderer.latLonToChartPx(31.5, -176.0, 1440, 900);
 assert.deepEqual({ ...p1 }, { ...p2 }, "同输入投影必须确定");
+// R-M2：view.center（=环礁真坐标 28.2,-177.4）经 atoll_screen_frac 落构图位 (0.44w, 0.46h)
 const pFar = sandbox.ChartRenderer.latLonToChartPx(28.2, -177.4, 1440, 900);
-assert.deepEqual({ x: pFar.x, y: pFar.y }, { x: 720, y: 450 }, "图面中心 lat/lon 必须映射到画布中心");
-// Loop3-F1：makeProjector（实体层唯一投影出入口）必须与底图 latLonToChartPx 逐像素一致
-//（防「两参考系」回潮；M.3 TheaterLoader 落地后实体层改消费 theater.view 同式）
-const viaMake = sandbox.ChartRenderer.makeProjector({ center: { lat: 28.2, lon: -177.4 } }, 1440, 900)(31.5, -176.0);
+assert.deepEqual({ x: pFar.x, y: pFar.y }, { x: 1440 * 0.44, y: 900 * 0.46 },
+  "环礁真坐标必须落到 atoll_screen_frac 构图位");
+// makeProjector（唯一投影出入口）以注入 theater.view 投影必须与 latLonToChartPx 逐像素一致
+//（防「两参考系」回潮；实体层 mapRenderer 传 {center} 走缺省 0.5/0.5 画布中心锚）
+const theaterView = sandbox.ChartRenderer.getTheater().view;
+const viaMake = sandbox.ChartRenderer.makeProjector(theaterView, 1440, 900)(31.5, -176.0);
 assert.ok(Math.abs(viaMake.x - p1.x) < 1e-9 && Math.abs(viaMake.y - p1.y) < 1e-9,
   "makeProjector 与 latLonToChartPx 不一致（投影唯一化被破坏）");
+// M.3：invert 往返——投影点逆变换必须还原经纬（等距圆柱 + cos(lat) 精确可逆）
+const inv = sandbox.ChartRenderer.makeProjector(theaterView, 1440, 900).invert(p1.x, p1.y);
+assert.ok(Math.abs(inv.lat - 31.5) < 1e-9 && Math.abs(inv.lon - (-176.0)) < 1e-9,
+  `invert 往返失真: ${JSON.stringify(inv)}`);
 
 // ── ① 独立公式对照（控制裁定加强）──
-// 公式副本，源码变更时须同步——逐字抄录自 chartRenderer.js 的 chartNmToPx/makeProjector
-//（等距圆柱 + cos(lat) 纬度修正；CHART_VIEW_NM=45、基准半径 min(w,h)/2+100、CHART_CENTER 同源）
+// 公式副本，源码变更时须同步——逐字抄录自 chartRenderer.js 的 makeProjector 实体层调用形态
+//（等距圆柱 + cos(lat) 纬度修正；view_nm=45 由注入 theater 提供、基准半径 min(w,h)/2+100、
+// 缺省 atoll_screen_frac 0.5/0.5 = 画布中心锚——mapRenderer 传 {center} 即此形态）
 function projectCopy(lat, lon, w, h) {
   const pxPerDegLat = ((60 / 45) * (Math.min(w, h) / 2 + 100));
   const pxPerDegLon = pxPerDegLat * Math.cos((28.2 * Math.PI) / 180);

@@ -20,7 +20,20 @@ def test_theater_schema_core_fields():
     assert pack["id"] == "midway" and pack["view"]["view_nm"] == 45
     assert len(pack["bases"]) >= 1 and len(pack["sectors"]) >= 1
     gr = pack["graticule"]
-    assert gr["minor_step"] == 0.25 and gr["major_step"] == 1.0
+    # R-M1：major_step 对齐渲染现状（主网 0.5°/细网 0.25°，视觉零变化优先）
+    assert gr["minor_step"] == 0.25 and gr["major_step"] == 0.5
+
+
+def test_theater_frontend_consumption_fields():
+    """M.3 前端消费字段：atoll_screen_frac 构图位（R-M2）/网格覆盖域/环礁公式参数/图面标注。"""
+    pack = json.loads((PACK / "theater.json").read_text())
+    assert pack["view"]["atoll_screen_frac"] == {"x": 0.44, "y": 0.46}
+    ext = pack["graticule"]["extent"]
+    assert ext["lat_min"] == 26.0 and ext["lat_max"] == 30.0
+    assert ext["lon_min"] == -183.0 and ext["lon_max"] == -172.0
+    assert pack["atoll"]["radius_nm"] == {"x": 34, "y": 25}
+    assert pack["labels"]["atoll"] == "MIDWAY ATOLL"
+    assert pack["labels"]["sand_island"] == "SAND ISLAND"
 
 def test_scenario_fleet_positions_match_mockup():
     sc = json.loads((PACK / "scenario.json").read_text())

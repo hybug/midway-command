@@ -152,6 +152,26 @@ def validate_theater(pack_dir: Path) -> dict:
         gr = theater.get("graticule") or {}
         if not (0 < gr.get("minor_step", 0) < gr.get("major_step", 0) <= 30):
             errors.append("graticule 步进非法（须 0 < minor < major）")
+        # 可选字段宽松校验（M.3 前端消费：存在才校验，缺省放行）
+        frac = view.get("atoll_screen_frac")
+        if frac is not None:
+            fx, fy = frac.get("x"), frac.get("y")
+            if not (isinstance(fx, (int, float)) and isinstance(fy, (int, float))
+                    and 0 <= fx <= 1 and 0 <= fy <= 1):
+                errors.append(f"atoll_screen_frac 非法（须 0≤x,y≤1）: {frac}")
+        ext = gr.get("extent")
+        if ext is not None:
+            if not (ext.get("lat_min", 91) < ext.get("lat_max", -91)
+                    and ext.get("lon_min", 181) < ext.get("lon_max", -181)):
+                errors.append(f"graticule.extent 非法（须 min < max）: {ext}")
+        atoll = theater.get("atoll")
+        if atoll is not None:
+            r = atoll.get("radius_nm") or {}
+            if not (0 < r.get("x", 0) <= 300 and 0 < r.get("y", 0) <= 300):
+                errors.append(f"atoll.radius_nm 非法（须 0 < x,y ≤ 300nm）: {r}")
+        labels = theater.get("labels")
+        if labels is not None and not all(isinstance(v, str) and v for v in labels.values()):
+            errors.append(f"labels 须为非空字符串映射: {labels}")
         if not -12 <= theater.get("timezone_offset", 999) <= 14:
             errors.append(f"timezone_offset 非法: {theater.get('timezone_offset')}")
         bases = theater.get("bases")

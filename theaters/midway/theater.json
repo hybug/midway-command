@@ -10,12 +10,22 @@
       "lon": -177.4
     },
     "view_nm": 45,
-    "rotation": 0
+    "rotation": 0,
+    "atoll_screen_frac": {
+      "x": 0.44,
+      "y": 0.46
+    }
   },
   "graticule": {
     "minor_step": 0.25,
-    "major_step": 1.0,
-    "label_format": "dms"
+    "major_step": 0.5,
+    "label_format": "dms",
+    "extent": {
+      "lat_min": 26.0,
+      "lat_max": 30.0,
+      "lon_min": -183.0,
+      "lon_max": -172.0
+    }
   },
   "range_rings": {
     "origin": {
@@ -29,6 +39,26 @@
       60
     ],
     "labels": true
+  },
+  "atoll": {
+    "radius_nm": {
+      "x": 34,
+      "y": 25
+    },
+    "rim": {
+      "x": 0.94,
+      "y": 0.9
+    },
+    "lagoon": {
+      "x": 0.8,
+      "y": 0.74
+    }
+  },
+  "labels": {
+    "atoll": "MIDWAY ATOLL",
+    "atoll_coords": "28°12'N 177°21'W",
+    "sand_island": "SAND ISLAND",
+    "eastern_island": "EASTERN ISLAND"
   },
   "bases": [
     {

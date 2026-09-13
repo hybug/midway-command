@@ -129,9 +129,11 @@ def test_chart_renderer_constants_match_css():
     for value in ["#f5edd6", "#2a2218", "#b8d4c8", "#8aaa98", "#d4c4a0", "#c8b890",
                   "#8b2500", "#6b5d4a", "#a89878", "#e8dcc8", "#d4c8a8"]:
         assert value in js, f"chartRenderer.js 缺少色值 {value}"
-    for label in ["MIDWAY ATOLL", "28°12'N 177°21'W", "SAND ISLAND", "EASTERN ISLAND",
-                  "20nm", "25nm", "40nm", "60nm"]:
+    for label in ["MIDWAY ATOLL", "28°12'N 177°21'W", "SAND ISLAND", "EASTERN ISLAND"]:
         assert label in js, f"chartRenderer.js 缺少标注 {label}"
+    # M.3：距离环半径改由 THEATER.range_rings.rings_nm 数据驱动，标注派生 `${nm}nm`
+    #（内置默认同值锚点 [20, 25, 40, 60] 守卫 20/25/40/60nm 环不丢）
+    assert "rings_nm: [20, 25, 40, 60]" in js, "chartRenderer.js 缺少距离环 rings_nm 同值锚点"
     # 保真度修正 B1：海图底改 AI 纸纹 createPattern 平铺（SVG drawImage 回退）
     assert "createPattern" in js, "chartRenderer.js 缺少 createPattern 纸纹平铺"
 
@@ -194,11 +196,11 @@ def test_input_bar_and_button_focus_styles():
 
 
 def test_index_html_cache_version_consistent():
-    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（保真度修正 T4 → 1780997990，B1 → 1780997991，B3 → 1780997992，C4 → 1780997993，loop1 L4 → 1780997994，loop2 L4 → 1780997995，loop3 F1-F5 → 1780997996，终审修复 → 1780997997，成品图复现 D1/D2 → 1780997998，D4 → 1780997999，E1/E2 → 1780998000，EB2（E3 标签/E4 齿轮/E7 按钮三态）→ 1780998001，EB3（E6 占位卡/E8 布局 60px/320px）→ 1780998002，G1（舰队标记空心圆圈+双虚线矢量）→ 1780998003，GB 批次（G2 侦察机剪影/G3 敌标勘误/G4 SECRET 章+字幕移除）→ 1780998004，GC 批次（G5 圆规道具/G6 尺铅笔移位/G7 东岛近景/顺修 midAngle）→ 1780998005，成品图基准 Loop1 F1-F8（胶囊/罗盘/标注群/敌标位/扇区/细网格/纸签/内阴影）→ 1780998006，F8 重做（纸面晕影改 #chart-area::after 覆层 22px，设计师验收 REJECT 返工）→ 1780998007，Loop2 L4（F1 舰队对位/F3 纸面暖黄/F4 扇区标签外推/F5 细网格提存在感/F6 罗盘避让经度标注）→ 1780998008，Loop3 L4（F1 实体层投影唯一化拔舰队居中疣/F4 route_display 直接投影期望/design-state 真实经纬）→ 1780998009，L5.5 F3-R（扇区方向标签由 search_bearing 派生，设计师验收 REJECT 返工）→ 1780998010，终审后修复（chartRenderer 过时注释更新 + style.css .chart-label 死规则删除/GC 公式修正）→ 1780998011）。"""
+    """index.html 所有 ?v= 缓存号必须一致且随 CSS 变更递增（保真度修正 T4 → 1780997990，B1 → 1780997991，B3 → 1780997992，C4 → 1780997993，loop1 L4 → 1780997994，loop2 L4 → 1780997995，loop3 F1-F5 → 1780997996，终审修复 → 1780997997，成品图复现 D1/D2 → 1780997998，D4 → 1780997999，E1/E2 → 1780998000，EB2（E3 标签/E4 齿轮/E7 按钮三态）→ 1780998001，EB3（E6 占位卡/E8 布局 60px/320px）→ 1780998002，G1（舰队标记空心圆圈+双虚线矢量）→ 1780998003，GB 批次（G2 侦察机剪影/G3 敌标勘误/G4 SECRET 章+字幕移除）→ 1780998004，GC 批次（G5 圆规道具/G6 尺铅笔移位/G7 东岛近景/顺修 midAngle）→ 1780998005，成品图基准 Loop1 F1-F8（胶囊/罗盘/标注群/敌标位/扇区/细网格/纸签/内阴影）→ 1780998006，F8 重做（纸面晕影改 #chart-area::after 覆层 22px，设计师验收 REJECT 返工）→ 1780998007，Loop2 L4（F1 舰队对位/F3 纸面暖黄/F4 扇区标签外推/F5 细网格提存在感/F6 罗盘避让经度标注）→ 1780998008，Loop3 L4（F1 实体层投影唯一化拔舰队居中疣/F4 route_display 直接投影期望/design-state 真实经纬）→ 1780998009，L5.5 F3-R（扇区方向标签由 search_bearing 派生，设计师验收 REJECT 返工）→ 1780998010，终审后修复（chartRenderer 过时注释更新 + style.css .chart-label 死规则删除/GC 公式修正）→ 1780998011，M.3（ChartEngine 数据驱动化：theaterLoader 接线/chartRenderer 战区包消费/缓存号全链 +1）→ 1780998012）。"""
     html = (BASE / "static" / "index.html").read_text()
     versions = set(re.findall(r'\?v=(\d+)', html))
     assert len(versions) == 1, f"index.html 缓存号不一致: {versions}"
-    assert versions == {"1780998011"}, f"index.html 缓存号未递增到 1780998011: {versions}"
+    assert versions == {"1780998012"}, f"index.html 缓存号未递增到 1780998012: {versions}"
     # 防再漂移：svgLoader.js 内全部带 ?v= 的资源 URL，版本号必须与 index.html 现值一致
     # （历史漂移：paper_tex ?v=1780997995 与 index.html 1780997996 脱钩，见终审修复项 1）
     loader = (BASE / "static" / "js" / "svgLoader.js").read_text()
@@ -336,10 +338,12 @@ def test_loop2_fidelity_fix_markers():
     assert "Math.max(sandLblW + 16, 62)" in chart, "沙岛胶囊未按 measureText 定宽"
     assert "ctx.font = `7px ${CHART_STYLE.fontTypewriter}`" in chart, "EASTERN ISLAND 黄底标注 7px 字号缺失"
     # F8: 0.25° 细网用 gridLineFaint，0.5° 主网 gridLine 原色保留
+    #（M.3 起步进由 THEATER.graticule 驱动：minor_step 0.25 细网 / major_step 0.5 主网）
     assert "gridLineFaint: 'rgba(160,140,110,0.18)'" in chart, "缺 gridLineFaint 细网色"
     assert "gridLine: 'rgba(160,140,110,0.35)'" in chart, "0.5° 主网原色不得改动"
-    assert "lat += 0.25" in chart and "lon += 0.25" in chart, "经纬网未加 0.25° 细网"
-    assert "lat += 0.5" in chart and "lon += 0.5" in chart, "0.5° 主网须保留"
+    assert "minor_step: 0.25" in chart and "major_step: 0.5" in chart, "经纬网步进内置默认同值缺失"
+    assert "lat += g.minor_step" in chart and "lon += g.minor_step" in chart, "经纬网未按 minor_step 细网"
+    assert "lat += g.major_step" in chart and "lon += g.major_step" in chart, "主网须按 major_step 保留"
     map_js = (BASE / "static" / "js" / "mapRenderer.js").read_text()
     # F1 对角错开 → Loop3-F1 退役：真实位天然分离（ENT/HOR 按真实经纬直接投影，
     # fixture ENT 西外缘/HOR 环礁西缘），标记画在投影点本位——偏移会破坏
@@ -390,9 +394,10 @@ def test_button_three_states():
 
 
 def test_close_framing_constants():
+    """D1 近景取景：M.3 起由 THEATER.view.view_nm 数据驱动（内置默认/战区包同值 45）。"""
     js = (BASE / "static" / "js" / "chartRenderer.js").read_text()
-    assert "/ 45)" in js, "取景未改 45nm 近景"
-    assert "CHART_VIEW_NM = 45" in js, "视野常量未提取"
+    assert "T().view.view_nm" in js, "取景未消费 THEATER.view.view_nm"
+    assert "view_nm: 45" in js, "内置默认战区取景同值 45 缺失"
 
 
 # ── 成品图复现 · E6：命令卡常驻化（设计审计 A10 最大遗漏项） ──
@@ -506,3 +511,44 @@ def test_chart_eastern_island_closeup_details():
     assert "runwayBand" in js, "缺 SAND ISLAND 侧跑道横带（runwayBand 锚点）"
     assert "drawParkingRamp" in js, "缺停机剪影绘制函数（drawParkingRamp 锚点）"
     assert "aircraft_topdown" in js, "停机剪影未复用 aircraft_topdown 图标"
+
+
+# ── M.3：前端 TheaterLoader + ChartEngine 数据驱动化（战区包消费） ──
+
+def test_index_html_loads_theater_loader():
+    """M.3：index.html 须加载 theaterLoader.js，且先于 chartRenderer.js
+    （chartRenderer 脚本求值时即向 loader 发起战区包拉取）。"""
+    html = (BASE / "static" / "index.html").read_text()
+    assert "theaterLoader.js" in html, "index.html 未加载 theaterLoader.js"
+    assert html.index("theaterLoader.js") < html.index("chartRenderer.js"), \
+        "theaterLoader.js 必须先于 chartRenderer.js 加载"
+
+
+def test_chart_renderer_theater_driven():
+    """M.3：chartRenderer 删硬编码常量（CHART_CENTER/CHART_VIEW_NM/RING_NM/graticule
+    步进/环礁公式参数），消费 THEATER 战区对象；atoll_screen_frac 构图位（R-M2）；
+    内置默认战区对象与 theaters/midway/theater.json 同值（离线/加载失败兜底可断言）。"""
+    js = (BASE / "static" / "js" / "chartRenderer.js").read_text()
+    assert "makeProjector" in js, "缺 makeProjector（唯一投影出入口）"
+    assert "TheaterLoader" in js, "chartRenderer 未接 TheaterLoader（战区包拉取）"
+    assert "CHART_VIEW_NM" not in js, "硬编码 CHART_VIEW_NM 未删除"
+    assert "const CHART_CENTER" not in js, "硬编码 CHART_CENTER 未删除"
+    assert "atoll_screen_frac" in js, "投影未消费 atoll_screen_frac 构图位（R-M2）"
+    for token in ["view_nm: 45", "atoll_screen_frac: { x: 0.44, y: 0.46 }",
+                  "rings_nm: [20, 25, 40, 60]", "radius_nm: { x: 34, y: 25 }",
+                  "minor_step: 0.25", "major_step: 0.5",
+                  "lat_min: 26", "lon_min: -183"]:
+        assert token in js, f"内置默认战区对象缺同值锚点 {token}"
+
+
+def test_theater_pack_matches_frontend_builtin():
+    """M.3/R-M1：theater.json 与前端消费同源——major_step 对齐渲染现状 0.5（R-M1）、
+    atoll_screen_frac 构图位（R-M2）、距离环 20/25/40/60、环礁半径 34/25nm。"""
+    import json
+    pack = json.loads((BASE / "theaters" / "midway" / "theater.json").read_text())
+    assert pack["graticule"]["major_step"] == 0.5, "R-M1: major_step 须对齐渲染现状 0.5"
+    assert pack["graticule"]["minor_step"] == 0.25
+    assert pack["view"]["atoll_screen_frac"] == {"x": 0.44, "y": 0.46}, "R-M2: 构图位缺失"
+    assert pack["range_rings"]["rings_nm"] == [20, 25, 40, 60]
+    assert pack["atoll"]["radius_nm"] == {"x": 34, "y": 25}
+    assert pack["labels"]["atoll"] == "MIDWAY ATOLL"

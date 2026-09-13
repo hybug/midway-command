@@ -24,7 +24,7 @@ def test_theater_context_fields():
     ctx = load_theater(PACK)
     assert ctx.bases and ctx.bases[0]["id"] == "midway"
     assert ctx.sectors and ctx.sectors[0]["id"] == "east-quad"
-    assert ctx.graticule["minor_step"] == 0.25 and ctx.graticule["major_step"] == 1.0
+    assert ctx.graticule["minor_step"] == 0.25 and ctx.graticule["major_step"] == 0.5  # R-M1 对齐渲染现状
     assert ctx.range_rings["rings_nm"] == [20, 25, 40, 60]
     # scenario 摘要（战区剧本）
     assert ctx.scenario["id"] == "midway"

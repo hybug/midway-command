@@ -16,19 +16,44 @@
 (function () {
   'use strict';
 
-  // ── 固定 theater（与 theaters/midway/theater.json 设计同源的最小字段集，
-  //    取值与 chartRenderer.js 的 CHART_CENTER/CHART_VIEW_NM/RING_NM 常量一致）──
+  // ── 固定 theater（M.3 起与 theaters/midway/theater.json 逐字段同值——
+  //    含 atoll_screen_frac 构图位（R-M2）/graticule extent/环礁公式参数/图面标注；
+  //    bootDesignFixture 经 ChartRenderer.setTheater 注入，fixture 渲染走战区包数据通道）──
   const DESIGN_THEATER = {
     id: 'midway',
-    name: 'MIDWAY ATOLL SECTOR',
-    center: { lat: 28.2, lon: -177.4 },   // 环礁中心（chartRenderer CHART_CENTER 同源）
-    view_nm: 45,                          // D1 近景取景（CHART_VIEW_NM 同源）
-    range_rings_nm: [20, 25, 40, 60],     // RING_NM 同源
-    atoll_radius_nm: { x: 34, y: 25 },    // D1 近景环礁半径（chartNmToPx 输入）
+    name: '中途岛',
+    name_en: 'Midway',
+    date: '1942-06-04',
+    timezone_offset: 12,
+    view: {
+      center: { lat: 28.2, lon: -177.4 },     // 环礁中心（=range_rings.origin 真坐标）
+      view_nm: 45,                            // D1 近景取景
+      rotation: 0,
+      atoll_screen_frac: { x: 0.44, y: 0.46 }, // R-M2：环礁构图位（成品图量取）
+    },
+    graticule: {
+      minor_step: 0.25,
+      major_step: 0.5,
+      label_format: 'dms',
+      extent: { lat_min: 26.0, lat_max: 30.0, lon_min: -183.0, lon_max: -172.0 },
+    },
+    range_rings: { origin: { lat: 28.2, lon: -177.4 }, rings_nm: [20, 25, 40, 60], labels: true },
+    atoll: {
+      radius_nm: { x: 34, y: 25 },
+      rim: { x: 0.94, y: 0.90 },
+      lagoon: { x: 0.80, y: 0.74 },
+    },
+    labels: {
+      atoll: 'MIDWAY ATOLL',
+      atoll_coords: "28°12'N 177°21'W",
+      sand_island: 'SAND ISLAND',
+      eastern_island: 'EASTERN ISLAND',
+    },
+    units: 'nm',
   };
   window.DESIGN_THEATER = DESIGN_THEATER;
 
-  const NM_TO_DEG_LON = 1 / (60 * Math.cos(DESIGN_THEATER.center.lat * Math.PI / 180));
+  const NM_TO_DEG_LON = 1 / (60 * Math.cos(DESIGN_THEATER.view.center.lat * Math.PI / 180));
 
   // 舰队：course 270 / 30 KTS。fix Loop3-F1 投影唯一化——「首航母钉画布中心」 wart
   // 已拔除，按成品图位直给真实经纬（画布位按 1084×657 反推，北向上东向右）：
@@ -173,10 +198,13 @@
     `;
   }
 
-  // ── 引导：图标就绪 → UI 面板 → 地图 render(state)。
+  // ── 引导：图标就绪 → 战区包注入 → UI 面板 → 地图 render(state)。
   //    不启动动画循环（截图确定性；敌标脉冲 alpha 固定于初始值）──
   async function bootDesignFixture() {
     await window.loadSVGIcons();
+    // M.3 数据通道：fixture 离线无 /theater，经 setTheater 注入同值战区对象——
+    // chartRenderer 的取景/经纬网/距离环/环礁/标注全部消费本对象
+    window.ChartRenderer.setTheater(window.DESIGN_THEATER);
     const ui = new window.UIController();
     ui.renderNpcTabs('browning', function () {});   // 标签静态（fixture 无切换语义）
     ui.renderDashboard(window.DESIGN_STATE);

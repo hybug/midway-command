@@ -2,6 +2,8 @@
  * chartRenderer.js — 设计图 A1「地图主图」程序化绘制（docs/plans/ui-replication-plan.md）
  * 旧海图纸底图 + 中途岛环礁 + 距离环 + 经纬网 + 罗盘 + 比例尺。
  * 色值必须与 style.css 的 :root token 保持一致（tests/test_ui_assets.py 守卫）。
+ * M.3 数据驱动化：取景/经纬网/距离环/环礁公式/标注全部消费 THEATER 战区对象
+ * （GET /theater 下发；BUILTIN_THEATER 同值兜底），详见 BUILTIN_THEATER 注释块。
  */
 
 const CHART_STYLE = {
@@ -16,49 +18,89 @@ const CHART_STYLE = {
   fontTypewriter: "'Special Elite', monospace",
 };
 
-// 图面中心 = 环礁中心（与 mapRenderer.js 的 REF_LAT/REF_LON 一致）
-const CHART_CENTER = { lat: 28.2, lon: -177.4 };
-// 距离环用 [标签, 数值] 对——标签字面量受 tests/test_ui_assets.py 守卫（控制裁定 R1）
-const RING_NM = [["20nm", 20], ["25nm", 25], ["40nm", 40], ["60nm", 60]];
-
-// 图面标注字面量（同受测试守卫；Task 7.5/7.6 绘制环礁与距离环标注时取用）
-const CHART_LABELS = {
-  atoll: "MIDWAY ATOLL",
-  atollCoords: "28°12'N 177°21'W",
-  sandIsland: "SAND ISLAND",
-  easternIsland: "EASTERN ISLAND",
+// ── M.3 ChartEngine 数据驱动化：战区包（theater pack）消费 ──
+// THEATER 为 GET /theater 下发的战区对象（theaters/midway/theater.json 原样结构），
+// init 时经 TheaterLoader 异步填充；null 时以 BUILTIN_THEATER（与战区包同值的 JS
+// 字面量）渲染——同步可用性兜底：加载失败/离线/vm 桩（无 loader）均不白屏，
+// 「内置默认 = 战区包同值」由 tests/test_ui_assets.py 锚点断言守卫。
+// 图面中心/取景 nm/距离环表/环礁公式参数等硬编码常量就此退役，全部读 THEATER。
+const BUILTIN_THEATER = {
+  id: 'midway',
+  name: '中途岛',
+  view: {
+    center: { lat: 28.2, lon: -177.4 },      // 环礁中心（=range_rings.origin 真坐标）
+    view_nm: 45,                              // D1 近景取景（45nm）
+    rotation: 0,
+    atoll_screen_frac: { x: 0.44, y: 0.46 },  // R-M2：环礁构图位（成品图量取 0.44w/0.46h）
+  },
+  graticule: {
+    minor_step: 0.25,                         // 细网（gridLineFaint，无标注）
+    major_step: 0.5,                          // 主网 + 度分标注（R-M1：对齐渲染现状）
+    label_format: 'dms',
+    extent: { lat_min: 26.0, lat_max: 30.0, lon_min: -183.0, lon_max: -172.0 }, // 网格覆盖域
+  },
+  range_rings: { origin: { lat: 28.2, lon: -177.4 }, rings_nm: [20, 25, 40, 60], labels: true },
+  atoll: {                                    // 环礁程序化绘制参数（nm 尺度，投影消费）
+    radius_nm: { x: 34, y: 25 },              // D1 近景环礁半轴（跨度 ≈70% 图面）
+    rim: { x: 0.94, y: 0.90 },                // 内缘墨线比例
+    lagoon: { x: 0.80, y: 0.74 },             // 泻湖比例
+  },
+  labels: {
+    atoll: 'MIDWAY ATOLL',
+    atoll_coords: "28°12'N 177°21'W",
+    sand_island: 'SAND ISLAND',
+    eastern_island: 'EASTERN ISLAND',
+  },
 };
+let THEATER = null;
+function T() { return THEATER || BUILTIN_THEATER; }
 
-// 成品图复现 D1：45nm 近景取景——换算式 (nm / 45) × (min(w,h)/2 + 100)，
-// 基准半径取负边距（初版 -30 边距时 40nm 不出上缘、60nm 不出画右缘，目检调参 +100）；
-// 60nm 环允许出画（设计即如此，不加特判）
-const CHART_VIEW_NM = 45;
+// 成品图复现 D1：近景取景换算式 (nm / view_nm) × (min(w,h)/2 + 100)——基准半径负边距
+// （初版 -30 边距时 40nm 不出上缘、60nm 不出画右缘，目检调参 +100）；60nm 环允许出画。
+// view_nm 由 THEATER.view 直供（M.3 数据驱动；内置默认/战区包同值 45）。
+const BASE_RADIUS_MARGIN = 100;
 function chartNmToPx(nm, w, h) {
-  return (nm / CHART_VIEW_NM) * (Math.min(w, h) / 2 + 100);
+  return (nm / T().view.view_nm) * (Math.min(w, h) / 2 + BASE_RADIUS_MARGIN);
 }
 
-// 环礁图面中心——环礁、双岛与距离环共享的绘制基准（fix: 距离环与环礁共心）
+// 环礁图面中心——环礁、双岛与距离环共享的绘制基准（fix: 距离环与环礁共心）。
+// R-M2：range_rings.origin 真坐标经 makeProjector（atoll_screen_frac）落构图位，
+// 与改造前 atollCenter（0.44w/0.46h）逐像素一致。
 function atollCenter(w, h) {
-  return { x: w * 0.44, y: h * 0.46 };
+  const th = T();
+  return makeProjector(th.view, w, h)(th.range_rings.origin.lat, th.range_rings.origin.lon);
 }
 
-// fix Loop3-F1（CHART_SYSTEM.md §四 C3 投影唯一化）：唯一坐标系出入口——
-// makeProjector(view, w, h) -> project(lat, lon) -> {x, y}，等距圆柱 + cos(lat) 纬度修正。
-// view: { center: {lat, lon}, view_nm }（view_nm 预留：v1 取景比例由 chartNmToPx 固定，
-// M.3 TheaterLoader 落地后由 theater.view 直供）。底图 latLonToChartPx 与实体层
-// （mapRenderer）共用本式，「底图与实体两参考系」已知局限就此关闭。
+// fix Loop3-F1（CHART_SYSTEM.md §四 C3 投影唯一化）→ M.3 数据驱动化：唯一坐标系出入口——
+// makeProjector(view, w, h) -> project(lat, lon) -> {x, y}（含 project.invert(x, y) → {lat, lon}），
+// 等距圆柱 + cos(lat) 纬度修正。view.atoll_screen_frac 指定 view.center 的图面锚位
+// （R-M2：环礁构图位 0.44/0.46；缺省 0.5/0.5 = 画布中心——实体层 mapRenderer 传
+// {center} 即走画布中心锚，取值与 view.center 同源）。view_nm 缺省回落 THEATER。
 function makeProjector(view, w, h) {
   const c = view.center;
-  const pxPerDegLat = chartNmToPx(60, w, h); // 1° 纬度 ≈ 60nm
+  const frac = view.atoll_screen_frac || { x: 0.5, y: 0.5 };
+  const viewNm = view.view_nm || T().view.view_nm;
+  const pxPerDegLat = (60 / viewNm) * (Math.min(w, h) / 2 + BASE_RADIUS_MARGIN); // 1° 纬度 ≈ 60nm
   const pxPerDegLon = pxPerDegLat * Math.cos(c.lat * Math.PI / 180);
-  return (lat, lon) => ({
-    x: w / 2 + (lon - c.lon) * pxPerDegLon,
-    y: h / 2 - (lat - c.lat) * pxPerDegLat,
+  const project = (lat, lon) => ({
+    x: w * frac.x + (lon - c.lon) * pxPerDegLon,
+    y: h * frac.y - (lat - c.lat) * pxPerDegLat,
   });
+  project.invert = (x, y) => ({
+    lon: c.lon + (x - w * frac.x) / pxPerDegLon,
+    lat: c.lat - (y - h * frac.y) / pxPerDegLat,
+  });
+  return project;
 }
 
+// 底图经纬投影（THEATER.view 全量消费，含构图 frac）——环礁真坐标落构图位
 function latLonToChartPx(lat, lon, w, h) {
-  return makeProjector({ center: CHART_CENTER }, w, h)(lat, lon);
+  return makeProjector(T().view, w, h)(lat, lon);
+}
+
+// M.3：战区包异步拉取（失败静默保持内置默认；vm 桩未载 theaterLoader.js 时跳过）
+if (typeof window !== 'undefined' && window.TheaterLoader && window.TheaterLoader.load) {
+  window.TheaterLoader.load().then((t) => { if (t && t.view) THEATER = t; }).catch(() => {});
 }
 
 // Task 7.3 → 保真度修正 B1：纸张底图——米黄底色 + AI 纸纹 createPattern 平铺（SVG 水渍回退）+ 噪点颗粒
@@ -87,34 +129,41 @@ function fmtLon(lon) {
   return `${d}°${m}'W`;
 }
 
-// Task 7.4：0.5° 虚线经纬网 + 纬度（左）/经度（顶）度分标注
-// fix Loop2-F8: 0.25° 细网垫底（gridLineFaint alpha 减半、无标注，绘图纸质感），
-// 0.5° 主网保持 gridLine 原色与度分标注
+// Task 7.4：虚线经纬网 + 纬度（左）/经度（顶）度分标注（步进/覆盖域由 THEATER.graticule 驱动，M.3）
+// fix Loop2-F8: 细网垫底（gridLineFaint alpha 减半、无标注，绘图纸质感），
+// 主网保持 gridLine 原色与度分标注
 function drawLatLonGrid(ctx, w, h) {
+  const th = T();
+  const g = th.graticule, ext = g.extent;
+  const lat0 = th.view.center.lat, lon0 = th.view.center.lon;
+  // 网格参考系：view.center → 画布中心（缺省 0.5/0.5 锚）——改造前网格即锚画布中心，
+  // 与环礁构图位（atoll_screen_frac 0.44/0.46）相差 (0.06w, 0.04h)；视觉零变化裁定
+  // 保留两锚现状，M.4 底图 GeoJSON 化时统一
+  const gridProj = makeProjector({ center: th.view.center, view_nm: th.view.view_nm }, w, h);
   ctx.save();
   ctx.lineWidth = 1;
-  // 细网：0.25° 步进，跳过整半度线（由主网绘制）；(v*2)%1===0 即 0.5° 的倍数
+  // 细网：minor_step 步进，跳过整半度线（由主网绘制）；(v*2)%1===0 即 0.5° 的倍数
   ctx.strokeStyle = CHART_STYLE.gridLineFaint;
   ctx.setLineDash([4, 4]);
-  for (let lat = 26.25; lat <= 30.01; lat += 0.25) {
+  for (let lat = ext.lat_min + g.minor_step; lat <= ext.lat_max + 1e-9; lat += g.minor_step) {
     if ((lat * 2) % 1 === 0) continue;
-    const y = latLonToChartPx(lat, CHART_CENTER.lon, w, h).y;
+    const y = gridProj(lat, lon0).y;
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
   }
-  for (let lon = -183; lon <= -172; lon += 0.25) {
+  for (let lon = ext.lon_min; lon <= ext.lon_max + 1e-9; lon += g.minor_step) {
     if (lon < -180 || (lon * 2) % 1 === 0) continue;
-    const x = latLonToChartPx(CHART_CENTER.lat, lon, w, h).x;
+    const x = gridProj(lat0, lon).x;
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
   }
   ctx.setLineDash([]);
-  // 主网：0.5° 步进 + 度分标注（原样保留）
+  // 主网：major_step 步进 + 度分标注（原样保留）
   ctx.strokeStyle = CHART_STYLE.gridLine;
   // 成品图复现 D1/B5（设计审计 MISSING-11）：近景后边缘度分标注淡出（初版 0.15 目检过淡，
   // 调至 0.25），验收口径「可辨但不抢主体」——边缘刻度不再与近景环礁/距离环构图冲突
   ctx.fillStyle = 'rgba(107, 93, 74, 0.25)'; // inkFade #6b5d4a 淡出
   ctx.font = `9px ${CHART_STYLE.fontTypewriter}`;
-  for (let lat = 26.0; lat <= 30.01; lat += 0.5) {
-    const y = latLonToChartPx(lat, CHART_CENTER.lon, w, h).y;
+  for (let lat = ext.lat_min; lat <= ext.lat_max + 1e-9; lat += g.major_step) {
+    const y = gridProj(lat, lon0).y;
     ctx.setLineDash([4, 4]);
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
     ctx.setLineDash([]);
@@ -123,9 +172,9 @@ function drawLatLonGrid(ctx, w, h) {
   }
     // fix Loop2-F6: 罗盘避让——右上罗盘 150px 占位（drawCompassRose 自 w-170 起），
     // 落在罗盘半径带内（x > w-170）的顶部经度标注跳过（网格线照画，只让标注带避让）
-    for (let lon = -183; lon <= -172; lon += 0.5) {
+    for (let lon = ext.lon_min; lon <= ext.lon_max + 1e-9; lon += g.major_step) {
       if (lon < -180) continue;
-      const x = latLonToChartPx(CHART_CENTER.lat, lon, w, h).x;
+      const x = gridProj(lat0, lon).x;
       ctx.setLineDash([4, 4]);
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
       ctx.setLineDash([]);
@@ -181,6 +230,7 @@ function drawParkingRamp(ctx, x, y) {
 // Task 7.5：双岛——SAND ISLAND 圆角矩形 + EASTERN ISLAND 三角形与三条交叉跑道
 // 成品图复现 G7：近景后东岛放大，补沙岛侧跑道横带 + 东岛黄底标注块 + 停机剪影
 function drawIslands(ctx, c, rx, ry) {
+  const L = T().labels;
   ctx.font = `8px ${CHART_STYLE.fontTypewriter}`;
   // SAND ISLAND — 环礁西侧圆角矩形（下移避让坐标行）
   const sx = c.x - rx * 0.60, sy = c.y + ry * 0.32;
@@ -188,7 +238,7 @@ function drawIslands(ctx, c, rx, ry) {
   // rx*0.34×ry*0.16 大胶囊内度量失配，目检呈空白胶囊。改 10px 字号，胶囊按文字实宽
   // +16 定宽（下限 62px）、16px 定高，文字水平/垂直居中，胶囊尺寸随文字走
   ctx.font = `10px ${CHART_STYLE.fontTypewriter}`;
-  const sandLblW = ctx.measureText(CHART_LABELS.sandIsland).width;
+  const sandLblW = ctx.measureText(L.sand_island).width;
   const sandW = Math.max(sandLblW + 16, 62);
   const sandH = 16;
   ctx.fillStyle = CHART_STYLE.paperDark;
@@ -196,7 +246,7 @@ function drawIslands(ctx, c, rx, ry) {
   roundRect(ctx, sx, sy, sandW, sandH, 3);
   ctx.fill(); ctx.stroke();
   ctx.fillStyle = CHART_STYLE.ink;
-  ctx.fillText(CHART_LABELS.sandIsland, sx + (sandW - sandLblW) / 2, sy + sandH * 0.72);
+  ctx.fillText(L.sand_island, sx + (sandW - sandLblW) / 2, sy + sandH * 0.72);
   // 成品图复现 G7②：SAND ISLAND 侧跑道横带——浅色横带 + 墨色虚线中线（成品图沙岛下方长条跑道）
   const bandY = sy + sandH + 8, bandH = 10; // runwayBand
   ctx.fillStyle = CHART_STYLE.paper;
@@ -234,7 +284,7 @@ function drawIslands(ctx, c, rx, ry) {
   // 成品图复现 G7①：EASTERN ISLAND 黄底标注块（黄底墨字矩形，成品图形态；
   // 原 L4-F7 右下裸字升级为标注块，位置沿用右下侧避让舰队标记）
   ctx.font = `7px ${CHART_STYLE.fontTypewriter}`;
-  const lbl = CHART_LABELS.easternIsland;
+  const lbl = T().labels.eastern_island;
   const lblW = ctx.measureText(lbl).width + 8;
   const lx = ex + s * 0.35, ly = ey + s * 0.62;
   ctx.fillStyle = CHART_STYLE.labelYellow;
@@ -246,13 +296,15 @@ function drawIslands(ctx, c, rx, ry) {
 }
 
 // Task 7.5：中途岛环礁——礁环沙色 + 泻湖 + SW 斜线阴影 + 双岛 + 中心标注
+// （M.3：半轴/内外缘比例/标注由 THEATER.atoll 与 THEATER.labels 驱动）
 function drawAtoll(ctx, w, h) {
-  const c = atollCenter(w, h);
+  const a = T().atoll;
+  const c = atollCenter(w, h); // range_rings.origin 真坐标 → atoll_screen_frac 构图位（R-M2）
   // 成品图复现 D1 目检调参：23/17 → 34/25（近景后环礁跨度 ≈70% 图面，与成品图占比对齐）
-  const rx = chartNmToPx(34, w, h), ry = chartNmToPx(25, w, h);
+  const rx = chartNmToPx(a.radius_nm.x, w, h), ry = chartNmToPx(a.radius_nm.y, w, h);
   const outer = atollOutline(c.x, c.y, rx, ry);
-  const rim = atollOutline(c.x, c.y, rx * 0.94, ry * 0.90);
-  const lagoon = atollOutline(c.x, c.y, rx * 0.80, ry * 0.74);
+  const rim = atollOutline(c.x, c.y, rx * a.rim.x, ry * a.rim.y);
+  const lagoon = atollOutline(c.x, c.y, rx * a.lagoon.x, ry * a.lagoon.y);
   // 西南海面斜线（先铺后盖：铺在沙色填充之前的海面层）
   ctx.save();
   ctx.beginPath();
@@ -319,14 +371,15 @@ function drawAtoll(ctx, w, h) {
   ctx.fillStyle = CHART_STYLE.ink;
   ctx.textAlign = 'center';
   ctx.font = `bold 13px ${CHART_STYLE.fontTypewriter}`;
-  ctx.fillText(CHART_LABELS.atoll, c.x - 48, c.y - 24);
+  ctx.fillText(T().labels.atoll, c.x - 48, c.y - 24);
   ctx.font = `9px ${CHART_STYLE.fontTypewriter}`;
-  ctx.fillText(CHART_LABELS.atollCoords, c.x - 48, c.y + 4);
+  ctx.fillText(T().labels.atoll_coords, c.x - 48, c.y + 4);
   ctx.textAlign = 'left';
 }
 
-// Task 7.6：20/25/40/60nm 距离环——虚线圆 + 沿水平半径右侧标注 + 中心 0nm 刻度短线
-// 以环礁为圆心（atollCenter 与 drawAtoll 共心，设计图亦如此）
+// Task 7.6：距离环——虚线圆 + 沿水平半径右侧标注 + 中心 0nm 刻度短线
+// 以环礁为圆心（atollCenter 与 drawAtoll 共心，设计图亦如此）；
+// 半径由 THEATER.range_rings.rings_nm 驱动（M.3），标签派生 `${nm}nm`
 function drawRangeRings(ctx, w, h) {
   const c = atollCenter(w, h);
   ctx.save();
@@ -335,7 +388,8 @@ function drawRangeRings(ctx, w, h) {
   ctx.font = `9px ${CHART_STYLE.fontTypewriter}`;
   ctx.lineWidth = 1;
   ctx.setLineDash([6, 5]);
-  for (const [label, nm] of RING_NM) {
+  for (const nm of T().range_rings.rings_nm) {
+    const label = `${nm}nm`;
     const r = chartNmToPx(nm, w, h);
     ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI * 2); ctx.stroke();
     ctx.setLineDash([]);
@@ -464,9 +518,15 @@ function drawSecretStamp(ctx, w, h) {
 }
 
 const ChartRenderer = {
+  // M.3：战区对象注入口——fixture（离线，无 /theater）经 setTheater 注入与
+  // theaters/midway/theater.json 同值的 DESIGN_THEATER，走同一数据通道；
+  // getTheater() 供测试/调试读当前生效战区（THEATER 或内置默认）。
+  setTheater(t) { if (t && t.view) THEATER = t; },
+  getTheater() { return T(); },
   // fix Loop1-F5: 底图层拆分 drawBase（纸底+经纬网）/drawLandmarks（环礁+距离环+罗盘+
   // 比例尺+章）——搜索扇区须画在纸面之后、陆地填充之前（先扇区后陆地，扇区压焦点消除）；
-  // drawAll 保持原序（base+landmarks），像素比对与既有测试不受影响
+  // drawAll 保持原序（base+landmarks），像素比对与既有测试不受影响。
+  // M.3：THEATER 恒有兜底（T() → 内置默认），drawAll 不再白屏直返。
   drawBase(ctx, w, h) {
     drawChartBase(ctx, w, h);
     drawLatLonGrid(ctx, w, h);
