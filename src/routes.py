@@ -43,3 +43,52 @@ class Route(BaseModel):
     waypoints: list[Waypoint] = Field(default_factory=list)
     status: RouteStatus = RouteStatus.DRAFT
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ── 舰队短名约定（owner 统一用短名，绑定舰队时经映射还原全名）──
+
+FLEET_SHORT: dict[str, str] = {
+    "Task Force 16": "TF16",
+    "Task Force 17": "TF17",
+}
+
+_FLEET_SHORT_TO_FULL = {v: k for k, v in FLEET_SHORT.items()}
+
+
+def full_fleet_name(short_name: str) -> Optional[str]:
+    """舰队短名 → 全名（如 "TF16" → "Task Force 16"）；未知返回 None。"""
+    return _FLEET_SHORT_TO_FULL.get(short_name)
+
+
+# ── PendingRoute（航海参谋提案，N.3 审批流）──
+
+class PendingRouteStatus(str, Enum):
+    """提案状态：proposed → approved | rejected（revised 为修改后再提）"""
+    PROPOSED = "proposed"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    REVISED = "revised"
+
+
+class PendingRoute(BaseModel):
+    """参谋航线提案（独立于 pending_suggestions 的审批流）。
+
+    owner 用舰队短名（FLEET_SHORT 值）；rationale 供命令卡展示。
+    批准时经 pending_to_route 转 Route 落 state.routes。
+    """
+    id: str = Field(default_factory=lambda: uuid.uuid4().hex)
+    owner: str
+    rationale: str
+    waypoints: list[Waypoint] = Field(default_factory=list)
+    status: PendingRouteStatus = PendingRouteStatus.PROPOSED
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+def pending_to_route(pending: PendingRoute) -> Route:
+    """审批通过：PendingRoute → Route（kind=planned, status=active）。"""
+    return Route(
+        kind=RouteKind.PLANNED,
+        owner=pending.owner,
+        waypoints=pending.waypoints,
+        status=RouteStatus.ACTIVE,
+    )

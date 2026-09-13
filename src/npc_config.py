@@ -95,4 +95,17 @@ NPC_REGISTRY: dict[str, NPCConfig] = {
         info_scope=["known_enemy", "pending_reports", "active_scouts"],
         allowed_tools=["query_fleet_status"],
     ),
+    "navigator": NPCConfig(
+        name="航海参谋",
+        role="航海参谋",
+        autonomy=4,
+        risk_tolerance=2,
+        initiative=4,
+        competence=9,
+        info_scope=["fleet_global"],
+        allowed_tools=[
+            "query_own_fleet", "query_theater",
+            "query_distance_bearing", "propose_route",
+        ],
+    ),
 }

@@ -134,7 +134,7 @@ class TestNPCList:
     def test_get_npc_list(self):
         """NPC 列表完整"""
         npcs = get_npc_list()
-        assert len(npcs) == 5
+        assert len(npcs) == 6  # 5 既有 + navigator（N.3 航海参谋注册）
         names = [n["name"] for n in npcs]
         assert "Miles Browning" in names
         assert "George Murray" in names

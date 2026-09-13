@@ -24,13 +24,22 @@ from src.agents.murray import MurrayNPC
 from src.agents.mitscher import MitscherNPC
 from src.agents.radio_officer import RadioOfficerNPC
 from src.agents.intel_officer import IntelOfficerNPC
+from src.agents.navigator import NavigatorNPC
 from src.npc_config import NPC_REGISTRY
 from src.pipeline import build_default_pipeline
 from src.ap import consume_ap, has_ap, get_ap_status
 from src.mission import plan_mission, confirm_mission, reject_mission
 from src.aircraft import recall_air_group
 from src.state import GamePhase
-from src.routes import Route, RouteKind, RouteStatus, Waypoint
+from src.routes import (
+    PendingRoute,
+    PendingRouteStatus,
+    Route,
+    RouteKind,
+    RouteStatus,
+    Waypoint,
+    pending_to_route,
+)
 from src.tools import handle_execute_action
 
 logging.basicConfig(level=logging.INFO)
@@ -48,6 +57,7 @@ npcs: dict = {
     "mitscher": MitscherNPC(),
     "radio_officer": RadioOfficerNPC(),
     "intel_officer": IntelOfficerNPC(),
+    "navigator": NavigatorNPC(),
 }
 
 NPC_DISPLAY = {
@@ -56,6 +66,7 @@ NPC_DISPLAY = {
     "mitscher": {"label": "大黄蜂舰长", "sender": "米切尔（MITSCHER）· 大黄蜂舰长", "role": "大黄蜂舰长"},
     "radio_officer": {"label": "通信官", "sender": "通信官 · TBS", "role": "通信官"},
     "intel_officer": {"label": "情报官", "sender": "情报官 · 情报参谋", "role": "情报参谋"},
+    "navigator": {"label": "航海参谋", "sender": "航海参谋 · NAVIGATOR", "role": "航海参谋"},
 }
 
 
@@ -78,6 +89,10 @@ class CreateRouteRequest(BaseModel):
     kind: RouteKind
     owner: str
     waypoints: list[Waypoint]
+
+
+class NavigatorProposeRequest(BaseModel):
+    message: str
 
 
 # ── Routes ──
@@ -400,3 +415,84 @@ async def cancel_route(route_id: str):
         raise HTTPException(400, "该航线不可撤销。")
     route.status = RouteStatus.CANCELLED
     return route.model_dump(mode="json")
+
+
+# ── 航海参谋提案审批流（N.3：propose → pending_routes → approve/reject）──
+
+
+@app.post("/navigator/propose")
+async def navigator_propose(req: NavigatorProposeRequest):
+    """航海参谋会话端点（真实 LLM）；propose_route 工具写入 pending_routes。"""
+    if not has_ap(game_state):
+        raise HTTPException(400, "AP 已耗尽，请推进时间。")
+
+    consume_ap(game_state, "message")
+    npc = npcs["navigator"]
+
+    def wrap_handler(handler):
+        def wrapped(**kwargs):
+            return handler(game_state, **kwargs)
+        return wrapped
+
+    try:
+        response = npc.chat(
+            player_input=req.message,
+            state=game_state,
+            tools=npc.tools,
+            tool_handlers={n: wrap_handler(h) for n, h in npc.tool_handlers.items()},
+        )
+    except Exception as e:
+        logger.error(f"Navigator chat error: {e}", exc_info=True)
+        raise HTTPException(500, f"通信错误: {e}")
+
+    return {
+        "text": response.text,
+        "mood": response.mood,
+        "urgency": response.urgency,
+        "pending_routes": [
+            p.model_dump(mode="json") for p in game_state.pending_routes
+        ],
+        "ap": get_ap_status(game_state),
+    }
+
+
+def _find_pending_route(pending_id: str) -> PendingRoute:
+    for p in game_state.pending_routes:
+        if p.id == pending_id:
+            return p
+    raise HTTPException(404, "航线提案不存在。")
+
+
+@app.get("/pending-routes")
+async def list_pending_routes():
+    """列出全部航线提案。"""
+    return {
+        "pending_routes": [
+            p.model_dump(mode="json") for p in game_state.pending_routes
+        ]
+    }
+
+
+@app.post("/pending-routes/{pending_id}/approve")
+async def approve_pending_route(pending_id: str):
+    """批准提案：PendingRoute 转 Route 落 state.routes（status=active）。"""
+    pending = _find_pending_route(pending_id)
+    if pending.status not in (PendingRouteStatus.PROPOSED, PendingRouteStatus.REVISED):
+        raise HTTPException(400, "该提案已处理。")
+    route = pending_to_route(pending)
+    game_state.routes.append(route)
+    pending.status = PendingRouteStatus.APPROVED
+    return {
+        "route": route.model_dump(mode="json"),
+        "pending_route": pending.model_dump(mode="json"),
+    }
+
+
+@app.post("/pending-routes/{pending_id}/reject")
+async def reject_pending_route(pending_id: str):
+    """驳回提案：置 rejected，不产生 Route。"""
+    pending = _find_pending_route(pending_id)
+    if pending.status not in (PendingRouteStatus.PROPOSED, PendingRouteStatus.REVISED):
+        raise HTTPException(400, "该提案已处理。")
+    pending.status = PendingRouteStatus.REJECTED
+    return pending.model_dump(mode="json")

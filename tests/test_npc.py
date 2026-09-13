@@ -25,7 +25,7 @@ class TestNPCConfig:
     """Test NPC configuration registry."""
 
     def test_all_npcs_registered(self):
-        expected = {"browning", "murray", "mitscher", "radio_officer", "intel_officer"}
+        expected = {"browning", "murray", "mitscher", "radio_officer", "intel_officer", "navigator"}
         assert set(NPC_REGISTRY.keys()) == expected
 
     def test_npc_params_in_range(self):
