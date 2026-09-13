@@ -42,6 +42,7 @@ class Route(BaseModel):
     owner: str
     waypoints: list[Waypoint] = Field(default_factory=list)
     status: RouteStatus = RouteStatus.DRAFT
+    progress: int = Field(default=0, ge=0)  # 下一航路点下标（N.4 航行进度）
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 

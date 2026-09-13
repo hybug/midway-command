@@ -29,6 +29,14 @@ def update_positions(state: GameState, minutes: int) -> list[str]:
     return []
 
 
+def advance_routes(state: GameState, minutes: int) -> list[str]:
+    """Step 25: move route-bound fleets along active route waypoints (N.4)."""
+    from src.entities import advance_route_fleet
+    for route in state.routes:
+        advance_route_fleet(state, route, minutes)
+    return []
+
+
 def update_spatial_index(state: GameState, minutes: int) -> list[str]:
     """Step 30: rebuild spatial index."""
     from src.spatial import update_spatial_index as rebuild
@@ -135,6 +143,7 @@ def build_default_pipeline() -> Pipeline:
     p = Pipeline()
     p.register(TickStep("advance_clock",       advance_clock,       10))
     p.register(TickStep("update_positions",    update_positions,    20))
+    p.register(TickStep("advance_routes",      advance_routes,      25))
     p.register(TickStep("update_spatial_index",update_spatial_index,30))
     p.register(TickStep("process_scouting",    process_scouting,    40))
     p.register(TickStep("process_reports",     process_reports,     50))

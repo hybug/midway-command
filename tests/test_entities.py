@@ -1,5 +1,7 @@
 """Tests for the entity system — positions, movement, fleet structure."""
 import math
+from datetime import datetime, timezone
+
 import pytest
 from src.entities import (
     Position, Entity, NavalEntity, Carrier, AirEntity, TaskForce,
@@ -309,3 +311,173 @@ class TestPositionUpdateIntegration:
         # They should be moving in different directions (us=240°, enemy=135°)
         # so latitude difference should change
         assert new_lat_diff != initial_lat_diff
+
+
+class TestRouteFleetAdvance:
+    """N.4：舰队沿航路点航行（advance_route_fleet + pipeline 挂接）。
+
+    三航路点航线 ×4 tick：speed 25 节、60 分钟 tick = 25 nm/tick，
+    每段 0.4° 纬度 ≈ 24.02 nm < 25 nm → 每 tick 到点吸附并切下一段；
+    第 3 tick 走完全部航路点置 done，第 4 tick 不再移动。
+    """
+
+    A = (28.0, -177.0)
+    WPS = [(28.4, -177.0), (28.8, -177.0), (29.2, -177.0)]
+
+    @staticmethod
+    def _make_state():
+        from src.state import (
+            GameState, GameClock, TaskForce, Carrier, Position,
+        )
+        tf = TaskForce(
+            name="Task Force 16",
+            carriers=[
+                Carrier(
+                    name="USS Enterprise (CV-6)",
+                    position=Position(lat=28.0, lon=-177.0),
+                    course=0,
+                    speed=25,
+                ),
+                Carrier(
+                    name="USS Birmingham (CL-62)",
+                    position=Position(lat=27.95, lon=-177.05),
+                    course=0,
+                    speed=25,
+                ),
+            ],
+            course=0,
+            speed=25,
+        )
+        return GameState(
+            clock=GameClock(game_time=datetime(1942, 6, 4, 4, 0, tzinfo=timezone.utc)),
+            task_forces=[tf],
+        )
+
+    def _active_route(self, state):
+        from src.routes import Route, RouteKind, RouteStatus, Waypoint
+        route = Route(
+            kind=RouteKind.PLANNED,
+            owner="TF16",  # 短名约定
+            waypoints=[Waypoint(lat=lat, lon=lon) for lat, lon in self.WPS],
+        )
+        route.status = RouteStatus.ACTIVE
+        state.routes.append(route)
+        return route
+
+    def test_three_waypoints_four_tick_sequence(self):
+        """×4 tick 位置序列：到点切换 + 终态 done + done 后静止。"""
+        from src.entities import advance_route_fleet
+        from src.scouting import calculate_distance_nm
+
+        state = self._make_state()
+        route = self._active_route(state)
+        fleet = state.task_forces[0]
+        lead = fleet.carriers[0].position
+
+        assert (lead.lat, lead.lon) == self.A
+
+        nm_per_deg = calculate_distance_nm((28.0, -177.0), (29.0, -177.0))
+        seg_nm = calculate_distance_nm(self.A, self.WPS[0])  # ~24.02 nm
+        assert seg_nm < 25.0  # 每 tick 必到点切换
+
+        # tick1：吸附 W1 后余量 (25 - seg) 继续压向 W2
+        advance_route_fleet(state, route, minutes=60)
+        r1 = 25.0 - seg_nm
+        assert lead.lat == pytest.approx(28.4 + r1 / nm_per_deg, abs=1e-6)
+        assert lead.lat > 28.4          # 已过 W1
+        assert lead.lon == pytest.approx(-177.0, abs=1e-6)  # 纯北向
+        assert fleet.course == pytest.approx(0, abs=1)      # 实时方位
+
+        # tick2：吸附 W2 后余量 (2*25 - 2*seg) 压向 W3
+        advance_route_fleet(state, route, minutes=60)
+        r2 = 50.0 - 2 * seg_nm
+        assert lead.lat == pytest.approx(28.8 + r2 / nm_per_deg, abs=1e-6)
+        assert lead.lat > 28.8
+        assert route.status == "active"
+
+        # tick3：吸附 W3（最后一段），全部完成 → done，位置精确到点
+        advance_route_fleet(state, route, minutes=60)
+        assert lead.lat == pytest.approx(29.2, abs=1e-9)
+        assert lead.lon == pytest.approx(-177.0, abs=1e-9)
+        assert route.status == "done"
+
+        # tick4：done 后静止
+        advance_route_fleet(state, route, minutes=60)
+        assert (lead.lat, lead.lon) == (pytest.approx(29.2, abs=1e-9),
+                                        pytest.approx(-177.0, abs=1e-9))
+        assert route.status == "done"
+
+    def test_formation_moves_together(self):
+        """伴随舰与旗舰同位移量，队形保持。"""
+        from src.entities import advance_route_fleet
+        state = self._make_state()
+        route = self._active_route(state)
+        fleet = state.task_forces[0]
+        lead0 = (fleet.carriers[0].position.lat, fleet.carriers[0].position.lon)
+        wing0 = (fleet.carriers[1].position.lat, fleet.carriers[1].position.lon)
+
+        advance_route_fleet(state, route, minutes=60)
+        d_lat_lead = fleet.carriers[0].position.lat - lead0[0]
+        d_lat_wing = fleet.carriers[1].position.lat - wing0[0]
+        assert d_lat_lead == pytest.approx(d_lat_wing, abs=1e-9)
+        # 队形相对偏移不变
+        assert (fleet.carriers[0].position.lat - fleet.carriers[1].position.lat
+                == pytest.approx(lead0[0] - wing0[0], abs=1e-9))
+
+    def test_non_active_route_does_not_move_fleet(self):
+        """draft/cancelled 航线不驱动舰队。"""
+        from src.entities import advance_route_fleet
+        from src.routes import Route, RouteKind, Waypoint
+        state = self._make_state()
+        route = Route(
+            kind=RouteKind.PLANNED,
+            owner="TF16",
+            waypoints=[Waypoint(lat=lat, lon=lon) for lat, lon in self.WPS],
+        )
+        state.routes.append(route)
+        before = (state.task_forces[0].carriers[0].position.lat,
+                  state.task_forces[0].carriers[0].position.lon)
+        advance_route_fleet(state, route, minutes=60)
+        after = (state.task_forces[0].carriers[0].position.lat,
+                 state.task_forces[0].carriers[0].position.lon)
+        assert before == after
+        assert route.status == "draft"
+
+    def test_unknown_owner_no_crash_no_move(self):
+        """owner 未绑定舰队：跳过且不动（不抛异常）。"""
+        from src.entities import advance_route_fleet
+        from src.routes import Route, RouteKind, RouteStatus, Waypoint
+        state = self._make_state()
+        route = Route(
+            kind=RouteKind.PLANNED,
+            owner="TF99",
+            waypoints=[Waypoint(lat=lat, lon=lon) for lat, lon in self.WPS],
+        )
+        route.status = RouteStatus.ACTIVE
+        state.routes.append(route)
+        before = (state.task_forces[0].carriers[0].position.lat,
+                  state.task_forces[0].carriers[0].position.lon)
+        advance_route_fleet(state, route, minutes=60)
+        after = (state.task_forces[0].carriers[0].position.lat,
+                 state.task_forces[0].carriers[0].position.lon)
+        assert before == after
+
+    def test_pipeline_hook_no_double_move(self):
+        """管线挂接：advance_routes 生效，且 update_positions 不对航线舰队二次位移。"""
+        from src.pipeline import build_default_pipeline
+        state = self._make_state()
+        route = self._active_route(state)
+
+        pipeline = build_default_pipeline()
+        names = [s.name for s in pipeline.steps]
+        assert "advance_routes" in names
+
+        pipeline.execute(state, minutes=60)
+        lead = state.task_forces[0].carriers[0].position
+        from src.scouting import calculate_distance_nm
+        nm_per_deg = calculate_distance_nm((28.0, -177.0), (29.0, -177.0))
+        seg_nm = calculate_distance_nm(self.A, self.WPS[0])
+        expected_lat = 28.4 + (25.0 - seg_nm) / nm_per_deg
+        # 若被通用位移二次推进，纬度会显著大于预期
+        assert lead.lat == pytest.approx(expected_lat, abs=1e-6)
+        assert route.status == "active"

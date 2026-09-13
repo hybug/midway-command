@@ -16,6 +16,8 @@ import logging
 from typing import Optional
 from pydantic import BaseModel, Field
 
+from src.routes import RouteStatus, full_fleet_name
+
 logger = logging.getLogger("midway.entities")
 
 
@@ -163,8 +165,13 @@ def update_all_positions(state, minutes: int):
         state: GameState
         minutes: Time elapsed in minutes
     """
+    # 航线舰队由 advance_route_fleet 驱动（N.4），通用位移跳过避免双重移动
+    route_bound = _route_bound_fleet_names(state)
+
     # Update US task forces
     for tf in state.task_forces:
+        if tf.name in route_bound:
+            continue
         update_entity_position(tf, minutes)
 
     # Update enemy fleet (if structured)
@@ -181,3 +188,85 @@ def update_all_positions(state, minutes: int):
                     }
 
     logger.info(f"[POSITIONS] All positions updated for {minutes} min advance")
+
+
+# ── 航线航行（N.4：舰队沿航路点按 speed 位移）──
+
+
+def _route_bound_fleet_names(state) -> set:
+    """所有 active 航线绑定的舰队全名集合（owner 短名经映射还原）。"""
+    names = set()
+    for route in getattr(state, "routes", []):
+        if route.status == RouteStatus.ACTIVE:
+            full = full_fleet_name(route.owner)
+            if full:
+                names.add(full)
+    return names
+
+
+def _route_cursor(route) -> int:
+    """下一航路点下标（Route.progress，夹取到合法范围）。"""
+    return max(0, min(route.progress, len(route.waypoints)))
+
+
+def _advance_formation(fleet, bearing: float, distance_nm: float) -> None:
+    """全队沿同一方位位移同一距离，保持队形。"""
+    for carrier in fleet.carriers:
+        new_pos = calculate_new_position(carrier.position, bearing, distance_nm)
+        carrier.position.lat = new_pos.lat
+        carrier.position.lon = new_pos.lon
+
+
+def advance_route_fleet(state, route, minutes: int) -> None:
+    """active 航线的 owner 舰队沿航路点按 speed 位移（N.4）。
+
+    - bearing 对下一航路点实时推导
+    - 剩余距离 ≤ 本 tick 位移：到点精确吸附并切下一段（Route.progress 推进）
+    - 全部航路点完成 → route.status = done
+    - 非 active 航线 / owner 未绑定舰队：静默跳过
+    """
+    if route.status != RouteStatus.ACTIVE:
+        return
+
+    full_name = full_fleet_name(route.owner)
+    if full_name is None:
+        logger.warning("[ROUTE] 航线 owner '%s' 未绑定舰队，跳过", route.owner)
+        return
+    fleet = next(
+        (tf for tf in state.task_forces if tf.name == full_name), None
+    )
+    if fleet is None or not fleet.carriers:
+        logger.warning("[ROUTE] 舰队 '%s' 不存在，跳过", route.owner)
+        return
+
+    # 延迟导入：scouting 依赖 src.state，模块级导入会成环
+    from src.scouting import calculate_bearing, calculate_distance_nm
+
+    remaining = fleet.speed * (minutes / 60)
+    lead = fleet.carriers[0].position
+    idx = _route_cursor(route)
+
+    while remaining > 0 and idx < len(route.waypoints):
+        target = route.waypoints[idx]
+        current = (lead.lat, lead.lon)
+        target_t = (target.lat, target.lon)
+        dist_to_wp = calculate_distance_nm(current, target_t)
+        bearing = calculate_bearing(current, target_t)
+
+        if dist_to_wp <= remaining:
+            # 到点：吸附切下一段
+            _advance_formation(fleet, bearing, dist_to_wp)
+            remaining -= dist_to_wp
+            idx += 1
+        else:
+            _advance_formation(fleet, bearing, remaining)
+            remaining = 0
+
+        fleet.course = int(round(bearing)) % 360
+        for carrier in fleet.carriers:
+            carrier.course = int(round(bearing)) % 360
+
+    route.progress = idx
+    if idx >= len(route.waypoints):
+        route.status = RouteStatus.DONE
+        logger.info("[ROUTE] 航线 %s 航行完成（%s）", route.id[:8], route.owner)
