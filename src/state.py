@@ -10,6 +10,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field, PrivateAttr
 from src.entities import TaskForce as EntityTaskForce
+from src.routes import Route
 
 
 class GamePhase(str, Enum):
@@ -261,6 +262,7 @@ class GameState(BaseModel):
     pending_reports: list[PendingReport] = Field(default_factory=list)
     aircraft_losses: list[AircraftLoss] = Field(default_factory=list)
     mission_plans: list[MissionPlan] = Field(default_factory=list)
+    routes: list[Route] = Field(default_factory=list)  # 海图航线（CHART_SYSTEM.md §5.1）
     # Action Points
     turn_type: TurnType = TurnType.NORMAL
     action_points: int = Field(default=3, ge=0)

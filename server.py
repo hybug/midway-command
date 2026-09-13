@@ -30,6 +30,7 @@ from src.ap import consume_ap, has_ap, get_ap_status
 from src.mission import plan_mission, confirm_mission, reject_mission
 from src.aircraft import recall_air_group
 from src.state import GamePhase
+from src.routes import Route, RouteKind, RouteStatus, Waypoint
 from src.tools import handle_execute_action
 
 logging.basicConfig(level=logging.INFO)
@@ -71,6 +72,12 @@ class AdvanceRequest(BaseModel):
 
 class SuggestionAction(BaseModel):
     pass
+
+
+class CreateRouteRequest(BaseModel):
+    kind: RouteKind
+    owner: str
+    waypoints: list[Waypoint]
 
 
 # ── Routes ──
@@ -349,3 +356,47 @@ async def get_theater():
         "theater": theater_ctx.theater_raw,
         "geography": theater_ctx.geography,
     }
+
+
+# ── Chart routes (CHART_SYSTEM.md §5.1：三类航线 planned/mission/track) ──
+
+
+def _find_route(route_id: str) -> Route:
+    for r in game_state.routes:
+        if r.id == route_id:
+            return r
+    raise HTTPException(404, "航线不存在。")
+
+
+@app.post("/routes")
+async def create_route(req: CreateRouteRequest):
+    """创建草案航线（draft）。"""
+    route = Route(kind=req.kind, owner=req.owner, waypoints=req.waypoints)
+    game_state.routes.append(route)
+    return route.model_dump(mode="json")
+
+
+@app.get("/routes")
+async def list_routes():
+    """列出全部航线。"""
+    return {"routes": [r.model_dump(mode="json") for r in game_state.routes]}
+
+
+@app.post("/routes/{route_id}/approve")
+async def approve_route(route_id: str):
+    """批准草案航线（draft → active）。"""
+    route = _find_route(route_id)
+    if route.status != RouteStatus.DRAFT:
+        raise HTTPException(400, "仅草案航线可批准。")
+    route.status = RouteStatus.ACTIVE
+    return route.model_dump(mode="json")
+
+
+@app.post("/routes/{route_id}/cancel")
+async def cancel_route(route_id: str):
+    """撤销航线（draft/active → cancelled）。"""
+    route = _find_route(route_id)
+    if route.status not in (RouteStatus.DRAFT, RouteStatus.ACTIVE):
+        raise HTTPException(400, "该航线不可撤销。")
+    route.status = RouteStatus.CANCELLED
+    return route.model_dump(mode="json")
