@@ -16,14 +16,31 @@ from src.state import EnemyKnown, Position
 
 
 def test_theaters_lists_midway():
-    """GET /theaters 列出 theaters/ 全包摘要（O.2 珊瑚海包生成后在此追加断言）。"""
+    """GET /theaters 列出 theaters/ 全包摘要（O.2 珊瑚海包已入库，id 序）。"""
     client = TestClient(server.app)
     resp = client.get("/theaters")
     assert resp.status_code == 200
     theaters = resp.json()["theaters"]
-    assert [t["id"] for t in theaters] == ["midway"]
+    assert [t["id"] for t in theaters] == ["coral-sea", "midway"]
 
-    midway = theaters[0]
+    coral = theaters[0]
+    assert coral["name"] == "珊瑚海"
+    assert coral["date"] == "1942-05-07"
+    assert coral["view"]["lat"] == pytest.approx(-15.2)
+    assert coral["view_nm"] == 800
+
+    # scenario 摘要：双方兵力名（不含坐标军情）
+    coral_scen = coral["scenario"]
+    coral_enemy = coral_scen["enemy_force"]
+    assert coral_enemy["name"] == "MO 机动部队"
+    assert set(coral_enemy["carriers"]) == {"Shokaku", "Zuikaku"}
+    coral_friendly = coral_scen["friendly_forces"]
+    assert {tf["callsign"] for tf in coral_friendly} == {"YOR", "LEX"}
+    yor = next(tf for tf in coral_friendly if tf["callsign"] == "YOR")
+    assert yor["name"] == "Task Force 17 (TG 17.5)"
+    assert any("Yorktown" in c for c in yor["carriers"])
+
+    midway = theaters[1]
     assert midway["name"] == "中途岛"
     assert midway["date"] == "1942-06-04"
     assert midway["view"]["lat"] == pytest.approx(28.2)

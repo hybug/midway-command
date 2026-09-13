@@ -1,0 +1,116 @@
+{
+  "id": "coral-sea",
+  "date": "1942-05-07",
+  "clock_start": "1942-05-06T21:00:00Z",
+  "task_forces": [
+    {
+      "callsign": "YOR",
+      "name": "Task Force 17 (TG 17.5)",
+      "lat": -15.5,
+      "lon": 155.6,
+      "course": 315,
+      "speed": 27,
+      "damage_level": 0,
+      "deck_status": "ready",
+      "patrol": {
+        "cap_strength": 12,
+        "pattern": "sector",
+        "bearing_min": 285,
+        "bearing_max": 345,
+        "radius_nm": 60
+      },
+      "carriers": [
+        {
+          "name": "USS Yorktown (CV-5)",
+          "damage_level": 0,
+          "deck_status": "ready",
+          "cap_strength": 12,
+          "air_groups": [
+            {
+              "type": "fighter",
+              "squadron": "VF-5",
+              "count": 25
+            },
+            {
+              "type": "dive_bomber",
+              "squadron": "VB-5/VS-5",
+              "count": 37
+            },
+            {
+              "type": "torpedo",
+              "squadron": "VT-5",
+              "count": 12
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "callsign": "LEX",
+      "name": "Task Force 11 (TG 17.8)",
+      "lat": -15.7,
+      "lon": 155.4,
+      "course": 315,
+      "speed": 27,
+      "damage_level": 0,
+      "deck_status": "ready",
+      "patrol": {
+        "cap_strength": 12,
+        "pattern": "sector",
+        "bearing_min": 285,
+        "bearing_max": 345,
+        "radius_nm": 60
+      },
+      "carriers": [
+        {
+          "name": "USS Lexington (CV-2)",
+          "damage_level": 0,
+          "deck_status": "ready",
+          "cap_strength": 12,
+          "air_groups": [
+            {
+              "type": "fighter",
+              "squadron": "VF-2",
+              "count": 22
+            },
+            {
+              "type": "dive_bomber",
+              "squadron": "VB-2/VS-2",
+              "count": 36
+            },
+            {
+              "type": "torpedo",
+              "squadron": "VT-2",
+              "count": 12
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "enemy_fleet": {
+    "name": "MO 机动部队",
+    "lat": -12.0,
+    "lon": 157.0,
+    "course": 210,
+    "speed": 20,
+    "carriers": [
+      "Shokaku",
+      "Zuikaku"
+    ]
+  },
+  "npc_roster": {
+    "co_staff": "Fletcher 参谋团（TF17）",
+    "intel": "Nimitz 情报组（Pearl，FRUMEL 协同）",
+    "air_officer": "Fitch 航空参谋（TF11/列克星敦）"
+  },
+  "victory": {
+    "primary": "重创日军航母机动部队（翔鹤/瑞鹤）",
+    "secondary": "保住莫尔兹比港（日军 MO 运输团折返）"
+  },
+  "event_seeds": [
+    "Crace 巡洋舰群（TF44）脱离主力封锁乔马德水道，遭日军陆基轰炸机围攻",
+    "日军打击队误把尼欧肖号油船当航母，祥凤掩护群在路易西亚德近海暴露",
+    "图拉吉日占水上机基地出动侦察（5 月 4 日曾遭约克城舰载机空袭）"
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "id": "coral-sea",
+  "name": "珊瑚海",
+  "name_en": "Coral Sea",
+  "date": "1942-05-07",
+  "timezone_offset": 10,
+  "view": {
+    "center": {
+      "lat": -15.2,
+      "lon": 155.5
+    },
+    "view_nm": 800,
+    "rotation": 0
+  },
+  "graticule": {
+    "minor_step": 1.0,
+    "major_step": 5.0,
+    "label_format": "dms",
+    "extent": {
+      "lat_min": -24.0,
+      "lat_max": -4.0,
+      "lon_min": 144.0,
+      "lon_max": 170.0
+    }
+  },
+  "range_rings": {
+    "origin": {
+      "lat": -15.2,
+      "lon": 155.5
+    },
+    "rings_nm": [
+      100,
+      200,
+      300
+    ],
+    "labels": true
+  },
+  "bases": [
+    {
+      "id": "noumea",
+      "name": "努美阿",
+      "lat": -22.27,
+      "lon": 166.44,
+      "type": "port"
+    },
+    {
+      "id": "port-moresby",
+      "name": "莫尔兹比港",
+      "lat": -9.44,
+      "lon": 147.18,
+      "type": "port"
+    },
+    {
+      "id": "tulagi",
+      "name": "图拉吉",
+      "lat": -9.1,
+      "lon": 160.15,
+      "type": "airfield",
+      "capacity": 24
+    },
+    {
+      "id": "buin",
+      "name": "并茂拉里",
+      "lat": -6.75,
+      "lon": 155.45,
+      "type": "airfield",
+      "capacity": 18
+    },
+    {
+      "id": "deboyne",
+      "name": "德布瓦讷",
+      "lat": -10.93,
+      "lon": 151.55,
+      "type": "airfield",
+      "capacity": 12
+    }
+  ],
+  "sectors": [
+    {
+      "id": "nw-quad",
+      "name": "西北扇区",
+      "origin_ref": "YOR",
+      "bearing_min": 285,
+      "bearing_max": 345
+    }
+  ],
+  "units": "nm",
+  "scenario": "scenario.json"
+}
