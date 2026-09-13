@@ -1,6 +1,6 @@
 # 海图系统设计（Theater Chart System）
 
-> 状态：设计稿 v1.1（六项开放问题已拍板，见 §九决议记录；待出实施计划） · 上游：`docs/plans/product-replica-plan.md`（成品图复现工程） · 关联：`docs/design/GAME_SPEC.md`、`docs/design/TECH_ARCH.md`
+> 状态：**已实施**（2026-09-12，实施计划见 docs/plans/product-replica-plan.md Phase M/N/O——战区包化/投影唯一化/航线系统+航海参谋/珊瑚海战区包全部落地；时区纪法为 ZD+12 二战海军口径，非 ISO 偏移） · 上游：`docs/plans/product-replica-plan.md`（成品图复现工程） · 关联：`docs/design/GAME_SPEC.md`、`docs/design/TECH_ARCH.md`
 
 ## 一、目标与设计原则
 

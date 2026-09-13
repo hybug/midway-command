@@ -87,3 +87,14 @@
 - **design-state fixture 存储系怪味（登记）**：Loop1/Loop2 时代「北向画在屏幕下方」hex 存储系已随 Loop3-F1 消除（fixture 现为真实经纬、北向上东向右）；M.4 又按唯一投影（theater.view 全量同锚）重推 fixture 位值——舰队=scenario 真实位（ENT 西 45nm/HOR 西 28nm），敌标/侦察机反推值保持成品图 approved 像素位；底栏「位置」读数随 HOR 真实位由 178.0°W 变 177.9°W（真实位语义使然）；
 - **GAME_SPEC 初位表分叉（登记，不在 M.4）**：GAME_SPEC §2 兵力表仍载 TF16 31.5°N 176.0°W/240°（≈(8,20) hex 口径），与 scenario 布兵（ENT 28.2°N 178.251°W、HOR 28.2°N 177.930°W/270°）已分叉——文档同步留后续任务；
 - 各 Loop 轮残留的 D-B 记录项（可读性小瑕疵，不影响识别）见 `loop-4.md` / `loop-5.md`。
+
+
+---
+
+# 珊瑚海战区切换（product-replica-plan Phase O，2026-09-12）
+
+- 战区包：`theaters/coral-sea/`（theater-designer agent 按 §六五步生成：RESEARCH×5 检索 → GENERATE 四文件 → VALIDATE 全绿 → PREVIEW 目检；修复轮修正瓜岛东端/GBR 外缘两处地理超差）
+- 战役选择：`GET /theaters` + `POST /game/new` + 开局层双战区卡（正式玩法）
+- 玩法回路：参谋提案（comment 多轮修订）→ 批准 → 舰队沿航路点航行（progress 持久化）→ 三类航线上图——端到端实证（route-loop-verify.md + phase-o-verify.md）
+- 投影唯一化：底图/实体同投影，两参考系已知局限关闭
+- 登记移交：舰队圈对位微残（scenario 数据级）/环礁形态偏圆润（真实地理立场）/BB 段敌情数据端扩展/PENDING 出画随 scenario 复检
