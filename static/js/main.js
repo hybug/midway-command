@@ -103,6 +103,12 @@ async function startCampaign(theaterId, btn) {
     activeNpc = 'browning';
     const layer = document.getElementById('campaign-select');
     if (layer) layer.hidden = true;
+    // O.1 遗留收口（O.3）：底图战区包随战役重拉——ChartEngine 换取新取景/经纬网/
+    // GeoJSON 地理层并重投影（多岛战区不再沿用上一包底图）
+    try {
+      const t = await window.TheaterLoader.load();
+      if (t && t.view) window.ChartRenderer.setTheater(t);
+    } catch (e) { /* 重拉失败保持当前战区底图，不阻断开局 */ }
     ui.renderNpcTabs(activeNpc, switchNpc);
     await loadState();
     await loadHistory(activeNpc);

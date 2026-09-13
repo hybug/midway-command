@@ -18,6 +18,11 @@
         if (!res.ok) return null;
         const payload = await res.json();
         const theater = payload && payload.theater;
+        // O.3：地理层（GeoJSON FeatureCollection）随包附加在战区对象上——
+        // chartRenderer drawGeography 消费；离线兜底（无 geography）行为不变
+        if (theater && theater.view && payload.geography) {
+          theater.geography = payload.geography;
+        }
         return theater && theater.view ? theater : null;
       } catch (err) {
         return null; // 离线/后端不可达：交由 chartRenderer 内置默认兜底

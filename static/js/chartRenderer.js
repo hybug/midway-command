@@ -55,6 +55,71 @@ const BUILTIN_THEATER = {
 let THEATER = null;
 function T() { return THEATER || BUILTIN_THEATER; }
 
+// ── O.3 GeoJSON 地理层（多岛战区包底图：land/islet/reef/depth_contour/label 全走数据）──
+// 消费 T().geography（FeatureCollection，GET /theater 下发 payload.geography，
+// TheaterLoader 附加在战区对象上；fixture/测试经 setTheater 注入同构对象）。
+// 带程序化环礁参数（T().atoll）的近景包（midway）保持既有绘制、不消费本层；
+// 兜底 BUILTIN_THEATER 无 geography——离线/中途岛行为逐像素不变。
+// route_hint（历史进场轴）留待航线系统（drawRoutes）口径，本层不画。
+const GEO_STYLE = {
+  landFill: '#e2d4b2',                 // 陆地米黄（纸面 #f5edd6 降一档，旧海图同族）
+  landEdge: '#6b5d4a',                 // 海岸线墨（inkFade 同 token）
+  reefFill: 'rgba(138,170,152,0.25)',  // 礁盘淡青（CHART_STYLE.reef 同族）
+  reefEdge: '#8aaa98',
+  contourEdge: 'rgba(107,93,74,0.40)', // 等深线（墨 fade 半透）
+  labelInk: '#6b5d4a',
+};
+function drawGeography(ctx, w, h) {
+  const geo = T().geography;
+  if (!geo || !geo.features) return;
+  const project = makeProjector(T().view, w, h);
+  for (const f of geo.features) {
+    const cls = f.properties && f.properties.class;
+    const geom = f.geometry;
+    if (!geom) continue;
+    if (geom.type === 'Polygon') {
+      const ring = geom.coordinates[0] || [];
+      if (!ring.length) continue;
+      ctx.beginPath();
+      ring.forEach(([lon, lat], i) => {
+        const p = project(lat, lon);
+        if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+      });
+      ctx.closePath();
+      if (cls === 'reef') {
+        ctx.fillStyle = GEO_STYLE.reefFill;
+        ctx.fill();
+        ctx.setLineDash([2, 3]);
+        ctx.strokeStyle = GEO_STYLE.reefEdge;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else if (cls === 'depth_contour') {
+        ctx.setLineDash([6, 4]);
+        ctx.strokeStyle = GEO_STYLE.contourEdge;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else {                    // land / islet
+        ctx.fillStyle = GEO_STYLE.landFill;
+        ctx.fill();
+        ctx.strokeStyle = GEO_STYLE.landEdge;
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      }
+    } else if (geom.type === 'Point' && cls === 'label') {
+      const props = f.properties;
+      const [lon, lat] = geom.coordinates;
+      const p = project(lat, lon);
+      ctx.fillStyle = GEO_STYLE.labelInk;
+      ctx.font = (props.size || 9) + 'px "Special Elite", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(props.text || props.name || '', p.x, p.y);
+    }
+  }
+}
+
 // 成品图复现 D1：近景取景换算式 (nm / view_nm) × (min(w,h)/2 + 100)——基准半径负边距
 // （初版 -30 边距时 40nm 不出上缘、60nm 不出画右缘，目检调参 +100）；60nm 环允许出画。
 // view_nm 由 THEATER.view 直供（M.3 数据驱动；内置默认/战区包同值 45）。
@@ -299,6 +364,7 @@ function drawIslands(ctx, c, rx, ry) {
 // （M.3：半轴/内外缘比例/标注由 THEATER.atoll 与 THEATER.labels 驱动）
 function drawAtoll(ctx, w, h) {
   const a = T().atoll;
+  if (!a) return; // O.3：多岛战区包无程序化环礁参数——地理层由 drawGeography 承担
   const c = atollCenter(w, h); // range_rings.origin 真坐标 → atoll_screen_frac 构图位（R-M2）
   // 成品图复现 D1 目检调参：23/17 → 34/25（近景后环礁跨度 ≈70% 图面，与成品图占比对齐）
   const rx = chartNmToPx(a.radius_nm.x, w, h), ry = chartNmToPx(a.radius_nm.y, w, h);
@@ -532,6 +598,9 @@ const ChartRenderer = {
     drawLatLonGrid(ctx, w, h);
   },
   drawLandmarks(ctx, w, h) {
+    // O.3：多岛战区 GeoJSON 地理层——包内无程序化环礁参数（T().atoll 缺省）时消费；
+    // midway 近景包保持既有环礁绘制（双层叠加防冲突）
+    if (!T().atoll) drawGeography(ctx, w, h);
     drawAtoll(ctx, w, h);
     drawRangeRings(ctx, w, h);
     drawCompassRose(ctx, w, h);
@@ -544,6 +613,7 @@ const ChartRenderer = {
   },
   drawTaskForceMarker,
   drawEnemyContact,
+  drawGeography,
   chartNmToPx,
   latLonToChartPx,
   makeProjector,

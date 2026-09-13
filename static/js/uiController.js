@@ -178,21 +178,30 @@ class UIController {
   renderDashboard(state) {
     if (!state) return;
     const tf = state.task_forces[0];
-    const c1 = tf.carriers[0], c2 = tf.carriers[1];
+    if (!tf) return;
+    const c1 = tf.carriers[0];
     const dmgMap = { 0: 'OK', 1: 'LGT', 2: 'MOD', 3: 'HVY' };
+    // O.3：舰名短字映射数据面化（珊瑚海约克城/列克星敦；缺省回退舰名首字）
+    const shipShort = (name) => name.includes('Enterprise') ? '企'
+      : name.includes('Hornet') ? '蜂'
+      : name.includes('Yorktown') ? '约'
+      : name.includes('Lexington') ? '列'
+      : name.replace(/^USS /, '').slice(0, 1);
 
     this._setText('d-course', tf.course + '°');
     this._setText('d-speed', tf.speed);
-    this._setText('d-pos', c1.position.lat.toFixed(1) + '°N ' + Math.abs(c1.position.lon).toFixed(1) + '°W');
-    this._setText('d-dmg', `企业:${dmgMap[c1.damage_level] || '?'} 大黄蜂:${dmgMap[c2.damage_level] || '?'}`);
+    // O.3：南北/东西半球感知（珊瑚海 15.5°S 155.6°E；北半球读数不变）
+    this._setText('d-pos', Math.abs(c1.position.lat).toFixed(1) + '°' + (c1.position.lat >= 0 ? 'N' : 'S')
+      + ' ' + Math.abs(c1.position.lon).toFixed(1) + '°' + (c1.position.lon >= 0 ? 'E' : 'W'));
+    this._setText('d-dmg', tf.carriers.map(c => `${shipShort(c.name)}:${dmgMap[c.damage_level] || '?'}`).join(' '));
     // 成品图复现 E1：任一航母损伤非 OK → .dash-val-damage 橙红警示
     const dmgEl = document.getElementById('d-dmg');
-    if (dmgEl) dmgEl.classList.toggle('dash-val-damage', c1.damage_level > 0 || c2.damage_level > 0);
+    if (dmgEl) dmgEl.classList.toggle('dash-val-damage', tf.carriers.some(c => c.damage_level > 0));
 
     // Deck info
     // fix L4-F9: 读数缩短为「企 80/80·0」格式（去「备/飞」字），配合 .dash-item nowrap/flex 1.6 防底栏裁切
     const deckParts = tf.carriers.map(c => {
-      const short = c.name.includes('Enterprise') ? '企' : '蜂';
+      const short = shipShort(c.name);
       const total = c.air_groups.reduce((s, a) => s + a.count, 0);
       const ready = c.air_groups.filter(a => a.status === 'ready').reduce((s, a) => s + a.count, 0);
       const airborne = c.air_groups.filter(a => ['launched', 'in_flight', 'returning'].includes(a.status)).reduce((s, a) => s + a.count, 0);
@@ -242,10 +251,24 @@ class UIController {
     this._setText('ap-max', state.ap.max);
 
     // Clock
+    // O.3：Zulu 时间语义——UTC 渲染（O.1 §五.3 本地时区疣收口；中途岛 04:00Z 显示 04:00）
     const clockEl = document.getElementById('clock');
     if (clockEl && state.clock) {
-      const timeStr = new Date(state.clock.game_time).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const timeStr = new Date(state.clock.game_time).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' });
       clockEl.innerHTML = timeStr + '<span class="topbar-clock-suffix"> Z</span>';
+    }
+    // O.3：顶栏日期/Z 时区/舰队题字随战区（state.theater 由 /state 下发；
+    // fixture 桩态无 theater 键 → 保持静态 HTML 定妆）
+    if (state.theater) {
+      const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+      const local = new Date(new Date(state.clock.game_time).getTime() + state.theater.timezone_offset * 3600 * 1000);
+      const dateEl = document.querySelector('.topbar-date');
+      if (dateEl) {
+        dateEl.textContent = String(local.getUTCDate()).padStart(2, '0') + ' ' + months[local.getUTCMonth()]
+          + ' ' + local.getUTCFullYear() + ' · Z+' + state.theater.timezone_offset;
+      }
+      const subEl = document.querySelector('.topbar-subtitle');
+      if (subEl && tf) subEl.textContent = tf.name.split('(')[0].trim().toUpperCase();
     }
   }
 

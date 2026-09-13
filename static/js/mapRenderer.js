@@ -307,7 +307,8 @@ class MapRenderer {
       this._drawScoutAircraft(ctx, state, anchor);
       // fix Loop2-F4: 扇区方向词标签在实体层补画（陆地填充之后，开阔水面+纸色底衬）
       this._drawSectorLabels(ctx, state, anchor);
-      this._drawOwnFleet(ctx, tf);
+      // O.3：全舰队上图（珊瑚海 YOR/LEX 双盟军舰队；单舰队包绘制序不变）
+      state.task_forces.forEach(f => this._drawOwnFleet(ctx, f));
       this._drawEnemyContacts(ctx, state);
       // N.2 三类航线：实体层内、敌标之后（层序裁定）。数据源为 GET /routes——
       // loadState 每 tick 经 render 触发节流拉取（main.js 不改，数据通道收敛在渲染器内），
@@ -646,7 +647,10 @@ class MapRenderer {
       // 随「两航母同位」前提消失退役（真实位天然分离，见 design-state fixture
       // ENT 西外缘/HOR 环礁西缘）；悬停命中与标记同投影系。
       const p = this._project(c.position.lat, c.position.lon);
-      const short = c.name.includes('Enterprise') ? 'ENT' : 'HOR';
+      // O.3：字标推导数据面化——珊瑚海 YOR/LEX 同链（缺省回退舰名前三字母）
+      const CALLSIGNS = { Enterprise: 'ENT', Hornet: 'HOR', Yorktown: 'YOR', Lexington: 'LEX' };
+      const key = Object.keys(CALLSIGNS).find(k => c.name.includes(k));
+      const short = key ? CALLSIGNS[key] : c.name.replace(/^USS /, '').slice(0, 3).toUpperCase();
 
       // 成品图复现 G1：舰队标记由 ChartRenderer.drawTaskForceMarker 绘制
       // （空心圆圈 r=10 + 字标 + CSE 航向线 + 双虚线箭头矢量指向环礁；
@@ -990,6 +994,8 @@ class MapRenderer {
   // ═══════════════════════════════════════════════════════
   _drawFineGrid(ctx, W, H) {
     const step = ChartRenderer.chartNmToPx(10, W, H);
+    // O.3：大取景战区（view_nm 800）细网格间距 <24px 退化成噪点——跳过（近景包不受影响）
+    if (step < 24) return;
     const ax = W * 0.44, ay = H * 0.46;
     ctx.save();
     ctx.strokeStyle = 'rgba(90,70,40,0.16)';
