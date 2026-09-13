@@ -10,6 +10,7 @@
       "lon": 155.5
     },
     "view_nm": 800,
+    "_view_nm_comment": "半径语义：view_nm 为视野圆半径（nm），校验器 _in_view 按半径执行（base/RING 原点须落在半径 800nm 圆内）；非直径。",
     "rotation": 0
   },
   "graticule": {
@@ -60,7 +61,7 @@
     },
     {
       "id": "buin",
-      "name": "并茂拉里",
+      "name": "布因",
       "lat": -6.75,
       "lon": 155.45,
       "type": "airfield",

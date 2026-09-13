@@ -29,7 +29,8 @@
             {
               "type": "fighter",
               "squadron": "VF-5",
-              "count": 25
+              "count": 25,
+              "note": "来源分歧：常见口径 ~18 架 F4F（本包 25 折算自 TF17 行动报告 VF 27 pilot 数）"
             },
             {
               "type": "dive_bomber",
