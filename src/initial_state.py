@@ -32,6 +32,21 @@ from src.entities import (
 # 与前端战区包同源（M.4 实体层投影唯一化后 ENT/HOR 真实位直接落图面构图）。
 _SCENARIO_JSON = Path(__file__).resolve().parent.parent / "theaters" / "midway" / "scenario.json"
 
+# scenario.json air_groups.type → 状态模型枚举（O.3 通用剧本化构建）
+_AIR_GROUP_TYPE = {
+    "fighter": AirGroupType.FIGHTER,
+    "dive_bomber": AirGroupType.DIVE_BOMBER,
+    "dive": AirGroupType.DIVE_BOMBER,
+    "torpedo": AirGroupType.TORPEDO,
+}
+_AIRCRAFT_TYPE = {
+    "fighter": AircraftType.VF,
+    "dive_bomber": AircraftType.SBD,
+    "dive": AircraftType.SBD,
+    "torpedo": AircraftType.TBD,
+}
+_ORDNANCE = {"dive_bomber": "500lb_bomb", "dive": "500lb_bomb", "torpedo": "torpedo"}
+
 
 def _scenario_deployments() -> dict:
     """scenario.json 布兵表：callsign（ENT/HOR）→ task force 条目。"""
@@ -39,8 +54,119 @@ def _scenario_deployments() -> dict:
     return {tf["callsign"]: tf for tf in scenario["task_forces"]}
 
 
-def build_initial_state() -> GameState:
-    """Return the historical opening state at 04:00, June 4, 1942."""
+def build_initial_state(scenario_path: Path | None = None) -> GameState:
+    """按战区包 scenario 构建 GameState（O.3 参数化）。
+
+    - 缺省 / midway 包 → 既有历史开局（key pilots 等史实细节，逐字段不变）；
+    - 其余包 → 通用剧本化构建（clock_start/布兵/敌舰队全部走 scenario 数据）。
+    """
+    path = Path(scenario_path) if scenario_path else _SCENARIO_JSON
+    if path.resolve() == _SCENARIO_JSON:
+        return _build_midway_state()
+    scenario = json.loads(path.read_text(encoding="utf-8"))
+    return _build_state_from_scenario(scenario)
+
+
+def _build_state_from_scenario(scenario: dict) -> GameState:
+    """通用剧本化初始态（O.3 珊瑚海等多岛战区包）。
+
+    布兵唯一来源 scenario.json：clock_start → GameClock；task_forces →
+    本方舰队（航母位=编队位，机队按 air_groups 折算）；enemy_fleet →
+    结构化敌舰队（entities 层）+ actual_enemy 条目（god-view，不下发玩家）。
+    known_enemy 初始为空——敌情经侦察产生（可视性分层核心机制）。
+    """
+    clock = GameClock(
+        game_time=datetime.fromisoformat(scenario["clock_start"].replace("Z", "+00:00")),
+        tick_minutes=15,
+    )
+
+    task_forces: list[TaskForce] = []
+    for tf in scenario["task_forces"]:
+        carriers = []
+        for c in tf["carriers"]:
+            aircraft = [
+                Aircraft(
+                    id=f"{_AIRCRAFT_TYPE[ag['type']].value}-{ag['squadron']}-{i:02d}",
+                    type=_AIRCRAFT_TYPE[ag["type"]],
+                    squadron=ag["squadron"],
+                    carrier=c["name"],
+                    status=AircraftStatus.READY,
+                    fuel_pct=100.0,
+                    ammo_pct=100.0,
+                    ordnance=_ORDNANCE.get(ag["type"], "none"),
+                )
+                for ag in c.get("air_groups", [])
+                for i in range(1, ag["count"] + 1)
+            ]
+            carriers.append(Carrier(
+                name=c["name"],
+                position=Position(lat=tf["lat"], lon=tf["lon"]),
+                course=tf["course"],
+                speed=tf["speed"],
+                cap_strength=c.get("cap_strength", 12),
+                damage_level=c.get("damage_level", 0),
+                air_groups=[
+                    AirGroup(
+                        type=_AIR_GROUP_TYPE[ag["type"]],
+                        count=ag["count"],
+                        squadron_name=ag["squadron"],
+                    )
+                    for ag in c.get("air_groups", [])
+                ],
+                aircraft=aircraft,
+            ))
+        task_forces.append(TaskForce(
+            name=tf["name"],
+            carriers=carriers,
+            course=tf["course"],
+            speed=tf["speed"],
+        ))
+
+    state = GameState(
+        clock=clock,
+        task_forces=task_forces,
+        known_enemy=[],
+        incoming_messages=[],
+        turn_type=TurnType.NORMAL,
+        action_points=3,
+        max_action_points=3,
+    )
+
+    # 敌舰队（结构化实体）：航母同位编队（scenario 只给编队位），随队移动同步
+    ef = scenario["enemy_fleet"]
+    enemy_carriers = [
+        EntityCarrier(
+            id=name.lower(),
+            name=name,
+            position=EntityPosition(lat=ef["lat"], lon=ef["lon"]),
+            course=ef["course"],
+            speed=ef["speed"],
+            faction="japan",
+            cap_strength=12,
+            air_groups=[],
+        )
+        for name in ef["carriers"]
+    ]
+    state.enemy_fleet = EntityTaskForce(
+        name=ef["name"],
+        faction="japan",
+        carriers=enemy_carriers,
+        course=ef["course"],
+        speed=ef["speed"],
+    )
+    state.actual_enemy = [
+        {
+            "name": ef["name"],
+            "carriers": list(ef["carriers"]),
+            "position": {"lat": ef["lat"], "lon": ef["lon"]},
+            "status": "underway",
+        }
+    ]
+    return state
+
+
+def _build_midway_state() -> GameState:
+    """中途岛历史开局（04:00, June 4, 1942）——M.4 以来逐字段保持不变。"""
 
     # TF16 opening deployment — scenario-driven（M.4：initial 位与 scenario.json 同源，
     # ENT 环礁西 45nm / HOR 西 28nm；两编队同向 270°、25kn。其余兵力结构不变）

@@ -6,7 +6,7 @@
   全部重置为 scenario 初始态（ENT 28.2/-178.251012 等）；
 - 未知战区 404 且全局状态不动。
 """
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -114,3 +114,71 @@ def test_game_new_unknown_theater_404():
     resp = client.post("/game/new", json={"theater_id": "coral_sea"})
     assert resp.status_code == 404
     assert server.game_state.clock.game_time == before
+
+
+def test_game_new_coral_sea_rebuilds_state_from_scenario():
+    """POST /game/new coral-sea：状态重建为珊瑚海包 scenario 初始态（O.3）。
+
+    断言：时钟=clock_start（1942-05-06T21:00Z = 当地 UTC+10 五月七日 07:00，
+    即 date=1942-05-07 的时区语义）、双盟军舰队 YOR/LEX 位置=scenario 值、
+    敌舰队=MO 机动部队（翔鹤/瑞鹤，日军，位置=scenario 值）、
+    known_enemy 初始为空（可视性分层：actual_enemy 不经玩家态下发）。
+    """
+    client = TestClient(server.app)
+    resp = client.post("/game/new", json={"theater_id": "coral-sea"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["ok"] is True
+    assert body["state"]["theater_id"] == "coral-sea"
+
+    # /state：时钟 = scenario.clock_start（当地 5 月 7 日黎明，UTC+10）
+    state = client.get("/state").json()
+    assert state["clock"]["game_time"].startswith("1942-05-06T21:00")
+    assert server.game_state.clock.game_time.astimezone(
+        timezone(timedelta(hours=10))
+    ).strftime("%Y-%m-%dT%H:%M") == "1942-05-07T07:00"
+
+    # /state：双盟军舰队（YOR=TF17 约克城 / LEX=TF11 列克星敦），位置=scenario 值
+    tfs = {tf["name"]: tf for tf in state["task_forces"]}
+    assert set(tfs) == {"Task Force 17 (TG 17.5)", "Task Force 11 (TG 17.8)"}
+    yor = tfs["Task Force 17 (TG 17.5)"]
+    assert yor["course"] == 315 and yor["speed"] == 27
+    assert yor["carriers"][0]["name"] == "USS Yorktown (CV-5)"
+    assert yor["carriers"][0]["position"]["lat"] == pytest.approx(-15.5)
+    assert yor["carriers"][0]["position"]["lon"] == pytest.approx(155.6)
+    lex = tfs["Task Force 11 (TG 17.8)"]
+    assert lex["carriers"][0]["name"] == "USS Lexington (CV-2)"
+    assert lex["carriers"][0]["position"]["lat"] == pytest.approx(-15.7)
+    assert lex["carriers"][0]["position"]["lon"] == pytest.approx(155.4)
+
+    # /state：known_enemy 初始为空（敌情经侦察产生，actual 不漏玩家态）
+    assert state["known_enemy"] == []
+
+    # 敌舰队（结构化实体）= MO 机动部队：日军、翔鹤/瑞鹤、位置=scenario 值
+    enemy = server.game_state.enemy_fleet
+    assert enemy.name == "MO 机动部队"
+    assert enemy.faction == "japan"
+    assert {c.name for c in enemy.carriers} == {"Shokaku", "Zuikaku"}
+    assert enemy.position.lat == pytest.approx(-12.0)
+    assert enemy.position.lon == pytest.approx(157.0)
+    assert enemy.course == 210 and enemy.speed == 20
+
+    # 实际敌情（god-view）含 MO 机动部队条目；状态对象不含中途岛旧态
+    assert any("MO" in e["name"] for e in server.game_state.actual_enemy)
+    assert server.game_state.task_forces[0].name != "Task Force 16"
+
+    # 切回中途岛：战区可重入切换（全局状态/战区上下文还原，下游测试不污染）
+    resp = client.post("/game/new", json={"theater_id": "midway"})
+    assert resp.status_code == 200
+    state = client.get("/state").json()
+    assert state["clock"]["game_time"].startswith("1942-06-04T04:00")
+    assert server.npcs["navigator"].theater.id == "midway"
+
+
+def test_build_initial_state_midway_default_unchanged():
+    """build_initial_state 缺省路径（中途岛）行为不变——参数化不回归旧包。"""
+    from src.initial_state import build_initial_state
+    s = build_initial_state()
+    assert s.clock.game_time == datetime(1942, 6, 4, 4, 0, tzinfo=timezone.utc)
+    assert s.task_forces[0].name == "Task Force 16"
+    assert s.enemy_fleet.name == "Kido Butai"

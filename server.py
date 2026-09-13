@@ -121,11 +121,17 @@ async def root():
 @app.get("/state")
 async def get_state():
     """Return full game state as JSON."""
-    tf = game_state.task_forces[0]
     ap = get_ap_status(game_state)
+    # O.3：全舰队序列化（珊瑚海双盟军舰队 YOR/LEX；单舰队包不受影响）
     return {
         "clock": {
             "game_time": game_state.clock.game_time.isoformat(),
+        },
+        # 战区摘要（顶栏日期/Z 时区显示用；无军情坐标）
+        "theater": {
+            "id": theater_ctx.id,
+            "name": theater_ctx.name,
+            "timezone_offset": theater_ctx.theater_raw.get("timezone_offset", 0),
         },
         "task_forces": [
             {
@@ -155,6 +161,7 @@ async def get_state():
                     for c in tf.carriers
                 ],
             }
+            for tf in game_state.task_forces
         ],
         "known_enemy": [
             {
@@ -459,7 +466,8 @@ async def new_game(req: NewGameRequest):
 
     global game_state, theater_ctx
     theater_ctx = load_theater(pack_dir)  # 包校验失败抛 ValueError（fail-fast 同启动语义）
-    game_state = build_initial_state()
+    # O.3：按所选包 scenario 重建（缺省 midway 走既有历史开局路径，多岛包走通用构建）
+    game_state = build_initial_state(pack_dir / "scenario.json")
 
     for npc in npcs.values():
         npc.messages = []  # NPC 会话清空（每 NPC 独立 LLM 会话历史）

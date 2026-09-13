@@ -170,7 +170,7 @@ def update_all_positions(state, minutes: int):
 
     # Update US task forces
     for tf in state.task_forces:
-        if tf.name in route_bound:
+        if any(_fleet_matches(tf.name, full) for full in route_bound):
             continue
         update_entity_position(tf, minutes)
 
@@ -204,6 +204,15 @@ def _route_bound_fleet_names(state) -> set:
     return names
 
 
+def _fleet_matches(tf_name: str, full_name: str) -> bool:
+    """舰队名绑定：精确或前缀匹配（O.3）。
+
+    珊瑚海等剧本舰队名带战役番号后缀（"Task Force 17 (TG 17.5)"），
+    owner 短名 TF17 经 FLEET_SHORT 还原为 "Task Force 17"——前缀即同一舰队。
+    """
+    return tf_name == full_name or tf_name.startswith(full_name)
+
+
 def _route_cursor(route) -> int:
     """下一航路点下标（Route.progress，夹取到合法范围）。"""
     return max(0, min(route.progress, len(route.waypoints)))
@@ -233,7 +242,7 @@ def advance_route_fleet(state, route, minutes: int) -> None:
         logger.warning("[ROUTE] 航线 owner '%s' 未绑定舰队，跳过", route.owner)
         return
     fleet = next(
-        (tf for tf in state.task_forces if tf.name == full_name), None
+        (tf for tf in state.task_forces if _fleet_matches(tf.name, full_name)), None
     )
     if fleet is None or not fleet.carriers:
         logger.warning("[ROUTE] 舰队 '%s' 不存在，跳过", route.owner)

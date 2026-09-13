@@ -481,3 +481,40 @@ class TestRouteFleetAdvance:
         # 若被通用位移二次推进，纬度会显著大于预期
         assert lead.lat == pytest.approx(expected_lat, abs=1e-6)
         assert route.status == "active"
+
+    def test_scenario_suffixed_fleet_name_binds(self):
+        """O.3 珊瑚海：剧本舰队名带战役番号后缀（"Task Force 17 (TG 17.5)"），
+        航线 owner 短名经 full_fleet_name 还原为 "Task Force 17"——按前缀绑定，
+        舰队照常沿航路点航行（原精确匹配下静默跳过）。"""
+        from src.entities import advance_route_fleet
+        from src.state import GameState, GameClock, TaskForce, Carrier, Position
+        from src.routes import Route, RouteKind, RouteStatus, Waypoint
+
+        tf = TaskForce(
+            name="Task Force 17 (TG 17.5)",
+            carriers=[Carrier(
+                name="USS Yorktown (CV-5)",
+                position=Position(lat=-15.5, lon=155.6),
+                course=315, speed=27,
+            )],
+            course=315, speed=27,
+        )
+        state = GameState(
+            clock=GameClock(game_time=datetime(1942, 5, 7, 0, 0, tzinfo=timezone.utc)),
+            task_forces=[tf],
+        )
+        route = Route(
+            kind=RouteKind.PLANNED,
+            owner="TF17",
+            waypoints=[Waypoint(lat=-15.167, lon=155.6)],  # 正北约 20nm < 27nm/tick
+        )
+        route.status = RouteStatus.ACTIVE
+        state.routes.append(route)
+
+        before = (tf.carriers[0].position.lat, tf.carriers[0].position.lon)
+        advance_route_fleet(state, route, minutes=60)
+        after = (tf.carriers[0].position.lat, tf.carriers[0].position.lon)
+        assert after != before                       # 舰队已移动
+        assert tf.carriers[0].position.lat > before[0]   # 向北（航路点方向）
+        assert route.progress == 1                   # 单段到点吸附
+        assert route.status == "done"
