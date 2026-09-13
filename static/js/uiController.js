@@ -260,20 +260,144 @@ class UIController {
     // 空态常驻占位军令纸（右栏底部不再留白），有建议时正常渲染命令卡
     if (pending.length === 0) {
       container.innerHTML = this.renderPlaceholderNote();
-      return;
+    } else {
+      container.innerHTML = pending
+        .map((sug, i) => this.renderOrderNote(sug, i))
+        .join('');
+
+      // Bind buttons: data-act="approve|reject" → 原有 onApprove/onReject 回调
+      // （main.js 的 approveSuggestion/rejectSuggestion 仍走 /suggestion/{i}/approve|reject）
+      container.querySelectorAll('.order-actions .btn[data-act]').forEach(btn => {
+        const idx = parseInt(btn.dataset.index, 10);
+        if (btn.dataset.act === 'approve') btn.addEventListener('click', () => onApprove(idx));
+        else if (btn.dataset.act === 'reject') btn.addEventListener('click', () => onReject(idx));
+      });
     }
 
-    container.innerHTML = pending
-      .map((sug, i) => this.renderOrderNote(sug, i))
-      .join('');
+    // N.5 命令卡联动：GET /pending-routes 有 proposed 航线提案时渲染 PENDING ROUTE
+    // 军令纸卡（异步拉取，insertAdjacentHTML 不重建既有建议卡节点/按钮绑定）
+    this.refreshPendingRoutes();
+  }
 
-    // Bind buttons: data-act="approve|reject" → 原有 onApprove/onReject 回调
-    // （main.js 的 approveSuggestion/rejectSuggestion 仍走 /suggestion/{i}/approve|reject）
-    container.querySelectorAll('.order-actions .btn[data-act]').forEach(btn => {
-      const idx = parseInt(btn.dataset.index, 10);
-      if (btn.dataset.act === 'approve') btn.addEventListener('click', () => onApprove(idx));
-      else if (btn.dataset.act === 'reject') btn.addEventListener('click', () => onReject(idx));
+  // ═══════════════════════════════════════════════════════
+  // N.5 航线提案命令卡（航海参谋 PendingRoute → 军令纸）
+  // 数据源 GET /pending-routes；仅 status=proposed 出卡（revised 为被修订旧条目，
+  // approved/rejected 已处理）。空态（无 proposed）维持 E6 占位卡。
+  // ═══════════════════════════════════════════════════════
+  refreshPendingRoutes() {
+    if (typeof fetch !== 'function') return;
+    fetch('/pending-routes')
+      .then(r => r.json())
+      .then(data => {
+        const proposed = ((data && data.pending_routes) || [])
+          .filter(p => p.status === 'proposed');
+        this.renderPendingRoutes(proposed);
+      })
+      .catch(() => { /* 提案接口不可用时维持现状（占位卡不受影响） */ });
+  }
+
+  renderPendingRoutes(pendings) {
+    const container = document.getElementById('suggestions');
+    if (!container) return;
+    // 重绘航线提案卡（先移除旧卡防重复），不动建议卡/占位卡节点
+    container.querySelectorAll('.order-note.route-note').forEach(el => el.remove());
+    // 有提案时隐藏 E6 占位卡（非空态），空态恢复
+    const ph = container.querySelector('.order-note.placeholder');
+    if (ph) ph.style.display = pendings.length > 0 ? 'none' : '';
+    if (pendings.length === 0) return;
+
+    container.insertAdjacentHTML('afterbegin', pendings.map(p => this.renderPendingRouteNote(p)).join(''));
+
+    // Bind buttons: data-route-act="approve|reject|comment"（与建议卡 data-act 区分防误绑）
+    container.querySelectorAll('.route-note .btn[data-route-act]').forEach(btn => {
+      const p = pendings.find(x => x.id === btn.dataset.pendingId);
+      if (p) btn.addEventListener('click', () => this.onRouteAction(btn.dataset.routeAct, p));
     });
+  }
+
+  // PENDING ROUTE 军令纸卡：SECRET 头 + 「– ROUTE PROPOSAL –」副题 + rationale 正文
+  // + 航点表（NO.·LAT·LON·ETA）+ 三按钮（批准实施/驳回/提修改意见）
+  renderPendingRouteNote(p) {
+    const owner = escapeHtml(p.owner || '');
+    const rationale = escapeHtml(p.rationale || '');
+    const rows = (p.waypoints || []).map((w, i) => {
+      const lat = (w.lat >= 0 ? w.lat.toFixed(1) + '°N' : Math.abs(w.lat).toFixed(1) + '°S');
+      const lon = (w.lon >= 0 ? w.lon.toFixed(1) + '°E' : Math.abs(w.lon).toFixed(1) + '°W');
+      const eta = w.eta ? new Date(w.eta).toUTCString().slice(17, 22) + 'Z' : '—';
+      return `<tr><td>${i + 1}</td><td>${lat}</td><td>${lon}</td><td>${eta}</td></tr>`;
+    }).join('');
+    const table = `
+      <table class="route-wps" style="width:100%;border-collapse:collapse;margin:6px 0 2px;font-size:11px;color:#2a2218;">
+        <thead><tr style="border-bottom:1px solid rgba(42,34,24,0.4);text-align:left;">
+          <th style="padding:2px 8px 2px 0;font-weight:normal;">NO.</th>
+          <th style="padding:2px 8px 2px 0;font-weight:normal;">LAT</th>
+          <th style="padding:2px 8px 2px 0;font-weight:normal;">LON</th>
+          <th style="padding:2px 0;font-weight:normal;">ETA</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    return `
+    <article class="order-note route-note" data-pending="${escapeHtml(p.id)}">
+      <header class="order-note-head">
+        <span class="order-stamp-word">SECRET</span>
+        <span class="order-note-subtitle">– ROUTE PROPOSAL –</span>
+      </header>
+      <div class="order-note-body">
+        <p class="order-kw">PENDING ROUTE · ${owner}</p>
+        <p class="order-line">${rationale}</p>
+        ${table}
+      </div>
+      <footer class="order-note-foot">
+        <div class="order-sig">
+          <span class="order-sig-label">COMMANDER SIGNATURE:</span>
+          <svg class="sig-scrawl" viewBox="0 0 100 32" width="90" height="26" aria-hidden="true">
+            <path d="M4,26 C14,6 20,30 30,14 C36,6 38,22 48,16 C58,10 60,24 72,14 C80,8 86,20 96,12"
+                  fill="none" stroke="#2a2218" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="order-actions">
+          <button class="btn btn-execute" data-route-act="approve" data-pending-id="${escapeHtml(p.id)}">批准实施</button>
+          <button class="btn btn-revise" data-route-act="reject" data-pending-id="${escapeHtml(p.id)}">驳回</button>
+          <button class="btn" data-route-act="comment" data-pending-id="${escapeHtml(p.id)}">提修改意见</button>
+        </div>
+      </footer>
+    </article>`;
+  }
+
+  // 三按钮动作：批准实施=POST /pending-routes/{id}/approve、驳回=reject、
+  // 提修改意见=弹出输入框 → POST /routes/{route_id}/comment（修订回路走航线链 id）
+  async onRouteAction(act, p) {
+    try {
+      if (act === 'approve') {
+        await this._postApi(`/pending-routes/${p.id}/approve`);
+        this.showNotification('✅ 航线提案已批准实施（草案已上图）');
+      } else if (act === 'reject') {
+        await this._postApi(`/pending-routes/${p.id}/reject`);
+        this.showNotification('航线提案已驳回');
+      } else if (act === 'comment') {
+        const feedback = prompt('提修改意见（将发回航海参谋修订提案）：');
+        if (!feedback) return;
+        await this._postApi(`/routes/${p.route_id}/comment`, { feedback });
+        this.showNotification('修改意见已发回航海参谋');
+      }
+    } catch (e) {
+      this.showNotification('❌ 操作失败: ' + e.message);
+      return;
+    }
+    this.refreshPendingRoutes();
+  }
+
+  async _postApi(path, body) {
+    const res = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || JSON.stringify(err));
+    }
+    return res.json();
   }
 
   // E6 空态占位军令纸（.order-note.placeholder）：复用 A8 军令纸全套样式——
