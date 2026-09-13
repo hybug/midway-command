@@ -1,7 +1,9 @@
-/** 断言三层：①唯一投影确定性（makeProjector==latLonToChartPx） ②底图层圆心一致
- *  ③实体标记绘制位置==逻辑坐标直接投影（fix Loop3-F1 投影唯一化：无 translate 换算、
- *  无舰队居中平移、无对角错开——「底图与实体两参考系」局限就此关闭）。*/
+/** 断言五层：①唯一投影确定性（makeProjector==latLonToChartPx） ②BUILTIN 兜底与
+ *  战区包一致性（M.4，防离线兜底静默分叉） ③底图层圆心一致 ④实体标记绘制位置==
+ *  逻辑坐标直接投影（Loop3-F1 投影唯一化 + M.4 全量同锚：无 translate 换算、
+ *  无舰队居中平移、无对角错开——「底图与实体两参考系」局限就此关闭） ⑤刷新链路。*/
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import * as vm from "node:vm";
 import { loadGameScripts } from "./dom-stub.mjs";
 
@@ -10,6 +12,19 @@ const { sandbox, document } = loadGameScripts([
 ]);
 const canvas = document.getElementById("tacticalMap");
 const renderer = new sandbox.MapRenderer("tacticalMap");
+
+// ── M.4 BUILTIN 一致性守卫（M.3 评审 Important 并入）：setTheater 之前 getTheater()
+// 返回内置默认战区对象——其前端消费键必须与 theaters/midway/theater.json 逐字段同值，
+// 防离线/加载失败兜底静默分叉。注：vm 桩上下文返回的对象原型属另一 realm，
+// deepStrictEqual 校验原型，先 JSON 摊平成本 realm 普通对象再比较（断言语义不变）。
+const packTheater = JSON.parse(
+  readFileSync(new URL("../../theaters/midway/theater.json", import.meta.url), "utf8"));
+const builtin = JSON.parse(JSON.stringify(sandbox.ChartRenderer.getTheater()));
+const CONSUMED_KEYS = ["view", "graticule", "range_rings", "atoll", "labels"];
+assert.deepEqual(
+  Object.fromEntries(CONSUMED_KEYS.map((k) => [k, builtin[k]])),
+  Object.fromEntries(CONSUMED_KEYS.map((k) => [k, packTheater[k]])),
+  "BUILTIN_THEATER 前端消费键与 theaters/midway/theater.json 分叉（离线兜底静默漂移）");
 
 // ── M.3：注入固定 theater JSON（与 theaters/midway/theater.json 关键字段同值）──
 // 桩环境未载 theaterLoader.js（chartRenderer init 的 loader 拉取自动跳过），
@@ -38,32 +53,34 @@ function makeState(lat, lon) {
 // ── ① 唯一投影确定性（chartRenderer 层，M.3 数据驱动语义）──
 // 注：vm 桩上下文返回的对象原型属另一 realm，deepStrictEqual 校验原型，
 // 先摊开成本 realm 普通对象再比较（断言语义不变）
-const p1 = sandbox.ChartRenderer.latLonToChartPx(31.5, -176.0, 1440, 900);
-const p2 = sandbox.ChartRenderer.latLonToChartPx(31.5, -176.0, 1440, 900);
+const p1 = sandbox.ChartRenderer.latLonToChartPx(28.2, -178.251012, 1440, 900);
+const p2 = sandbox.ChartRenderer.latLonToChartPx(28.2, -178.251012, 1440, 900);
 assert.deepEqual({ ...p1 }, { ...p2 }, "同输入投影必须确定");
 // R-M2：view.center（=环礁真坐标 28.2,-177.4）经 atoll_screen_frac 落构图位 (0.44w, 0.46h)
 const pFar = sandbox.ChartRenderer.latLonToChartPx(28.2, -177.4, 1440, 900);
 assert.deepEqual({ x: pFar.x, y: pFar.y }, { x: 1440 * 0.44, y: 900 * 0.46 },
   "环礁真坐标必须落到 atoll_screen_frac 构图位");
 // makeProjector（唯一投影出入口）以注入 theater.view 投影必须与 latLonToChartPx 逐像素一致
-//（防「两参考系」回潮；实体层 mapRenderer 传 {center} 走缺省 0.5/0.5 画布中心锚）
+//（防「两参考系」回潮；M.4 起 mapRenderer 实体层同样传 theater.view 全量——
+//  含 atoll_screen_frac 构图锚，与底图 latLonToChartPx 完全同式）
 const theaterView = sandbox.ChartRenderer.getTheater().view;
-const viaMake = sandbox.ChartRenderer.makeProjector(theaterView, 1440, 900)(31.5, -176.0);
+const viaMake = sandbox.ChartRenderer.makeProjector(theaterView, 1440, 900)(28.2, -178.251012);
 assert.ok(Math.abs(viaMake.x - p1.x) < 1e-9 && Math.abs(viaMake.y - p1.y) < 1e-9,
   "makeProjector 与 latLonToChartPx 不一致（投影唯一化被破坏）");
 // M.3：invert 往返——投影点逆变换必须还原经纬（等距圆柱 + cos(lat) 精确可逆）
 const inv = sandbox.ChartRenderer.makeProjector(theaterView, 1440, 900).invert(p1.x, p1.y);
-assert.ok(Math.abs(inv.lat - 31.5) < 1e-9 && Math.abs(inv.lon - (-176.0)) < 1e-9,
+assert.ok(Math.abs(inv.lat - 28.2) < 1e-9 && Math.abs(inv.lon - (-178.251012)) < 1e-9,
   `invert 往返失真: ${JSON.stringify(inv)}`);
 
 // ── ① 独立公式对照（控制裁定加强）──
-// 公式副本，源码变更时须同步——逐字抄录自 chartRenderer.js 的 makeProjector 实体层调用形态
+// 公式副本，源码变更时须同步——逐字抄录自 chartRenderer.js makeProjector 的唯一投影
 //（等距圆柱 + cos(lat) 纬度修正；view_nm=45 由注入 theater 提供、基准半径 min(w,h)/2+100、
-// 缺省 atoll_screen_frac 0.5/0.5 = 画布中心锚——mapRenderer 传 {center} 即此形态）
+// atoll_screen_frac 0.44/0.46 = 环礁构图位锚——M.4 起实体层 mapRenderer 传 theater.view
+// 全量即此形态，与底图 latLonToChartPx 逐像素同式）
 function projectCopy(lat, lon, w, h) {
   const pxPerDegLat = ((60 / 45) * (Math.min(w, h) / 2 + 100));
   const pxPerDegLon = pxPerDegLat * Math.cos((28.2 * Math.PI) / 180);
-  return [w / 2 + (lon + 177.4) * pxPerDegLon, h / 2 - (lat - 28.2) * pxPerDegLat];
+  return [w * 0.44 + (lon + 177.4) * pxPerDegLon, h * 0.46 - (lat - 28.2) * pxPerDegLat];
 }
 
 // ── ② 底图层：环礁中心与距离环圆心一致（真实渲染调用）──
@@ -76,14 +93,21 @@ assert.ok(Math.abs(ringArc.args[0] - atollCx) < 1 && Math.abs(ringArc.args[1] - 
   `距离环圆心 (${ringArc.args[0]},${ringArc.args[1]}) 偏离环礁中心 (${atollCx},${atollCy})`);
 
 // ── ③ 实体层：舰队标记画在其逻辑坐标的直接投影处（接线测试，无任何平移换算）──
-renderer.render(makeState(31.5, -176.0));
+// 探针点用 scenario ENT 真实位（theaters/midway/scenario.json，M.4 布兵——近景画内），
+// 顺带验证成品图构图位（投影 ≈ (83.6, 414)，图左外缘开阔水面）
+renderer.render(makeState(28.2, -178.251012));
 const drawn = canvas.__ctx.__calls.filter((c) => c.name === "arc" || c.name === "drawImage");
 
 // 渲染器内部投影（render 构造的 this._project）vs 公式副本：不一致说明源码公式已变更，须同步抄录
-const proj = renderer._project(31.5, -176.0);
-const [ex, ey] = projectCopy(31.5, -176.0, 1440, 900);
+const proj = renderer._project(28.2, -178.251012);
+const [ex, ey] = projectCopy(28.2, -178.251012, 1440, 900);
 assert.ok(Math.abs(proj.x - ex) < 1e-9 && Math.abs(proj.y - ey) < 1e-9,
   "渲染器内部投影与公式副本不一致（源码已变更，须同步抄录）");
+// M.4 收口断言：实体层投影必须与底图 latLonToChartPx 全等（同一 theater.view 含构图锚）
+// ——「底图与实体两参考系」局限关闭的硬证据
+const viaBase = sandbox.ChartRenderer.latLonToChartPx(28.2, -178.251012, 1440, 900);
+assert.ok(Math.abs(proj.x - viaBase.x) < 1e-9 && Math.abs(proj.y - viaBase.y) < 1e-9,
+  "实体层投影 ≠ 底图投影（两参考系复辟）");
 
 // 锚点 1：drawTaskForceMarker 的 CSE 标注画在航向线末端延长处（成品图复现 G1 圆圈形态：
 // 标注 = 标记 + 34px × 航向单位向量（course−90° 修正），34px 与航向线长 30px 同批源码常量）。
@@ -104,8 +128,8 @@ assert.ok(Math.abs(markerArc.args[0] - ex) < 2 && Math.abs(markerArc.args[1] - e
   `舰队标记画布位置 (${markerArc.args[0].toFixed(1)},${markerArc.args[1].toFixed(1)}) 偏离直接投影 (${ex.toFixed(1)},${ey.toFixed(1)}) 超过 2px`);
 
 // Loop3-F1 守卫（替代 Loop1 的 translate 守卫）：舰队居中平移体系已拆除——
-// 渲染帧中不得出现任何等于「画心−投影点」的 translate（回潮即实体整体出画/两参考系复辟）。
-// 位置断言本身已能抓回潮（本地系坐标≠投影），本守卫钉平移调用形态本身。
+// 渲染帧中不得出现任何等于「画布中心−投影点」的 translate（回潮即实体整体出画/
+// 两参考系复辟）。位置断言本身已能抓回潮，本守卫钉平移调用形态本身。
 const fleetT = canvas.__ctx.__calls.find(
   (c) => c.name === "translate" && Math.abs(c.args[0] - (720 - ex)) < 0.01
        && Math.abs(c.args[1] - (450 - ey)) < 0.01);
@@ -116,7 +140,7 @@ assert.ok(!fleetT, "检测到舰队居中 translate（投影唯一化回潮，�
 // state.active_scouts.filter 首先抛 TypeError）
 assert.doesNotThrow(() => renderer.render({
   task_forces: [{ name: "Task Force 16", course: 240, speed: 25,
-    carriers: [{ name: "USS Enterprise (CV-6)", position: { lat: 31.5, lon: -176.0 }, aircraft: [] }] }],
+    carriers: [{ name: "USS Enterprise (CV-6)", position: { lat: 28.2, lon: -178.251012 }, aircraft: [] }] }],
 }), "render 遇缺省 active_scouts/known_enemy 字段不得抛错");
 
 // ── ④ 刷新链路（批次 C4）：advance 语义模拟——逻辑位置变化后 render 必须以新位置为绘制目标 ──
@@ -124,15 +148,15 @@ assert.doesNotThrow(() => renderer.render({
 // 无 lerp 缓存，每帧直接把标记画在当前 state 的投影上（_lerpPos 为死代码，无人调用）。
 // 故「动画目标」= 本次 render 的投影点本身；断言意图：新逻辑位置成为绘制目标。
 // （若日后给舰队引入 lerp 位置缓存，本组断言会因标记滞后于投影差而红——正是要守的链路。）
-const sA = makeState(31.5, -176.0);
+const sA = makeState(28.2, -178.251012);
 renderer.render(sA);
 const arcR10 = () => canvas.__ctx.__calls.filter((c) => c.name === "arc" && Math.abs(c.args[2] - 10) < 0.5);
 const beforeCount = arcR10().length;
 assert.ok(beforeCount >= 1, "render(sA) 未产生舰队标记（arc r≈10）");
-const sB = makeState(31.4, -176.1); // 模拟一 tick（advance 15min）后的逻辑位置
+const sB = makeState(28.1, -178.351012); // 模拟一 tick（advance 15min）后的逻辑位置
 renderer.render(sB);
 // 新逻辑位置 → 唯一投影（屏幕系；render 每次 resize 重置画布 1440×900）
-const [nx, ny] = projectCopy(31.4, -176.1, 1440, 900);
+const [nx, ny] = projectCopy(28.1, -178.351012, 1440, 900);
 const fp = renderer._animState.fleetPositions; // 源码现状：空对象（仅声明）；有 lerp 缓存时此处应有 {targetX,targetY}
 const entry = Object.values(fp).find((v) => v && "targetX" in v);
 if (entry) {
@@ -147,7 +171,7 @@ const [bx, by] = bArcs[bArcs.length - 1].args;
 assert.ok(Math.abs(bx - nx) < 2 && Math.abs(by - ny) < 2,
   `sB 帧标记 (${bx.toFixed(1)},${by.toFixed(1)}) 偏离 sB 投影 (${nx.toFixed(1)},${ny.toFixed(1)})——刷新链路断裂（显示落后于逻辑）`);
 // 位移必须精确等于两次逻辑位置的投影差值（重绘位置精确移动投影差）
-const [axp, ayp] = projectCopy(31.5, -176.0, 1440, 900);
+const [axp, ayp] = projectCopy(28.2, -178.251012, 1440, 900);
 const aArc = arcR10()[beforeCount - 1].args;
 assert.ok(Math.abs((bx - axp) - (nx - ex)) < 2 && Math.abs((by - ayp) - (ny - ey)) < 2,
   "sA→sB 标记位移 ≠ 逻辑位置投影差（重绘未精确跟随状态变化）");
@@ -164,8 +188,9 @@ const seedIcon = vm.runInContext(
   + 'getIcon("aircraft_topdown")', sandbox);
 assert.ok(seedIcon && seedIcon.__stub, "vm 桩：aircraft_topdown 图标注入失败");
 
-const SCOUT_LAT = 30.5, SCOUT_LON = -178.2;
-const scoutState = makeState(31.5, -176.0);
+// 探针位用 design-state fixture 同款真实经纬（M.4 唯一投影下近景画内）
+const SCOUT_LAT = 27.959, SCOUT_LON = -177.573;
+const scoutState = makeState(28.2, -178.251012);
 scoutState.active_scouts = [{
   id: "SCOUT-1", status: "in_flight", phase: "outbound", direction: "west",
   position: { lat: SCOUT_LAT, lon: SCOUT_LON },
@@ -207,8 +232,9 @@ const seedMarker = vm.runInContext(
   + 'getIcon("enemy_marker")', sandbox);
 assert.ok(seedMarker && seedMarker.__stub, "vm 桩：enemy_marker 图标注入失败");
 
-const ENEMY_LAT = 30.0, ENEMY_LON = -178.0;
-const enemyState = makeState(31.5, -176.0);
+// 探针位同上：fixture 内标真实经纬（近景画内）
+const ENEMY_LAT = 28.422, ENEMY_LON = -177.027;
+const enemyState = makeState(28.2, -178.251012);
 enemyState.known_enemy = [{ position: { lat: ENEMY_LAT, lon: ENEMY_LON }, confidence: "high" }];
 renderer.render(enemyState);
 const markerCalls = canvas.__ctx.__calls.filter((c) => c.name === "drawImage" && c.args[0] === seedMarker);
@@ -252,7 +278,7 @@ assert.ok(stampIdx > nmIdx, "SECRET 章未画在比例尺之后（drawAll 末尾
 // 真实 state 出现 launch_scout 待定建议时，_drawPendingRecon 引用未定义的 midAngle
 // （本函数内扇区中点变量实为 midRad）→ ReferenceError 使整帧渲染崩溃。
 // 桩 state 注入 1 条 launch_scout，断言 render 不抛错且飞机剪影按扇区中点角绘制。
-const pendingState = makeState(31.5, -176.0);
+const pendingState = makeState(28.2, -178.251012);
 pendingState.pending_suggestions = [{
   action_type: "launch_scout",
   details: { direction: "northwest", aircraft_count: 4, sector_start: 280, sector_end: 340,
@@ -279,7 +305,7 @@ assert.equal(sandbox.bearingToDirection(225), "southwest", "bearing 225 → sout
 assert.equal(sandbox.bearingToDirection(270), "west", "bearing 270（⑤ 桩扇区 250-290 中点）→ west");
 assert.equal(sandbox.bearingToDirection(315), "northwest", "bearing 315 → northwest");
 
-const dirState = makeState(31.5, -176.0);
+const dirState = makeState(28.2, -178.251012);
 dirState.active_scouts = [{
   id: "SCOUT-9", status: "in_flight", phase: "outbound", direction: "southwest",
   position: { lat: SCOUT_LAT, lon: SCOUT_LON },

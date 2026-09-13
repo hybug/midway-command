@@ -8,16 +8,14 @@
  */
 
 // ── Constants ──
-// REF_LAT/REF_LON：图面中心经纬（chartRenderer CHART_CENTER 同源）。Loop3-F1 投影
-// 唯一化后为实体层唯一投影中心（ChartRenderer.makeProjector），北向上、东向右。
 // HEX_SIZE/SQRT3/CELL_NM：遗留 px 尺度常量，仅扇区楔形半径等样式换算沿用
 //（8×HEX_SIZE×SQRT3≈166px 楔形半径、rangeNm/CELL_NM×… 待定扇区半径），
 // 不再承担地理换算——实体定位一律走 makeProjector 直接投影真实经纬度。
+// M.4：投影中心字面量 REF_LAT/REF_LON 退役，改消费 ChartRenderer.getTheater().view
+//（与底图全量同锚，见 render）。
 const HEX_SIZE = 12;
 const SQRT3 = Math.sqrt(3);
 const CELL_NM = 10;
-const REF_LAT = 28.2;
-const REF_LON = -177.4;
 
 // ── Colors ──
 const COL = {
@@ -276,11 +274,14 @@ class MapRenderer {
     // fix Loop1-F6: 纸面 10nm 细网格（纹理之后、距离环之前，survey 绘图感）
     this._drawFineGrid(ctx, W, H);
 
-    // fix Loop3-F1（CHART_SYSTEM.md §四 C3 投影唯一化）：实体层与底图共用同一投影——
-    // makeProjector 直接投影真实经纬度（北向上、东向右），「舰队居中 translate(ox,oy)」
-    // 体系整体拆除，「底图与实体两参考系」已知局限就此关闭。
-    // （M.3 TheaterLoader 落地后此处改传 theater.view；取值与 CHART_CENTER 同源。）
-    this._project = ChartRenderer.makeProjector({ center: { lat: REF_LAT, lon: REF_LON } }, W, H);
+    // fix Loop3-F1（CHART_SYSTEM.md §四 C3 投影唯一化）→ M.4 收口：实体层与底图共用
+    // 同一投影——makeProjector 消费 theater.view 全量（含 atoll_screen_frac 构图锚，
+    // 与 latLonToChartPx/drawLandmarks 逐像素同式）直接投影真实经纬度（北向上、东向右），
+    // 「舰队居中 translate(ox,oy)」体系拆除，「底图与实体两参考系」已知局限就此关闭。
+    //（M.3 期间的 {center} 缺省 0.5/0.5 画布中心锚形态随本任务退役——实体位与底图
+    //  构图位相差 (0.06w, 0.04h) 的双锚残差消除；经纬网装饰性 0.5/0.5 锚随底图
+    //  GeoJSON 化任务统一，见 chartRenderer drawLatLonGrid 注释。）
+    this._project = ChartRenderer.makeProjector(ChartRenderer.getTheater().view, W, H);
 
     if (state) {
       const tf = state.task_forces[0];

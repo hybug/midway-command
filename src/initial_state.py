@@ -1,9 +1,12 @@
 """Build the initial game state for June 4, 1942, 04:00.
 
-All data sourced from docs/HISTORICAL_NOTES.md.
+Force structure from docs/HISTORICAL_NOTES.md; fleet opening positions are
+scenario-driven (theaters/midway/scenario.json — M.4 布兵唯一化).
 Times are Zone +12 (Midway time zone).
 """
+import json
 from datetime import datetime, timezone
+from pathlib import Path
 
 from src.state import (
     AirGroup,
@@ -25,13 +28,25 @@ from src.entities import (
     Position as EntityPosition,
 )
 
+# 战区剧本（布兵唯一来源）：舰队初始位/航向/航速从 scenario.json 读取，
+# 与前端战区包同源（M.4 实体层投影唯一化后 ENT/HOR 真实位直接落图面构图）。
+_SCENARIO_JSON = Path(__file__).resolve().parent.parent / "theaters" / "midway" / "scenario.json"
+
+
+def _scenario_deployments() -> dict:
+    """scenario.json 布兵表：callsign（ENT/HOR）→ task force 条目。"""
+    scenario = json.loads(_SCENARIO_JSON.read_text(encoding="utf-8"))
+    return {tf["callsign"]: tf for tf in scenario["task_forces"]}
+
 
 def build_initial_state() -> GameState:
     """Return the historical opening state at 04:00, June 4, 1942."""
 
-    # TF16 position: ~200nm NE of Midway, course 240°, speed 25 knots
-    # Historical: Nimitz ordered TF16 to ambush position NE of Midway
-    tf16_position = Position(lat=31.5, lon=-176.0)
+    # TF16 opening deployment — scenario-driven（M.4：initial 位与 scenario.json 同源，
+    # ENT 环礁西 45nm / HOR 西 28nm；两编队同向 270°、25kn。其余兵力结构不变）
+    deploy = _scenario_deployments()
+    tf16_course = deploy["ENT"]["course"]
+    tf16_speed = deploy["ENT"]["speed"]
 
     # ── Helper: generate aircraft list for a carrier ──
     def make_aircraft(carrier_name: str, squadron: str, aircraft_type: AircraftType,
@@ -75,7 +90,7 @@ def build_initial_state() -> GameState:
     # Each carrier needs its own Position object (no shared references)
     enterprise = Carrier(
         name="USS Enterprise (CV-6)",
-        position=Position(lat=tf16_position.lat, lon=tf16_position.lon),
+        position=Position(lat=deploy["ENT"]["lat"], lon=deploy["ENT"]["lon"]),
         cap_strength=12,
         air_groups=[
             AirGroup(type=AirGroupType.FIGHTER, count=27, squadron_name="VF-6"),
@@ -88,7 +103,7 @@ def build_initial_state() -> GameState:
     # USS Hornet (CV-8)
     hornet = Carrier(
         name="USS Hornet (CV-8)",
-        position=Position(lat=tf16_position.lat, lon=tf16_position.lon),
+        position=Position(lat=deploy["HOR"]["lat"], lon=deploy["HOR"]["lon"]),
         cap_strength=12,
         air_groups=[
             AirGroup(type=AirGroupType.FIGHTER, count=27, squadron_name="VF-8"),
@@ -102,8 +117,8 @@ def build_initial_state() -> GameState:
     tf16 = TaskForce(
         name="Task Force 16",
         carriers=[enterprise, hornet],
-        course=240,
-        speed=25,
+        course=tf16_course,
+        speed=tf16_speed,
     )
 
     # Game clock: June 4, 1942, 04:00

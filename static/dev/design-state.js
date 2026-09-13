@@ -5,13 +5,13 @@
  * 页面加载渲染器三件套（svgLoader/chartRenderer/mapRenderer）+ uiController 后
  * 以本模块数据 render(state)——不经后端，离线可渲染。仅供像素比对，非游戏页面。
  *
- * 坐标口径（fix Loop3-F1 投影唯一化后为单参考系）：
- *  - 底图与实体层共用同一投影（ChartRenderer.makeProjector，等距圆柱 + cos(lat)），
- *    lat/lon 即真实地理语义：北向上、东向右，无翻转、无反推。
- *  - 图面双基准：经纬网零点 (28.2,-177.4)→(w/2,h/2)；环礁/距离环绘制基准 →
- *    (w*0.44, h*0.46)（既有构图位）。1084×657 fixture 画布上两者差 (−65,−26)px，
- *    故「环礁相对位」以环礁心对应经纬 lat0 ≈ 28.246 / lon0 ≈ −177.529 为原点
- *    （下述 fleet/enemy 的 nm 距离均对环礁心；画布尺寸变化时偏差 <3px，截图定妆可行）。
+ * 坐标口径（M.4 实体层与底图全量同锚后为唯一参考系）：
+ *  - 底图与实体层共用同一投影（ChartRenderer.makeProjector 消费 theater.view 全量、
+ *    含 atoll_screen_frac 构图锚，等距圆柱 + cos(lat)），lat/lon 即真实地理语义：
+ *    北向上、东向右，无翻转、无反推；实体位可直接按「对环礁心真坐标的 nm」给出。
+ *  - 环礁/距离环绘制基准 (28.2,-177.4)→(w*0.44, h*0.46)（构图位）；经纬网仍为装饰性
+ *    0.5/0.5 锚（与构图位差 (−65,−26)px，随底图 GeoJSON 化任务统一，与本 fixture 无关）。
+ *    （下述 fleet/enemy 的 nm 距离均对环礁心真坐标；画布尺寸变化时偏差 <3px，截图定妆可行）
  */
 (function () {
   'use strict';
@@ -55,39 +55,39 @@
 
   const NM_TO_DEG_LON = 1 / (60 * Math.cos(DESIGN_THEATER.view.center.lat * Math.PI / 180));
 
-  // 舰队：course 270 / 30 KTS。fix Loop3-F1 投影唯一化——「首航母钉画布中心」 wart
-  // 已拔除，按成品图位直给真实经纬（画布位按 1084×657 反推，北向上东向右）：
-  //   HOR（carriers[0]，扇区/底栏首读槽位）: 环礁西 ~25nm（西礁环带上，成品图 HOR 位）
-  //     lat 28.246 / lon −178.002 → 画布 (238.9, 302.2)
-  //   ENT（次位）: 图左外缘开阔水面（环礁西 ~45nm 画内极限；任务书 ~52nm 口径对图心经度）
-  //     lat 28.246 / lon −178.383 → 画布 (47.0, 302.2)，与 HOR/环礁心同一条水平线
-  const HOR_LAT = 28.246;
-  const HOR_LON = -178.002;
-  const ENT_LAT = 28.246;
-  const ENT_LON = -178.383;
+  // 舰队：course 270 / 30 KTS。M.4 投影全量同锚 + scenario 布兵——fixture 舰位与
+  // theaters/midway/scenario.json 真实位同值（对环礁心真坐标：ENT 西 45nm / HOR 西 28nm），
+  // 唯一投影下自然落位成品图构图（北向上东向右，1084×657 画布，与环礁心同一条水平线）：
+  //   ENT（次位）: 图左外缘开阔水面 → 画布 (48.5, 302.2)
+  //   HOR（carriers[0]，扇区/底栏首读槽位）: 环礁西缘礁环带 → 画布 (210.4, 302.2)
+  const HOR_LAT = 28.2;
+  const HOR_LON = -177.929519;
+  const ENT_LAT = 28.2;
+  const ENT_LON = -178.251012;
 
-  // 敌情 ×2：成品图环礁东北、内外错开（Loop1-F2 定位延续，改唯一投影真实经纬）：
-  //   内标 ≈ 方位 56° / 23.8nm（礁环内缘）→ lat 28.468 / lon −177.156 → 画布 (664.9, 175.4)
-  //   外标 ≈ 方位 37° / 27.5nm（礁环外缘）→ lat 28.612 / lon −177.216 → 画布 (634.6, 93.1)
+  // 敌情 ×2：成品图环礁东北、内外错开（Loop1-F2 定位延续；M.4 按唯一投影反推真实经纬，
+  // 像素位与成品图 approved 位一致）：
+  //   内标 ≈ 方位 56° / 23.8nm（礁环内缘）→ lat 28.422 / lon −177.027 → 画布 (664.9, 175.4)
+  //   外标 ≈ 方位 37° / 27.5nm（礁环外缘）→ lat 28.566 / lon −177.087 → 画布 (634.6, 93.1)
   // （方位/距离对环礁心；1084×657 反推，画布尺寸变化时偏差 <3px）
   const KNOWN_ENEMY = [
     {
       description: '敌航母约 4 艘 - 方位 55° - 距离 150nm',
       confidence: 'high',
       source: 'SCOUT-2',
-      position: { lat: 28.468, lon: -177.156 },
+      position: { lat: 28.422, lon: -177.027 },
     },
     {
       description: '敌航母约 4 艘 - 战列舰 2 艘护航',
       confidence: 'high',
       source: 'TBD-1',
-      position: { lat: 28.612, lon: -177.216 },
+      position: { lat: 28.566, lon: -177.087 },
     },
   ];
 
   // 在途侦察 ×1：HOR 西南航线、机上 2 架。位置为成品图像素目标（环礁心西南偏下
   // ≈(−87,+138)px，避让 SAND ISLAND 胶囊/跑道横带）经唯一投影反推
-  // → lat 28.005 / lon −177.702 → 画布 (390, 440)。
+  // → lat 27.959 / lon −177.573 → 画布 (390, 440)。
   // 搜索扇区 30°-90°（成品图底栏「侦察 30°-90°」读数同源字段；标签/底栏读数一律
   // 由 search_bearing 派生——扇区方向词 bearingToDirection((30+90)/2)=northeast，
   // 底栏定妆「1 架 · 30°-90°」，见 bootDesignFixture 消歧钉）；direction/heading
@@ -108,7 +108,7 @@
       fuel_pct: 80,
       aircraft_lost: 0,
       loss_reasons: [],
-      position: { lat: 28.005, lon: -177.702 },
+      position: { lat: 27.959, lon: -177.573 },
       search_pattern: 'sector',
     },
   ];

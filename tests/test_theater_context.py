@@ -46,3 +46,26 @@ def test_get_theater_endpoint():
     assert data["geography"] == server.theater_ctx.geography
     assert data["theater"]["id"] == "midway"
     assert data["geography"]["features"], "geography 应含 features"
+
+
+def test_initial_state_deployment_matches_scenario():
+    """M.4 scenario 布兵守卫：initial_state ENT/HOR 初始位与 scenario.json 同源。
+
+    实体层投影唯一化（与底图同投影）后，舰队按 scenario 真实位直接落成品图构图
+    （ENT 图左外缘/HOR 环礁西缘）——此后端守卫与 route_display.test.mjs 的前端
+    BUILTIN 一致性守卫配对，双向防字面量静默分叉。
+    """
+    from src.initial_state import build_initial_state
+
+    scenario = json.loads((PACK / "scenario.json").read_text())
+    deploy = {tf["callsign"]: tf for tf in scenario["task_forces"]}
+
+    state = build_initial_state()
+    assert len(state.task_forces) == 1  # 兵力结构不变：双航母同编 TF16
+    ent, hor = state.task_forces[0].carriers
+    assert ent.name == "USS Enterprise (CV-6)"
+    assert hor.name == "USS Hornet (CV-8)"
+    assert (ent.position.lat, ent.position.lon) == (deploy["ENT"]["lat"], deploy["ENT"]["lon"])
+    assert (hor.position.lat, hor.position.lon) == (deploy["HOR"]["lat"], deploy["HOR"]["lon"])
+    assert state.task_forces[0].course == deploy["ENT"]["course"]
+    assert state.task_forces[0].speed == deploy["ENT"]["speed"]

@@ -35,15 +35,16 @@ class TestInitialState:
         state = build_initial_state()
         tf16 = state.task_forces[0]
         assert tf16.name == "Task Force 16"
-        assert tf16.course == 240
+        assert tf16.course == 270  # scenario 布兵（theaters/midway/scenario.json 两编队同向 270°）
         assert tf16.speed == 25
 
     def test_tf16_position(self):
         state = build_initial_state()
-        tf16 = state.task_forces[0]
-        # 31.5°N 176°W (~200nm NE of Midway)
-        assert 31.0 <= tf16.carriers[0].position.lat <= 32.0
-        assert -176.5 <= tf16.carriers[0].position.lon <= -175.5
+        ent, hor = state.task_forces[0].carriers
+        # M.4 scenario 布兵：真实位与 theaters/midway/scenario.json 同源
+        # （对中途岛环礁心：ENT 西 45nm / HOR 西 28nm，投影唯一化后近景画内）
+        assert (ent.position.lat, ent.position.lon) == (28.2, -178.251012)
+        assert (hor.position.lat, hor.position.lon) == (28.2, -177.929519)
 
     def test_two_carriers(self):
         state = build_initial_state()
