@@ -526,10 +526,12 @@ function drawTaskForceMarker(ctx, tf, w, h) {
   ctx.beginPath(); ctx.moveTo(tf.x, tf.y);
   ctx.lineTo(tf.x + Math.cos(rad) * 30, tf.y + Math.sin(rad) * 30); ctx.stroke(); // 航向线
   ctx.font = `9px ${CHART_STYLE.fontTypewriter}`;
-  // fix Loop2-F2: CSE 读数外推复核——锚点圈 CSE 落入环礁中心坐标行文字带
-  //（基线 ac.y+4 ±14px、中心 ±140px 内）时沿屏幕 +y 外推一行高，消叠字
-  //（fixture 实证：HOR 锚点圈 CSE 270° 压坐标行 "…21'W" 尾）；带外维持原位（航线同排）
-  let cseX = tf.x + Math.cos(rad) * 34, cseY = tf.y + Math.sin(rad) * 34;
+  // fix Oc（Loop4/5 收官，设计评审确认项）：CSE 读数改圈左侧定锚——右对齐
+  //（tf.x-16, tf.y+4），右缘距圈缘（r=10）6px ≥4px；原「圈缘沿航向外推」锚在
+  // 270° 航向时文字尾字符「0°」压圈（fixture 实证）。fix Loop2-F2 坐标行带外推
+  // 保留（新锚点同享：落入环礁中心坐标行带内则沿 +y 外推一行高，消叠字）
+  ctx.textAlign = 'right';
+  let cseX = tf.x - 16, cseY = tf.y + 4;
   if (Math.abs(cseY - (ac.y + 4)) < 14 && Math.abs(cseX - ac.x) < 140) cseY = ac.y + 18;
   ctx.fillText(`CSE ${Math.round(tf.courseDeg)}°`, cseX, cseY);
   // 双虚线矢量：两条平行虚线从圈缘指向环礁，末端双箭头

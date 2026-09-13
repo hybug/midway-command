@@ -109,17 +109,22 @@ const viaBase = sandbox.ChartRenderer.latLonToChartPx(28.2, -178.251012, 1440, 9
 assert.ok(Math.abs(proj.x - viaBase.x) < 1e-9 && Math.abs(proj.y - viaBase.y) < 1e-9,
   "实体层投影 ≠ 底图投影（两参考系复辟）");
 
-// 锚点 1：drawTaskForceMarker 的 CSE 标注画在航向线末端延长处（成品图复现 G1 圆圈形态：
-// 标注 = 标记 + 34px × 航向单位向量（course−90° 修正），34px 与航向线长 30px 同批源码常量）。
-// fix Loop3-F1：无 translate 换算、无 F2 对角错开——期望值即投影点 + 纯航向向量。
+// 锚点 1：drawTaskForceMarker 的 CSE 标注圈左侧定锚（Oc 收官 fix，设计评审确认项：
+// 右对齐 textAlign=right、锚 (tf.x−16, tf.y+4)，右缘距圈缘（r=10）6px ≥4px——
+// 原「圈缘 + 34px 航向向量」外推锚在 270° 航向时尾字符「0°」压圈，就此关闭）。
 const cseCalls = canvas.__ctx.__calls.filter((c) => c.name === "fillText" && String(c.args[0]).startsWith("CSE "));
 assert.ok(cseCalls.length >= 1, "未找到 drawTaskForceMarker 的 CSE 标注 fillText 调用");
 const [, cseX, cseY] = cseCalls[0].args;
-const hdgRad = ((240 - 90) * Math.PI) / 180; // course=240（makeState 同源，-90° 屏幕系修正）
-const expectedCseX = ex + Math.cos(hdgRad) * 34;
-const expectedCseY = ey + Math.sin(hdgRad) * 34;
+const expectedCseX = ex - 16;
+const expectedCseY = ey + 4;
 assert.ok(Math.abs(cseX - expectedCseX) < 2 && Math.abs(cseY - expectedCseY) < 2,
-  `CSE 标注画布位置 (${cseX.toFixed(1)},${cseY.toFixed(1)}) 偏离逻辑坐标投影 (${expectedCseX.toFixed(1)},${expectedCseY.toFixed(1)}) 超过 2px`);
+  `CSE 标注画布位置 (${cseX.toFixed(1)},${cseY.toFixed(1)}) 偏离圈左定锚 (${expectedCseX.toFixed(1)},${expectedCseY.toFixed(1)}) 超过 2px`);
+// 右对齐守卫：CSE 标注须以 textAlign=right 绘制（圈左侧定锚的右缘对齐语义）
+const cseIdx = canvas.__ctx.__calls.indexOf(cseCalls[0]);
+const alignSet = canvas.__ctx.__calls.slice(0, cseIdx + 1).reverse()
+  .find((c) => c.name === "set:textAlign");
+assert.ok(alignSet && alignSet.args[0] === "right",
+  "CSE 标注未右对齐（圈左侧定锚语义回潮）");
 
 // 锚点 2：标记本体（空心圆圈 r=10，成品图复现 G1）应画在投影点本位
 const markerArc = drawn.find((c) => c.name === "arc" && Math.abs(c.args[2] - 10) < 0.5);
