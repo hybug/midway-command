@@ -75,19 +75,28 @@ class PendingRoute(BaseModel):
     """参谋航线提案（独立于 pending_suggestions 的审批流）。
 
     owner 用舰队短名（FLEET_SHORT 值）；rationale 供命令卡展示。
+    route_id 是修订链共享 id：同链多次修订（comment 回路）共用，
+    批准后即 Route.id；feedback_history 记录指挥官逐轮修改意见。
     批准时经 pending_to_route 转 Route 落 state.routes。
     """
     id: str = Field(default_factory=lambda: uuid.uuid4().hex)
+    route_id: str = Field(default_factory=lambda: uuid.uuid4().hex)
     owner: str
     rationale: str
     waypoints: list[Waypoint] = Field(default_factory=list)
     status: PendingRouteStatus = PendingRouteStatus.PROPOSED
+    feedback_history: list[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 def pending_to_route(pending: PendingRoute) -> Route:
-    """审批通过：PendingRoute → Route（kind=planned, status=active）。"""
+    """审批通过：PendingRoute → Route（kind=planned, status=active）。
+
+    Route.id 沿用 pending.route_id（修订链共享），批准后 comment
+    回路仍可按此 id 定位该航线。
+    """
     return Route(
+        id=pending.route_id,
         kind=RouteKind.PLANNED,
         owner=pending.owner,
         waypoints=pending.waypoints,

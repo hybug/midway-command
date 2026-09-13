@@ -51,13 +51,20 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 # ── Global game state (single-user prototype) ──
 game_state = build_initial_state()
 pipeline = build_default_pipeline()
+
+# ── Theater context (CHART_SYSTEM.md §三/§四/§九决议6：后端单一下发) ──
+from src.theater import load_theater
+
+# fail-fast：战区包损坏则拒绝启动
+theater_ctx = load_theater(BASE_DIR / "theaters" / "midway")
+
 npcs: dict = {
     "browning": BrowningNPC(),
     "murray": MurrayNPC(),
     "mitscher": MitscherNPC(),
     "radio_officer": RadioOfficerNPC(),
     "intel_officer": IntelOfficerNPC(),
-    "navigator": NavigatorNPC(),
+    "navigator": NavigatorNPC(theater=theater_ctx),
 }
 
 NPC_DISPLAY = {
@@ -93,6 +100,10 @@ class CreateRouteRequest(BaseModel):
 
 class NavigatorProposeRequest(BaseModel):
     message: str
+
+
+class RouteCommentRequest(BaseModel):
+    feedback: str
 
 
 # ── Routes ──
@@ -357,11 +368,7 @@ async def confirm_contact(index: int):
     return {"success": True, "message": "敌情已确认"}
 
 
-# ── Theater context (CHART_SYSTEM.md §三/§四/§九决议6：后端单一下发) ──
-from src.theater import load_theater
-
-# fail-fast：战区包损坏则拒绝启动
-theater_ctx = load_theater(BASE_DIR / "theaters" / "midway")
+# ── Theater context 下发（CHART_SYSTEM.md §四：前端 ChartEngine 唯一消费者）──
 
 
 @app.get("/theater")
@@ -415,6 +422,64 @@ async def cancel_route(route_id: str):
         raise HTTPException(400, "该航线不可撤销。")
     route.status = RouteStatus.CANCELLED
     return route.model_dump(mode="json")
+
+
+@app.post("/routes/{route_id}/comment")
+async def comment_route(route_id: str, req: RouteCommentRequest):
+    """指挥官提修改意见 → 航海参谋修订提案（N.3 多轮回路）。
+
+    找到该 route 关联的最新 proposed 提案，把 feedback 作为玩家消息
+    追加进航海参谋会话；参谋带 feedback 修订（LLM 调用）产出新
+    PendingRoute：旧条目置 revised，新条目 proposed 且关联同一
+    route_id，feedback_history 累积全量意见。消耗 1 AP（对齐 propose）。
+    """
+    target = None
+    for p in game_state.pending_routes:
+        if p.route_id == route_id and p.status == PendingRouteStatus.PROPOSED:
+            target = p  # 同链取最新一条 proposed
+    if target is None:
+        raise HTTPException(404, "该航线无待修订提案。")
+    if not has_ap(game_state):
+        raise HTTPException(400, "AP 已耗尽，请推进时间。")
+    consume_ap(game_state, "comment")
+
+    npc = npcs["navigator"]
+
+    def wrap_handler(handler):
+        def wrapped(**kwargs):
+            return handler(game_state, **kwargs)
+        return wrapped
+
+    existing_ids = {p.id for p in game_state.pending_routes}
+    try:
+        response = npc.chat(
+            player_input=req.feedback,
+            state=game_state,
+            tools=npc.tools,
+            tool_handlers={n: wrap_handler(h) for n, h in npc.tool_handlers.items()},
+        )
+    except Exception as e:
+        logger.error(f"Navigator comment error: {e}", exc_info=True)
+        raise HTTPException(500, f"通信错误: {e}")
+
+    # 修订产出：新条目挂到同一 route_id 并累积意见；有产出才置旧条目 revised
+    created = [p for p in game_state.pending_routes if p.id not in existing_ids]
+    for p in created:
+        p.route_id = route_id
+        p.feedback_history = [*target.feedback_history, req.feedback]
+    if created:
+        target.status = PendingRouteStatus.REVISED
+
+    return {
+        "text": response.text,
+        "mood": response.mood,
+        "urgency": response.urgency,
+        "revised_pending_id": created[0].id if created else None,
+        "pending_routes": [
+            p.model_dump(mode="json") for p in game_state.pending_routes
+        ],
+        "ap": get_ap_status(game_state),
+    }
 
 
 # ── 航海参谋提案审批流（N.3：propose → pending_routes → approve/reject）──

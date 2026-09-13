@@ -6,29 +6,32 @@
 - 航路点按舰队航速给 ETA 估算
 工具四个全走 GameState 墙：只读三项 + propose_route 一项写
 state.pending_routes（独立审批流，不与 pending_suggestions 混）。
+战区数据经 TheaterContext 注入（构造参 theater），缺省延迟经
+src.theater.context.load_theater 加载一次并缓存——不直读战区 JSON。
 """
-import json
 from datetime import datetime
+from functools import partial
 from pathlib import Path
+from typing import Optional
 
 from src.agents.base import NPCAgent
+from src.llm import LLMClient
 from src.npc_config import NPC_REGISTRY
 from src.routes import FLEET_SHORT, PendingRoute, Waypoint
 from src.state import GameState
+from src.theater.context import TheaterContext, load_theater
 
-# 战区包（theater.json：bases / 环礁中心等关键字段）
-THEATER_PACK_DIR = Path(__file__).resolve().parents[2] / "theaters" / "midway"
-_theater_cache: dict | None = None
+# 缺省战区包（仅构造未注入 theater 时延迟加载用；server 正常路径为注入）
+DEFAULT_THEATER_PACK_DIR = Path(__file__).resolve().parents[2] / "theaters" / "midway"
+_default_theater_cache: Optional[TheaterContext] = None
 
 
-def _load_theater() -> dict:
-    """读取并缓存 theaters/midway/theater.json。"""
-    global _theater_cache
-    if _theater_cache is None:
-        _theater_cache = json.loads(
-            (THEATER_PACK_DIR / "theater.json").read_text(encoding="utf-8")
-        )
-    return _theater_cache
+def _default_theater() -> TheaterContext:
+    """缺省战区上下文（midway）：经 load_theater 校验加载，进程内缓存一次。"""
+    global _default_theater_cache
+    if _default_theater_cache is None:
+        _default_theater_cache = load_theater(DEFAULT_THEATER_PACK_DIR)
+    return _default_theater_cache
 
 
 # ---------------------------------------------------------------------------
@@ -145,7 +148,8 @@ def handle_query_own_fleet(state: GameState) -> str:
     for tf in state.task_forces:
         lead = tf.carriers[0] if tf.carriers else None
         pos = (
-            f"{lead.position.lat:.1f}{'N' if lead.position.lat >= 0 else 'S'} "
+            f"{abs(lead.position.lat):.1f}"
+            f"{'N' if lead.position.lat >= 0 else 'S'} "
             f"{abs(lead.position.lon):.1f}{'E' if lead.position.lon >= 0 else 'W'}"
         ) if lead else "未知"
         lines.append(f"{tf.name}（{FLEET_SHORT.get(tf.name, tf.name)}）")
@@ -155,16 +159,21 @@ def handle_query_own_fleet(state: GameState) -> str:
     return "\n".join(lines) if lines else "无本方舰队数据。"
 
 
-def handle_query_theater(state: GameState) -> str:
-    """战区地理关键事实（theater.json：环礁中心 + 基地）。"""
-    theater = _load_theater()
-    center = theater.get("view", {}).get("center", {})
-    lines = [f"战区: {theater.get('name', '?')}（{theater.get('name_en', '')}）"]
+def handle_query_theater(
+    state: GameState, theater: Optional[TheaterContext] = None
+) -> str:
+    """战区地理关键事实（TheaterContext：环礁中心 + 基地）。
+
+    theater 缺省 None 时延迟加载缺省战区（正式路径由 server 注入）。
+    """
+    ctx = theater or _default_theater()
+    center = ctx.view.get("center", {})
+    lines = [f"战区: {ctx.name}（{ctx.theater_raw.get('name_en', '')}）"]
     if center:
         lines.append(
             f"环礁中心: {center.get('lat'):.1f}, {center.get('lon'):.1f}"
         )
-    for base in theater.get("bases", []):
+    for base in ctx.bases:
         lines.append(
             f"基地: {base.get('name', base.get('id', '?'))} — "
             f"{base.get('lat'):.4f}, {base.get('lon'):.4f}"
@@ -248,6 +257,21 @@ class NavigatorNPC(NPCAgent):
     role = "航海参谋"
     _config = NPC_REGISTRY["navigator"]
 
+    def __init__(
+        self,
+        client: Optional[LLMClient] = None,
+        theater: Optional[TheaterContext] = None,
+    ):
+        super().__init__(client)
+        self._theater = theater
+
+    @property
+    def theater(self) -> TheaterContext:
+        """战区上下文：注入优先；未注入时延迟加载缺省战区（实例内缓存）。"""
+        if self._theater is None:
+            self._theater = _default_theater()
+        return self._theater
+
     @property
     def tools(self) -> list:
         allowed = set(self._config.allowed_tools)
@@ -259,7 +283,14 @@ class NavigatorNPC(NPCAgent):
     @property
     def tool_handlers(self) -> dict:
         allowed = set(self._config.allowed_tools)
-        return {k: v for k, v in TOOL_HANDLERS.items() if k in allowed}
+        handlers = {k: v for k, v in TOOL_HANDLERS.items() if k in allowed}
+        if "query_theater" in handlers:
+            # 绑定本实例的战区上下文（注入或缺省延迟加载）
+            theater = self.theater
+            handlers["query_theater"] = partial(
+                handle_query_theater, theater=theater
+            )
+        return handlers
 
     def build_system_prompt(self, state: GameState) -> str:
         summary = self.get_state_summary(state)

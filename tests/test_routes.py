@@ -1,11 +1,14 @@
 """Route 模型与航线 API（CHART_SYSTEM.md §5.1 三类航线）。
 
-四用例：建（POST /routes → draft）/ 批（approve → active）/
-撤（cancel → cancelled）/ 列（GET /routes）。
+用例：建（POST /routes → draft）/ 批（approve → active）/
+撤（cancel → cancelled）/ 列（GET /routes）；
+N.1 补齐：非法状态转换（approve 非 draft、cancel 终态）→ 400。
 """
+import pytest
 from fastapi.testclient import TestClient
 
 import server
+from src.routes import RouteStatus
 
 WAYPOINTS = [
     {"lat": 28.2, "lon": -177.4},
@@ -80,3 +83,42 @@ def test_list_routes():
     assert listed[route_a["id"]]["owner"] == "TF16"
     assert listed[route_b["id"]]["owner"] == "ENT"
     assert listed[route_b["id"]]["status"] == "draft"
+
+
+# ── N.1 遗留：非法状态转换防护用例 ──
+
+def _to_status(client: TestClient, route_id: str, status: str) -> None:
+    """把指定 route 推到目标状态（done 由 N.4 航行完成置位，直接注入）。"""
+    if status == "active":
+        assert client.post(f"/routes/{route_id}/approve").status_code == 200
+    elif status == "cancelled":
+        assert client.post(f"/routes/{route_id}/cancel").status_code == 200
+    elif status == "done":
+        stored = next(r for r in server.game_state.routes if r.id == route_id)
+        stored.status = RouteStatus.DONE
+
+
+@pytest.mark.parametrize("status", ["active", "done", "cancelled"])
+def test_approve_non_draft_route_returns_400(status):
+    """approve 仅接受 draft：active/done/cancelled 一律 400 且状态不变。"""
+    client = TestClient(server.app)
+    route = _create_planned(client)
+    _to_status(client, route["id"], status)
+
+    resp = client.post(f"/routes/{route['id']}/approve")
+    assert resp.status_code == 400
+    stored = next(r for r in server.game_state.routes if r.id == route["id"])
+    assert stored.status == RouteStatus(status)  # 未被非法批准改动
+
+
+@pytest.mark.parametrize("status", ["done", "cancelled"])
+def test_cancel_terminal_route_returns_400(status):
+    """cancel 仅接受 draft/active：终态 done/cancelled 一律 400 且状态不变。"""
+    client = TestClient(server.app)
+    route = _create_planned(client)
+    _to_status(client, route["id"], status)
+
+    resp = client.post(f"/routes/{route['id']}/cancel")
+    assert resp.status_code == 400
+    stored = next(r for r in server.game_state.routes if r.id == route["id"])
+    assert stored.status == RouteStatus(status)  # 未被非法撤销改动
