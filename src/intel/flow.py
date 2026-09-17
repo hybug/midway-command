@@ -241,6 +241,15 @@ def _receive_report(state, msg: MessageEnvelope) -> list[str]:
     intel.route_message(state, msg, by="radio_officer", route_to="intel_officer")
 
     obs = _observation_by_id(state, msg.observation_id)
+    # S2.6：来源类型随电文（传感器/友军转述走同一证据协议，来源差异可感知）
+    sensor = msg.fields.get("sensor", "")
+    valid_sensors = {s.value for s in SourceType}
+    source_type = SourceType(sensor) if sensor in valid_sensors else SourceType.CARRIER_SCOUT
+    base_reliability = 0.8 if msg.condition == CommCondition.COMPLETE else 0.5
+    if msg.relay_chain:
+        # 转述有损：每级转述折减（保留原发送者与转述链）
+        from src.intel.sources import RELAY_RELIABILITY_FACTOR
+        base_reliability *= RELAY_RELIABILITY_FACTOR ** len(msg.relay_chain)
     precision = {"high": 0.9, "standard": 0.7, "low": 0.4}.get(
         obs.quality_band if obs else "standard", 0.7)
     # 通信残缺降低识别精度（能区分通信损坏与参谋误判）
@@ -259,14 +268,14 @@ def _receive_report(state, msg: MessageEnvelope) -> list[str]:
     ev = intel.register_evidence(
         state,
         message=msg,
-        source_id=msg.sender_call_sign or msg.sender_id,
-        source_type=SourceType.CARRIER_SCOUT,
+        source_id=msg.origin_sender or msg.sender_call_sign or msg.sender_id,
+        source_type=source_type,
         access_roles=[ActorRole.INTEL_OFFICER, ActorRole.CHIEF_OF_STAFF],
-        summary=f"{msg.sender_call_sign}: {msg.raw_text}",
+        summary=f"{msg.origin_sender or msg.sender_call_sign}: {msg.raw_text}",
         position=position,
         reported=reported,
         observed_at=msg.observed_at,
-        source_reliability=0.8 if msg.condition == CommCondition.COMPLETE else 0.5,
+        source_reliability=base_reliability,
         identity_precision=precision,
         position_precision=precision,
         count_precision=precision,

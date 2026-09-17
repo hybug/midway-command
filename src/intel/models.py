@@ -52,6 +52,8 @@ class MessageEnvelope(BaseModel):
     raw_text: str = ""
     generated_by_npc: Optional[str] = None        # 撰写本电文的 NPC actor id
     observation_id: Optional[str] = None          # 规则侧谱系 id（非真值）
+    origin_sender: Optional[str] = None           # 友军转报：原发送单位
+    relay_chain: list[str] = Field(default_factory=list)  # 友军转报：转述链
     routed_to: list[str] = Field(default_factory=list)
     fields: dict = Field(default_factory=dict)    # 电文要素（失真后的报告值：bearing/distance_nm/count/classification）
     transit_eta: Optional[datetime] = None        # 通信检定预估到达时刻（传输中消费）
