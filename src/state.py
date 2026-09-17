@@ -16,6 +16,7 @@ from src.intel.models import (
     CommanderDecision,
     ContactHypothesis,
     Evidence,
+    EvidenceConflict,
     IntelAuditEntry,
     IntelBrief,
     IntelWorkItem,
@@ -305,3 +306,5 @@ class GameState(BaseModel):
     plot_proposals: list[PlotProposal] = Field(default_factory=list)
     commander_decisions: list[CommanderDecision] = Field(default_factory=list)
     approved_plots: list[ApprovedPlot] = Field(default_factory=list)
+    # ── S2.5 冲突登记 ──
+    evidence_conflicts: list[EvidenceConflict] = Field(default_factory=list)

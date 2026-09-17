@@ -229,6 +229,12 @@ def process_intel(state, minutes: int = 15) -> list[str]:
 
 def _receive_report(state, msg: MessageEnvelope) -> list[str]:
     notes = []
+    # S2.5：勘误电报到达 → 专用处理（旧电文 CORRECTED/旧证据替代/纠错工作项）
+    if msg.message_kind == "correction":
+        from src.intel.conflicts import apply_correction_on_arrival
+        apply_correction_on_arrival(state, msg)
+        notes.append(f"📡 勘误电报 {msg.id} 到达（更正 {msg.supersedes_message_id}），已转情报参谋")
+        return notes
     intel.receive_message(state, msg, by="TF16 通信室", condition=msg.condition)
     # 通信官登记并路由（D3：通信官只登记转递，不分析）
     intel.log_message(state, msg, by="radio_officer")
@@ -418,6 +424,22 @@ def run_intelligence_cycle(state, item: IntelWorkItem, *,
     dice = roll_judgment_dice(rng, actor_id=actor.actor_id,
                               level=result.level, record_id=j_rec.check_id)
 
+    # S2.5：证据冲突登记（参谋全部可见证据 + 既有接触链；只登记呈报，不裁决）
+    conflict_ids: list[str] = []
+    unresolved: list[str] = []
+    from src.intel.conflicts import age_contacts, detect_conflicts
+    evidence_scope = [e.id for e in intel.visible_evidence(
+        state, ActorRole.INTEL_OFFICER)]
+    for c in state.contacts:
+        if c.actor_id == actor.actor_id:
+            evidence_scope.extend(c.evidence_ids)
+    conflicts_found = detect_conflicts(
+        state, evidence_scope, by=actor.actor_id,
+        role=ActorRole.INTEL_OFFICER,
+    ) if len(evidence_scope) > 1 else []
+    conflict_ids = [c.id for c in conflicts_found]
+    aged = age_contacts(state, by=actor.actor_id)
+
     # 策略形成结构化判断（S3 接口；S2 内置机械实现/注入 LLM 分析器）
     draft = policy.assess(item, views, actor, dice)
     narrative = draft.notes
@@ -443,6 +465,7 @@ def run_intelligence_cycle(state, item: IntelWorkItem, *,
         change_my_mind=draft.change_my_mind,
         recommended_action=draft.recommended_action,
         dice_record_ids=[j_rec.check_id, dice.record_id],
+        conflict_ids=conflict_ids,
         narrative=narrative,
     )
     state.assessments.append(assessment)
@@ -498,6 +521,16 @@ def run_intelligence_cycle(state, item: IntelWorkItem, *,
         narrative=narrative,
     )
     state.intel_briefs.append(brief)
+
+    # 参谋主动更新建议（S2.5）：冲突/衰老显式写入简报未决问题
+    for c in conflicts_found:
+        brief.unresolved_questions.append(f"证据冲突 {c.id}：{c.note}")
+    for cid in aged:
+        brief.unresolved_questions.append(f"接触 {cid} 已陈旧/失联，需新证据确认")
+    if conflicts_found and draft.recommended_action:
+        assessment.recommended_action = (
+            f"{draft.recommended_action}（注意：存在 {len(conflicts_found)} 处证据冲突，"
+            "建议派第二来源印证）")
 
     # 简报产生标图提案（§7.1 步骤16；几何来自接触/证据，作者=情报参谋）
     if contact_id:

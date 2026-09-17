@@ -196,7 +196,13 @@ def decide(state, proposal: PlotProposal, *, action: str, by: str = "player",
     if action == "approve":
         require_transition(approval_transitions(), status, ApprovalStatus.APPROVED)
         proposal.status = ApprovalStatus.APPROVED.value
-        plot = _apply_approval(state, proposal, decision)
+        if proposal.method == "rejection":
+            # §7.4 误报否定批准：接触 REJECTED、正式标图撤下、证据否定
+            from src.intel.conflicts import apply_rejection_approval
+            apply_rejection_approval(state, proposal, decision)
+            plot = _active_plot(state, proposal.plot_id)
+        else:
+            plot = _apply_approval(state, proposal, decision)
         intel._audit(state, actor_id=by, action="plot_approve",
                      target_id=proposal.id, reason=comment,
                      details={"decision": decision.id, "version": proposal.version})

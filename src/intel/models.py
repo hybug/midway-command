@@ -196,6 +196,7 @@ class NPCAssessment(BaseModel):
     recommended_action: Optional[str] = None
     dice_record_ids: list[str] = Field(default_factory=list)
     tool_call_ids: list[str] = Field(default_factory=list)
+    conflict_ids: list[str] = Field(default_factory=list)   # 研判时登记的证据冲突
     narrative: str = ""
     contact_id: Optional[str] = None    # 产生的接触假设
 
@@ -273,3 +274,15 @@ class CommanderDecision(BaseModel):
     action: str = ""                      # approve/reject/defer/request_revision/partial_approve
     items_approved: list[str] = Field(default_factory=list)
     comment: str = ""
+
+
+class EvidenceConflict(BaseModel):
+    """证据冲突记录（M2.7.7 / S2.5）：只登记呈报，不静默裁决。"""
+    id: str = ""
+    at: Optional[datetime] = None
+    kind: str = "position"          # position / bearing / count / identity
+    evidence_ids: list[str] = Field(default_factory=list)
+    severity: float = 0.0
+    note: str = ""
+    status: str = "open"            # open / resolved
+    resolved_by_evidence_id: Optional[str] = None

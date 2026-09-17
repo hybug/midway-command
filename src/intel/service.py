@@ -233,6 +233,7 @@ def supersede_evidence(state, old: Evidence, by: str, summary: str,
 def reject_evidence(state, old: Evidence, by: str, reason: str) -> None:
     """证据否定（误报），原记录保留。"""
     require_transition(evidence_transitions(), old.status, EvidenceStatus.REJECTED)
+    old.status = EvidenceStatus.REJECTED  # 字段不动，只翻状态（不可变账本）
     _audit(state, actor_id=by, action="evidence_reject",
            target_id=old.id, reason=reason, evidence_ids=[old.id])
 
