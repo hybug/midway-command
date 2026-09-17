@@ -27,6 +27,7 @@ from src.intel.models import (
     SourceObservation,
 )
 from src.intel.rng import CheckRecord
+from src.intel.reasoning import ToolCallRecord
 from src.routes import PendingRoute, Route
 
 
@@ -308,3 +309,5 @@ class GameState(BaseModel):
     approved_plots: list[ApprovedPlot] = Field(default_factory=list)
     # ── S2.5 冲突登记 ──
     evidence_conflicts: list[EvidenceConflict] = Field(default_factory=list)
+    # ── S2.7 推理工具调用审计（复盘可查参谋是否用过工具）──
+    tool_calls: list[ToolCallRecord] = Field(default_factory=list)
