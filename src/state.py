@@ -10,6 +10,14 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field, PrivateAttr
 from src.entities import TaskForce as EntityTaskForce
+from src.intel.models import (
+    BeliefState,
+    ContactHypothesis,
+    Evidence,
+    IntelAuditEntry,
+    MessageEnvelope,
+    NPCClaim,
+)
 from src.intel.rng import CheckRecord
 from src.routes import PendingRoute, Route
 
@@ -273,3 +281,11 @@ class GameState(BaseModel):
     # ── S2.1 可复现随机性（RNGService 种子 + 全量检定记录，回放用）──
     rng_seed: int = 20260604
     check_records: list[CheckRecord] = Field(default_factory=list)
+    # ── S2.2 情报档案（追加制：电文/证据/判断声明/接触/信念/审计）──
+    messages: list[MessageEnvelope] = Field(default_factory=list)
+    evidence: list[Evidence] = Field(default_factory=list)
+    claims: list[NPCClaim] = Field(default_factory=list)
+    contacts: list[ContactHypothesis] = Field(default_factory=list)
+    beliefs: list[BeliefState] = Field(default_factory=list)
+    intel_audit: list[IntelAuditEntry] = Field(default_factory=list)
+    intel_id_counters: dict[str, int] = Field(default_factory=dict)

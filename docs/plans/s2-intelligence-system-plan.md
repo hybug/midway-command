@@ -13,6 +13,7 @@
 |---|---|---|
 | S2.0 | ✅ 完成（2026-09-17） | `src/intel/contracts.py`（五状态机+权限矩阵+数据流DAG+防泄漏规范）、`src/intel/judgment.py`（JudgmentPolicy 接口草案，不锁维度）、`docs/design/S2_INTEL_SYSTEM.md`（对象谱系/D1–D20 追溯/骰子缺口审计 7 项）、`tests/test_intel_contracts.py` 35 测试；全量 387 passed |
 | S2.1 | ✅ 完成（2026-09-17） | `src/intel/rng.py`（RNGService+CheckRecord，种子=rng_seed:记录数）、GameState 增 rng_seed/check_records、dice.roll_check 支持注入骰源、scouting 管线全部随机迁移落记录（检定用执行单位 SBD 侦察中队 competence=6）、tools.py grid→expanding_square 映射修复、DICE_SYSTEM.md competence ×2 修订；tests/test_intel_rng.py 16 测试 + 旧种子循环测试改 state.rng_seed；全量 403 passed，回放测试逐字段一致 |
+| S2.2 | ✅ 完成（2026-09-17） | `src/intel/models.py`（MessageEnvelope/Evidence/ContactHypothesis/BeliefState/NPCClaim/IntelAuditEntry/StatusChange）、`src/intel/service.py`（消息状态机推进+收报室/勘误追加制/证据登记替代否定/时间链校验/权限投影 evidence_view/信念隔离/接触转换 PLOTTED 需批准/候选关联不合并/claim 审计/known_enemy 兼容层）；GameState 增 messages/evidence/claims/contacts/beliefs/intel_audit/intel_id_counters；tests/test_intel_models.py 17 测试；全量 420 passed |
 
 ---
 
