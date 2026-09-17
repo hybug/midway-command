@@ -50,10 +50,10 @@ def process_scouting(state: GameState, minutes: int) -> list[str]:
     return check_scout_results(state)
 
 
-def process_reports(state: GameState, minutes: int) -> list[str]:
-    """Step 50: check pending reports."""
-    from src.scouting import check_pending_reports
-    return check_pending_reports(state)
+def process_intel_step(state: GameState, minutes: int) -> list[str]:
+    """Step 50: 情报流——电文到达/旗舰收报/登记路由/工作项（S2.3 起替代旧 pending reports）。"""
+    from src.intel.flow import process_intel
+    return process_intel(state)
 
 
 def fire_events(state: GameState, minutes: int) -> list[str]:
@@ -146,7 +146,7 @@ def build_default_pipeline() -> Pipeline:
     p.register(TickStep("advance_routes",      advance_routes,      25))
     p.register(TickStep("update_spatial_index",update_spatial_index,30))
     p.register(TickStep("process_scouting",    process_scouting,    40))
-    p.register(TickStep("process_reports",     process_reports,     50))
+    p.register(TickStep("process_intel",       process_intel_step,  50))
     p.register(TickStep("fire_events",         fire_events,         60))
     p.register(TickStep("check_game_over",     check_game_over,     70))
     p.register(TickStep("reset_ap",            reset_ap,            80))

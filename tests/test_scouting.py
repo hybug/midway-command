@@ -49,6 +49,21 @@ def make_state_with_enemy(enemy_lat=30.0, enemy_lon=-178.0):
     return state
 
 
+@pytest.fixture(autouse=True)
+def fake_pilot_writer(monkeypatch):
+    """S2.3 起探测接通情报流——固定注入 fake 飞行员 writer，测试不触网。"""
+    from src.intel import flow
+
+    class _FakeWriter:
+        actor_id = "fake_pilot_vs6"
+
+        def write_report(self, view, game_time):
+            return (f"CONTACT {view['classification']} x{view['count']} "
+                    f"BEARING {view['bearing']} DIST {view['distance_nm']} NM")
+
+    monkeypatch.setattr(flow, "_default_writer", lambda: _FakeWriter())
+
+
 class TestBearingAndDistance:
     """Test basic geographic calculations."""
 
@@ -162,7 +177,8 @@ class TestScoutDetection:
             state.rng_seed = seed  # S2.1：检定随机性由游戏级种子驱动（可回放）
             handle_execute_action(state, "launch_scout", {"direction": "southwest"})
             self._advance_scout(state, ticks=9)
-            if len(state.pending_reports) > 0:
+            # S2.3：探测成功产生侦察报告电文（进通信链，替代旧 PendingReport）
+            if any(m.message_kind == "scout_report" for m in state.messages):
                 found = True
                 break
         assert found, "Detection should succeed at least once in 100 attempts"

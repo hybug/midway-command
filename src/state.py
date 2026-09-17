@@ -15,8 +15,12 @@ from src.intel.models import (
     ContactHypothesis,
     Evidence,
     IntelAuditEntry,
+    IntelBrief,
+    IntelWorkItem,
     MessageEnvelope,
     NPCClaim,
+    NPCAssessment,
+    SourceObservation,
 )
 from src.intel.rng import CheckRecord
 from src.routes import PendingRoute, Route
@@ -289,3 +293,8 @@ class GameState(BaseModel):
     beliefs: list[BeliefState] = Field(default_factory=list)
     intel_audit: list[IntelAuditEntry] = Field(default_factory=list)
     intel_id_counters: dict[str, int] = Field(default_factory=dict)
+    # ── S2.3 纵切对象（规则侧观测 + 参谋工作流）──
+    observations: list[SourceObservation] = Field(default_factory=list)  # 规则侧，禁止下发
+    intel_work_items: list[IntelWorkItem] = Field(default_factory=list)
+    assessments: list[NPCAssessment] = Field(default_factory=list)
+    intel_briefs: list[IntelBrief] = Field(default_factory=list)

@@ -53,6 +53,8 @@ class MessageEnvelope(BaseModel):
     generated_by_npc: Optional[str] = None        # 撰写本电文的 NPC actor id
     observation_id: Optional[str] = None          # 规则侧谱系 id（非真值）
     routed_to: list[str] = Field(default_factory=list)
+    fields: dict = Field(default_factory=dict)    # 电文要素（失真后的报告值：bearing/distance_nm/count/classification）
+    transit_eta: Optional[datetime] = None        # 通信检定预估到达时刻（传输中消费）
     status_history: list[StatusChange] = Field(default_factory=list)
 
 
@@ -138,3 +140,78 @@ class NPCClaim(BaseModel):
     confidence_dimensions: dict[str, float] = Field(default_factory=dict)
     supersedes_claim_id: Optional[str] = None
     status: str = "active"        # active / rejected（误判被否定，保留原文）
+
+
+# ── Phase S2.3：纵切对象（观测/工作项/判断/简报）──
+
+class SourceObservation(BaseModel):
+    """规则侧观测（§6.1）。
+
+    仅存在于规则侧：internal_truth_ref 指向真实敌情，本模型整体禁止进入
+    NPC prompt、NPC 工具返回与玩家 API（防泄漏规范 §3.4）。
+    """
+    id: str = ""
+    source_id: str
+    source_type: SourceType = SourceType.CARRIER_SCOUT
+    observer_actor_id: str = ""
+    observed_at: Optional[datetime] = None
+    bearing_true: float = 0.0
+    distance_nm_true: float = 0.0
+    target_name_true: str = ""
+    carrier_count_true: int = 0
+    sensor_capability: str = "visual"
+    environment: str = "clear"
+    quality_band: str = "standard"      # high / standard / low（观察质检定）
+    quality_check_id: str = ""
+    internal_truth_ref: str = ""        # 规则侧真值引用（禁读）
+
+
+class IntelWorkItem(BaseModel):
+    """情报工作项（§M2.5）。没有 NPC 处理就不会产生判断（D12/D15）。"""
+    id: str = ""
+    priority: WorkPriority = WorkPriority.ROUTINE
+    status: str = "queued"              # WorkItemStatus 值
+    trigger_message_id: str = ""
+    evidence_ids: list[str] = Field(default_factory=list)
+    assigned_to: str = "intel_officer"
+    created_by: str = "radio_officer"
+    created_at: Optional[datetime] = None
+    submitted_at: Optional[datetime] = None
+    outcome_assessment_id: Optional[str] = None
+    merged_into_brief_id: Optional[str] = None
+
+
+class NPCAssessment(BaseModel):
+    """情报参谋判断书（§6.6）。claims 为 NPCClaim id 列表（审计链）。"""
+    id: str = ""
+    author_actor_id: str
+    work_item_id: str = ""
+    created_at: Optional[datetime] = None
+    based_on_evidence_ids: list[str] = Field(default_factory=list)
+    facts_used: list[str] = Field(default_factory=list)
+    claims: list[str] = Field(default_factory=list)
+    alternative_hypotheses: list[dict] = Field(default_factory=list)
+    confidence_dimensions: dict[str, float] = Field(default_factory=dict)
+    change_my_mind: list[str] = Field(default_factory=list)
+    recommended_action: Optional[str] = None
+    dice_record_ids: list[str] = Field(default_factory=list)
+    tool_call_ids: list[str] = Field(default_factory=list)
+    narrative: str = ""
+    contact_id: Optional[str] = None    # 产生的接触假设
+
+
+class IntelBrief(BaseModel):
+    """情报简报（§6.7）。D6：紧急单报 / 例行批次共用本模型。"""
+    id: str = ""
+    author_actor_id: str
+    created_at: Optional[datetime] = None
+    briefed_at: Optional[datetime] = None
+    audience: str = "commander"
+    priority: WorkPriority = WorkPriority.ROUTINE
+    new_evidence_ids: list[str] = Field(default_factory=list)
+    changed_judgments: list[str] = Field(default_factory=list)   # assessment ids
+    plot_proposal_ids: list[str] = Field(default_factory=list)   # S2.4 接入
+    unresolved_questions: list[str] = Field(default_factory=list)
+    status: str = "draft"               # ApprovalStatus 值
+    narrative: str = ""
+    annotations: list[dict] = Field(default_factory=list)        # 参谋长批注（追加式，S2.4）

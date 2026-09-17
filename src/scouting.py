@@ -561,41 +561,13 @@ def _process_searching(scout: ScoutMission, state: GameState) -> list[str]:
             logger.info(f"[SCOUT] {scout.id} 侦察检定: {result} (距离{int(distance)}nm)")
 
             if result.is_success():
-                # Successful detection
-                real_count = len(enemy.get("carriers", []))
-
-                # Apply distortion based on dice result（失真抽取全部落记录）
-                if result.is_critical():
-                    # Critical success: minimal distortion
-                    reported_bearing = distort_bearing(bearing, max_error=2, rng=rng)
-                    reported_distance = distort_distance(distance, max_error_pct=0.05, rng=rng)
-                    reported_count = real_count  # Accurate count
-                    confidence = "high"
-                else:
-                    # Normal success: standard distortion
-                    reported_bearing = distort_bearing(bearing, rng=rng)
-                    reported_distance = distort_distance(distance, rng=rng)
-                    reported_count = distort_count(real_count, rng=rng)
-                    confidence = "medium" if distance > 100 else "high"
-
-                delay = compute_report_delay(distance, rng=rng)
-
-                report = PendingReport(
-                    scout_id=scout.id,
-                    detected_at=state.clock.game_time,
-                    arrive_at=state.clock.game_time + timedelta(minutes=delay),
-                    real_bearing=bearing,
-                    real_distance_nm=distance,
-                    real_carrier_count=real_count,
-                    reported_bearing=reported_bearing,
-                    reported_distance_nm=reported_distance,
-                    reported_carrier_count=reported_count,
-                    confidence=confidence,
-                )
-                state.pending_reports.append(report)
-                notifications.append(
-                    f"📡 {scout.id} 发现敌舰！报告传输中，预计 {delay} 分钟后到达"
-                )
+                # S2.3：探测成功 → 情报流（观测/观察质量/报告撰写/通信检定，
+                # 到达处理在管线 process_intel 步骤——src/intel/flow.py）
+                from src.intel.flow import on_scout_detection
+                on_scout_detection(state, scout=scout, enemy=enemy,
+                                   bearing=bearing, distance=distance,
+                                   result=result)
+                notifications.append(f"📡 {scout.id} 发现敌舰！报告传输中")
                 logger.info(f"[SCOUT] {scout.id} DETECTED at bearing {int(bearing)}°, {int(distance)}nm")
                 detected = True
                 break

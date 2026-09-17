@@ -380,6 +380,84 @@ async def confirm_contact(index: int):
     return {"success": True, "message": "敌情已确认"}
 
 
+# ── S2 情报接口（计划 §十：玩家查询；白名单序列化，无规则侧真值）──
+
+
+def _iso(dt):
+    return dt.isoformat() if dt else None
+
+
+@app.get("/intel/inbox")
+async def intel_inbox():
+    """旗舰收报室（D1）：只含真正送达的电文（RECEIVED 及之后；LOST 永不出现）。"""
+    from src.intel import service as intel_service
+    return {
+        "messages": [
+            {
+                "id": m.id,
+                "sender": m.sender_call_sign or m.sender_id,
+                "kind": m.message_kind,
+                "priority": m.priority.value,
+                "status": m.status.value,
+                "condition": m.condition.value,
+                "observed_at": _iso(m.observed_at),
+                "filed_at": _iso(m.filed_at),
+                "received_at": _iso(m.received_at),
+                "raw_text": m.raw_text,
+                "supersedes_message_id": m.supersedes_message_id,
+            }
+            for m in intel_service.player_inbox(game_state)
+        ]
+    }
+
+
+@app.get("/intel/briefs")
+async def intel_briefs():
+    """已呈报情报简报（PROPOSED 及之后；DRAFT 不下发）。"""
+    return {
+        "briefs": [
+            {
+                "id": b.id,
+                "author": b.author_actor_id,
+                "created_at": _iso(b.created_at),
+                "briefed_at": _iso(b.briefed_at),
+                "priority": b.priority.value,
+                "status": b.status,
+                "narrative": b.narrative,
+                "new_evidence_ids": b.new_evidence_ids,
+                "changed_judgments": b.changed_judgments,
+                "unresolved_questions": b.unresolved_questions,
+                "annotations": b.annotations,
+            }
+            for b in game_state.intel_briefs
+            if b.status != "draft"
+        ]
+    }
+
+
+@app.get("/intel/work-items")
+async def intel_work_items():
+    """情报工作队列（玩家可查看参谋工作状态）。"""
+    from src.intel.contracts import WorkItemStatus
+    return {
+        "work_items": [
+            {
+                "id": i.id,
+                "priority": i.priority.value,
+                "status": i.status,
+                "assigned_to": i.assigned_to,
+                "trigger_message_id": i.trigger_message_id,
+                "evidence_ids": i.evidence_ids,
+                "created_at": _iso(i.created_at),
+                "submitted_at": _iso(i.submitted_at),
+                "outcome_assessment_id": i.outcome_assessment_id,
+            }
+            for i in game_state.intel_work_items
+            if i.status not in (WorkItemStatus.CLOSED.value, WorkItemStatus.CANCELLED.value)
+        ]
+    }
+
+
 # ── Theater context 下发（CHART_SYSTEM.md §四：前端 ChartEngine 唯一消费者）──
 
 
