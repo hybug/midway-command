@@ -8,7 +8,7 @@
   <title>中途岛指挥官</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Special+Elite&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=1780998018">
+  <link rel="stylesheet" href="/static/css/style.css?v=1780998019">
 </head>
 <body>
 
@@ -82,6 +82,7 @@
     <div id="npc-tabs"></div>
     <div id="sidebar-content">
       <div id="chat-log"></div>
+      <div id="intel-board"></div>
       <div id="suggestions"></div>
     </div>
     <div id="input-bar">
@@ -92,14 +93,27 @@
 
 </div>
 
+<!-- S2.8：战后复盘弹层（证据—判断—批准 因果链） -->
+<div id="after-action" hidden>
+  <div class="aa-panel">
+    <header class="aa-head">
+      <span class="aa-stamp">SECRET</span>
+      <h2 class="aa-title">AFTER ACTION — 证据·判断·批准 因果链</h2>
+      <button class="btn" id="aa-close">关闭</button>
+    </header>
+    <div class="aa-body" id="aa-body"></div>
+  </div>
+</div>
+
 <div id="vignette-overlay" aria-hidden="true"></div>
 <div id="noise-overlay" aria-hidden="true"></div>
 
-<script src="/static/js/svgLoader.js?v=1780998018"></script>
-<script src="/static/js/theaterLoader.js?v=1780998018"></script>
-<script src="/static/js/chartRenderer.js?v=1780998018"></script>
-<script src="/static/js/mapRenderer.js?v=1780998018"></script>
-<script src="/static/js/uiController.js?v=1780998018"></script>
-<script src="/static/js/main.js?v=1780998018"></script>
+<script src="/static/js/svgLoader.js?v=1780998019"></script>
+<script src="/static/js/theaterLoader.js?v=1780998019"></script>
+<script src="/static/js/chartRenderer.js?v=1780998019"></script>
+<script src="/static/js/mapRenderer.js?v=1780998019"></script>
+<script src="/static/js/uiController.js?v=1780998019"></script>
+<script src="/static/js/intelBoard.js?v=1780998019"></script>
+<script src="/static/js/main.js?v=1780998019"></script>
 </body>
 </html>

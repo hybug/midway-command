@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <title>INTEL FIXTURE — 非游戏画面</title>
+  <link rel="stylesheet" href="/static/css/style.css?v=1780998019">
+  <style>
+    body { background:#3a3226; display:flex; gap:16px; padding:16px; margin:0; }
+    .fx-col { width: 330px; }
+    .fx-note { position:fixed; top:0; left:0; right:0; z-index:99; background:#8b2500; color:#f5edd6;
+               font:11px 'Special Elite',monospace; padding:2px 8px; text-align:center; }
+    #after-action { position:relative; inset:auto; background:transparent; display:block;
+                    width:560px; max-height:none; }
+    .aa-panel { max-height:none; }
+  </style>
+</head>
+<body>
+<div class="fx-note">FIXTURE — 非游戏画面（S2.8 情报板定妆：收报室/简报/审图/复盘）</div>
+
+<div class="fx-col">
+  <div id="intel-board"></div>
+</div>
+
+<div id="after-action">
+  <div class="aa-panel">
+    <header class="aa-head">
+      <span class="aa-stamp">SECRET</span>
+      <h2 class="aa-title">AFTER ACTION — 证据·判断·批准 因果链</h2>
+      <button class="btn" id="aa-close">关闭</button>
+    </header>
+    <div class="aa-body" id="aa-body"></div>
+  </div>
+</div>
+
+<script>
+// fetch 桩：定妆数据（无需服务器接口）
+const FIX = {
+  '/intel/plots': {
+    pending_proposals: [{
+      id: 'PP-000002', plot_id: 'PLOT-000001', version: 2,
+      author: 'intel_officer', status: 'proposed', method: 'bearing_distance',
+      geometry: { lat: 30.3, lon: -178.2, uncertainty_radius_nm: 20,
+                  bearing_line_deg: 235, distance_nm: 185 },
+      confidence: { position: 0.7, identity: 0.6 },
+      change_summary: '依据新证据修订 v1 标图（勘误后数量 2 CV）',
+      annotations: [{ at: '', by: 'browning', stance: 'concern', note: '建议派第二来源印证后再批准' }],
+      created_at: '1942-06-04T05:40:00Z',
+    }],
+    approved_plots: [{
+      plot_id: 'PLOT-000001', current_version: 1, state: 'superseded',
+      approved_at: '1942-06-04T05:12:00Z',
+      history: [{ version: 1, change_summary: '初版接触标图', decision_id: 'DEC-000001' }],
+    }],
+  },
+  '/intel/inbox': { messages: [
+    { id: 'MSG-000003', sender: 'SBD-T', status: 'routed', condition: 'complete',
+      received_at: '1942-06-04T05:38:00Z',
+      raw_text: 'CORRECTION: 2 CV NOT 4, BEARING 236 DIST 185 NM',
+      supersedes_message_id: 'MSG-000001' },
+    { id: 'MSG-000001', sender: 'SBD-T', status: 'corrected', condition: 'complete',
+      received_at: '1942-06-04T05:10:00Z',
+      raw_text: 'LOOKOUT! CV x4 BEARING 233 DIST 195 NM, IDENT STANDARD',
+      supersedes_message_id: null },
+  ]},
+  '/intel/briefs': { briefs: [{
+    id: 'BRF-000001', author: 'intel_officer', status: 'proposed',
+    narrative: '【事实】VS-6 电文报告发现大型编队。【判断】结合单机远程识别的局限，敌主力存在的概率中等。【推测】不排除数量误报——建议派第二来源印证。',
+    new_evidence_ids: ['EV-000002'], unresolved_questions: ['证据冲突 CFL-000001：方位差 113°（VS-6 vs PBY-3）'],
+  }]},
+  '/intel/work-items': { work_items: [
+    { id: 'WU-000002', priority: 'urgent', status: 'assigned', assigned_to: 'intel_officer' },
+  ]},
+  '/intel/after-action': { chains: [{
+    plot_id: 'PLOT-000001', approved_state: 'active', current_version: 1,
+    evidence: [
+      { id: 'EV-000001', source: 'VS-6', status: 'superseded', summary: 'VS-6: LOOKOUT! CV x4 BEARING 233 DIST 195 NM' },
+      { id: 'EV-000002', source: 'VS-6', status: 'active', summary: 'VS-6: CORRECTION 2 CV NOT 4 BEARING 236 DIST 185 NM' },
+    ],
+    assessments: [{ id: 'AS-000002', author: 'intel_officer',
+      narrative: '【事实】勘误电报更正数量。【判断】敌主力 2 艘航母，方位 236。',
+      confidence: { position: 0.7 }, dice_record_ids: ['chk_000012'], conflict_ids: ['CFL-000001'] }],
+    claims: [
+      { id: 'CL-000003', type: 'fact', text: 'VS-6 电文报告发现编队', actor: 'intel_officer' },
+      { id: 'CL-000004', type: 'judgment', text: '敌主力大概率为 2 艘航母', actor: 'intel_officer' },
+      { id: 'CL-000005', type: 'hypothesis', text: '不排除数量误报', actor: 'intel_officer' },
+    ],
+    versions: [
+      { version: 1, author: 'intel_officer', change_summary: '初版接触标图',
+        annotations: [{ by: 'browning', note: '同意呈报' }] },
+      { version: 2, author: 'intel_officer', change_summary: '勘误后修订', annotations: [] },
+    ],
+    decisions: [{ id: 'DEC-000001', action: 'approve', at: '1942-06-04T05:12Z', comment: '按此标图' }],
+  }],
+    tool_calls: [
+      { id: 'TOOL-000001', actor: 'intel_officer', tool: 'query_bearing_intersection', evidence_ids: ['EV-000002'] },
+      { id: 'TOOL-000002', actor: 'intel_officer', tool: 'query_possible_area', evidence_ids: ['EV-000002'] },
+    ],
+    check_records: Array.from({ length: 14 }, (_, i) => ({ id: `chk_${String(i + 1).padStart(6, '0')}` })),
+  },
+};
+window.fetch = (path) => Promise.resolve({
+  ok: true, json: () => Promise.resolve(FIX[path] || {}) });
+</script>
+<script src="/static/js/intelBoard.js?v=1780998019"></script>
+<script>
+const board = new IntelBoard();
+board.mount('intel-board');
+board.tab = (location.hash.match(/tab=(\w+)/) || [])[1] || 'PLOTS';
+board.refresh(true);
+// 定妆：直接渲染复盘弹层
+setTimeout(() => board._renderAfterAction(FIX['/intel/after-action']), 50);
+</script>
+</body>
+</html>

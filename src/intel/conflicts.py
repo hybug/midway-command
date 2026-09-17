@@ -197,6 +197,15 @@ def apply_correction_on_arrival(state, correction: MessageEnvelope) -> list:
     # 旧证据替代（不可变账本：旧记录保留只翻状态）
     old_ev = next((e for e in state.evidence if e.message_id == old_msg_id
                    and e.status == EvidenceStatus.ACTIVE), None)
+    # 证据位置 = 勘误报告要素推算的失真位置（与玩家所见一致）
+    position = None
+    fields = correction.fields or {}
+    if fields.get("bearing") is not None and fields.get("distance_nm"):
+        from src.scouting import _bearing_distance_to_position
+        tf = state.task_forces[0]
+        fleet_pos = (tf.carriers[0].position.lat, tf.carriers[0].position.lon)
+        position = _bearing_distance_to_position(
+            fleet_pos, float(fields["bearing"]), float(fields["distance_nm"]))
     new_ev = intel.register_evidence(
         state,
         message=correction,
@@ -204,7 +213,8 @@ def apply_correction_on_arrival(state, correction: MessageEnvelope) -> list:
         source_type=old_ev.source_type if old_ev else SourceType.CARRIER_SCOUT,
         access_roles=[ActorRole.INTEL_OFFICER, ActorRole.CHIEF_OF_STAFF],
         summary=f"[勘误] {correction.raw_text}",
-        reported=dict(correction.fields or {}),
+        position=position,
+        reported=dict(fields),
         observed_at=correction.observed_at,
         source_reliability=(old_ev.source_reliability if old_ev else 0.6),
     )

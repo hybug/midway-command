@@ -207,12 +207,15 @@ class JudgmentPolicy(Protocol):
 
 | Phase | 内容 | 状态 |
 |---|---|---|
-| S2.0 | 规格与基础契约 | **本文件 + src/intel/contracts.py + judgment.py** |
-| S2.1 | 骰子与可复现随机性 | 待实施（§五任务清单） |
-| S2.2 | 电文、证据与角色信念 | 待实施 |
-| S2.3 | 舰载侦察机纵切 | 待实施 |
-| S2.4 | 作战标图审批 | 待实施 |
-| S2.5 | 冲突、陈旧与勘误 | 待实施 |
-| S2.6 | 舰艇接触与友军电报 | 待实施 |
-| S2.7 | 推理工具与不确定度 | 待实施 |
-| S2.8 | 界面收口与复盘 | 待实施 |
+| S2.0 | 规格与基础契约 | ✅ 本文件 + src/intel/contracts.py + judgment.py |
+| S2.1 | 骰子与可复现随机性 | ✅ src/intel/rng.py（RNGService/CheckRecord） |
+| S2.2 | 电文、证据与角色信念 | ✅ src/intel/models.py + service.py |
+| S2.3 | 舰载侦察机纵切 | ✅ src/intel/flow.py + agents/pilot.py + intel_analyst.py |
+| S2.4 | 作战标图审批 | ✅ src/intel/plots.py |
+| S2.5 | 冲突、陈旧与勘误 | ✅ src/intel/conflicts.py |
+| S2.6 | 舰艇接触与友军电报 | ✅ src/intel/sources.py |
+| S2.7 | 推理工具与不确定度 | ✅ src/intel/reasoning.py |
+| S2.8 | 界面收口与复盘 | ✅ static/js/intelBoard.js + /intel/after-action + 定妆/实况截图 |
+
+收口验证：474+ passed；纵切 e2e（tests/test_vertical_slice.py）含修订/回放/泄漏扫描；
+证据：docs/reports/s2-intel/（VERIFY.md + 5 截图）。

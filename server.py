@@ -462,6 +462,114 @@ async def intel_work_items():
     }
 
 
+class WorkItemRequest(BaseModel):
+    pass
+
+
+@app.post("/intel/work-items/{item_id}/request")
+async def request_work_item(item_id: str):
+    """指挥官主动要求研判（§M2.5.7 / §十）。
+
+    情报参谋处理工作项：LLM 分析器可用则产出判断书叙述，
+    否则降级为机械策略结构化产物（显式标注，非玩法路径）。
+    """
+    from src.intel.flow import run_intelligence_cycle
+    from src.intel.contracts import WorkItemStatus
+    item = next((i for i in game_state.intel_work_items if i.id == item_id), None)
+    if item is None:
+        raise HTTPException(404, "工作项不存在。")
+    if item.status != WorkItemStatus.ASSIGNED.value:
+        raise HTTPException(400, f"工作项状态 {item.status} 不可研判。")
+    brief = run_intelligence_cycle(game_state, item)
+    return {
+        "brief_id": brief.id,
+        "status": item.status,
+        "assessment_id": item.outcome_assessment_id,
+    }
+
+
+@app.get("/intel/after-action")
+async def intel_after_action():
+    """战后复盘：证据—判断—批准—结果因果链（§M2.8.9，白名单字段）。"""
+    from src.intel.contracts import ApprovalStatus
+    chains = []
+    plot_ids = {p.plot_id for p in game_state.plot_proposals}
+    for plot_id in sorted(plot_ids):
+        proposals = sorted(
+            (p for p in game_state.plot_proposals if p.plot_id == plot_id),
+            key=lambda p: p.version,
+        )
+        decisions = [d for d in game_state.commander_decisions
+                     if d.plot_id == plot_id]
+        assessment_ids = {a.id for p in proposals for a in game_state.assessments
+                          if a.id in p.assessment_ids}
+        assessments = [a for a in game_state.assessments
+                       if a.id in assessment_ids]
+        claims = [c for c in game_state.claims
+                  if c.assessment_id in assessment_ids]
+        evidence_ids = {e for a in assessments for e in a.based_on_evidence_ids}
+        evidence = [e for e in game_state.evidence if e.id in evidence_ids]
+        approved = next((ap for ap in game_state.approved_plots
+                         if ap.plot_id == plot_id), None)
+        chains.append({
+            "plot_id": plot_id,
+            "versions": [
+                {
+                    "version": p.version,
+                    "proposal_id": p.id,
+                    "status": p.status,
+                    "change_summary": p.change_summary,
+                    "author": p.author_actor_id,
+                    "created_at": _iso(p.created_at),
+                    "annotations": p.annotations,
+                    "method": p.method,
+                }
+                for p in proposals
+            ],
+            "decisions": [
+                {
+                    "id": d.id, "at": _iso(d.at), "action": d.action,
+                    "proposal_id": d.proposal_id, "comment": d.comment,
+                }
+                for d in decisions
+            ],
+            "assessments": [
+                {
+                    "id": a.id, "author": a.author_actor_id,
+                    "narrative": a.narrative,
+                    "confidence": a.confidence_dimensions,
+                    "dice_record_ids": a.dice_record_ids,
+                    "conflict_ids": a.conflict_ids,
+                }
+                for a in assessments
+            ],
+            "claims": [
+                {"id": c.id, "type": c.claim_type, "text": c.text,
+                 "actor": c.actor_id}
+                for c in claims
+            ],
+            "evidence": [
+                {"id": e.id, "source": e.source_id, "summary": e.summary,
+                 "status": e.status.value, "received_at": _iso(e.received_at)}
+                for e in evidence
+            ],
+            "approved_state": approved.state if approved else None,
+            "current_version": approved.current_version if approved else None,
+        })
+    tool_calls = [
+        {"id": t.id, "at": _iso(t.at), "actor": t.actor_id,
+         "tool": t.tool_name, "evidence_ids": t.evidence_ids}
+        for t in game_state.tool_calls
+    ]
+    dice = [
+        {"id": r.check_id, "type": r.check_type, "actor": r.actor_id,
+         "at": _iso(r.game_time), "seed": r.random_seed,
+         "final": r.final_roll, "degree": r.degree}
+        for r in game_state.check_records
+    ]
+    return {"chains": chains, "tool_calls": tool_calls, "check_records": dice}
+
+
 # ── S2.4 标图审批接口（§十：玩家操作）──
 
 

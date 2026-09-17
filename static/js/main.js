@@ -12,6 +12,7 @@ let gameState = null;
 let histories = {};
 let mapRenderer = null;
 let ui = null;
+let intelBoard = null;
 
 // ═══════════════════════════════════════════════════════
 // API
@@ -37,6 +38,22 @@ async function init() {
 
   mapRenderer = new MapRenderer('tacticalMap');
   ui = new UIController();
+
+  // S2.8：敌标一键反查——点击已确认敌情 → 打开该标图链的战后复盘
+  mapRenderer.onEnemyContact((index) => {
+    const e = (gameState?.known_enemy || [])[index];
+    if (e && e.source && e.source.startsWith('plot:')) {
+      intelBoard.showPlotChain(e.source.slice(5));
+    } else {
+      ui.showNotification('📡 该敌情无标图链（迁移期旧数据）');
+    }
+  });
+
+  // S2.8：情报板（收报室/简报/审图/复盘）
+  if (window.IntelBoard) {
+    intelBoard = new IntelBoard();
+    intelBoard.mount('intel-board');
+  }
 
   // 设置确认敌情回调
   mapRenderer.onConfirmContact(async (index) => {
@@ -127,7 +144,9 @@ async function loadState() {
   ui.renderDashboard(gameState);
   ui.renderSuggestions(gameState, approveSuggestion, rejectSuggestion);
   if (mapRenderer) mapRenderer.render(gameState); // 首帧渲染并置 _currentState，此后动画循环接管
+  if (intelBoard) intelBoard.refresh(); // S2.8：情报板随状态刷新（节流）
 }
+window.__loadState = loadState;
 
 async function loadHistory(npcId) {
   if (histories[npcId]) return;

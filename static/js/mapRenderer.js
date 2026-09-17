@@ -256,11 +256,20 @@ class MapRenderer {
       if (this._onConfirmContact) {
         this._onConfirmContact(this._hoverTarget.index);
       }
+    } else if (this._hoverTarget.type === 'enemy') {
+      // S2.8：敌标一键反查（已批准标图 → 战后复盘该链）
+      if (this._onEnemyContact) {
+        this._onEnemyContact(this._hoverTarget.index);
+      }
     }
   }
 
   onConfirmContact(callback) {
     this._onConfirmContact = callback;
+  }
+
+  onEnemyContact(callback) {
+    this._onEnemyContact = callback;
   }
 
   triggerConfirmAnimation(x, y) {
@@ -755,6 +764,18 @@ class MapRenderer {
         ctx.restore();
       } else {
         ChartRenderer.drawEnemyContact(ctx, { x: px, y: py, confidence: e.confidence || 'medium' });
+      }
+
+      // S2.8 专业作战标图视觉语言（D13）：正式海图敌标带 APPROVED 版本印记——
+      // 只有指挥官批准的标图才上图（known_enemy 即已批准视图），印记标明版本号
+      if (e.source && String(e.source).startsWith('plot:')) {
+        const vm = String(e.description || '').match(/v(\d+)/);
+        ctx.save();
+        ctx.fillStyle = COL.enemyRed;
+        ctx.font = 'bold 8px "Special Elite", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`APPROVED v${vm ? vm[1] : '?'}`, px, py + 26);
+        ctx.restore();
       }
 
       // Task 7.9：旧手绘圈/问号/置信度文字/ENEMY 标签由标记资产取代（ENEMY 字样已内嵌素材，保留代码备查）

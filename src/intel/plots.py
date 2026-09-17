@@ -341,7 +341,7 @@ def approved_enemy_view(state) -> list:
                 f"（置信度位置 {geo.get('uncertainty_radius_nm', '?')}nm）"
             ),
             confidence="approved",
-            source=f"plot {plot.plot_id[:12]} v{plot.current_version}",
+            source=f"plot:{plot.plot_id}",   # 一键反查：完整标图链 id
             reported_at=plot.approved_at or intel.now(state),
         ))
     return out
