@@ -109,3 +109,18 @@ NPC_REGISTRY: dict[str, NPCConfig] = {
         ],
     ),
 }
+
+
+# ── 执行单位档案（S2.1：检定用实际执行单位能力，而非固定参谋）──
+# 侦察/通信等检定的执行者是具体单位（中队、电台员等），不是岸上参谋。
+# competence 直接进入骰子 NPC 层（×2，封顶 +20，§7.3）。
+UNIT_REGISTRY: dict[str, NPCConfig] = {
+    "sbd_scout_section": NPCConfig(
+        name="SBD 侦察中队",
+        role="侦察机队",
+        autonomy=2,
+        risk_tolerance=2,
+        initiative=3,
+        competence=6,
+    ),
+}

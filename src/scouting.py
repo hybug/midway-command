@@ -21,8 +21,9 @@ from src.state import (
     GameState, EnemyKnown, Position, PendingReport,
     ScoutMission, ScoutPhase, AircraftLoss, AircraftStatus, SearchPattern,
 )
-from src.dice import roll_scout_check, DiceResult
-from src.npc_config import NPC_REGISTRY
+from src.intel.contracts import CheckType
+from src.intel.rng import RNGService
+from src.npc_config import UNIT_REGISTRY
 
 logger = logging.getLogger("midway.scouting")
 
@@ -267,27 +268,63 @@ def check_detection(
 
 
 # ═══════════════════════════════════════════════════════
-# Distortion functions (same as before)
+# Distortion functions（S2.1：传 rng=RNGService 时走可复现记录抽取；
+# 不传时保持全局 random——仅供旧调用方/测试，游戏管线一律传 rng）
 # ═══════════════════════════════════════════════════════
 
-def distort_bearing(bearing: float, max_error: int = 5) -> int:
-    return int((bearing + random.randint(-max_error, max_error) + 360) % 360)
+def distort_bearing(bearing: float, max_error: int = 5, rng: RNGService | None = None) -> int:
+    if rng is not None:
+        err = rng.randint(
+            CheckType.OBSERVATION_QUALITY_CHECK, "观测失真", -max_error, max_error,
+            reason="方位失真抽取", inputs={"bearing": round(bearing, 1)},
+        )
+    else:
+        err = random.randint(-max_error, max_error)
+    return int((bearing + err + 360) % 360)
 
 
-def distort_distance(distance: float, max_error_pct: float = 0.1) -> int:
-    return int(distance * (1 + random.uniform(-max_error_pct, max_error_pct)))
+def distort_distance(distance: float, max_error_pct: float = 0.1, rng: RNGService | None = None) -> int:
+    if rng is not None:
+        # 以 0.01 粒度抽取，范围受 max_error_pct 约束（±10% ⇒ -10..10）
+        span = max(1, int(round(max_error_pct * 100)))
+        factor = rng.randint(
+            CheckType.OBSERVATION_QUALITY_CHECK, "观测失真", -span, span,
+            reason="距离失真抽取",
+            inputs={"distance_nm": round(distance, 1)},
+            effects={"max_error_pct": max_error_pct},
+        ) / 100.0
+    else:
+        factor = random.uniform(-max_error_pct, max_error_pct)
+    return int(distance * (1 + factor))
 
 
-def distort_count(real_count: int, undercount_prob: float = 0.3) -> int:
-    if random.random() < undercount_prob:
-        return max(1, real_count - random.randint(1, 2))
-    return real_count
+def distort_count(real_count: int, undercount_prob: float = 0.3, rng: RNGService | None = None) -> int:
+    if rng is not None:
+        under = rng.chance(
+            CheckType.OBSERVATION_QUALITY_CHECK, "观测失真", undercount_prob,
+            reason="数量少报抽取", inputs={"real_count": real_count},
+        )
+        decoy = rng.randint(
+            CheckType.OBSERVATION_QUALITY_CHECK, "观测失真", 1, 2,
+            reason="少报幅度抽取", inputs={"real_count": real_count},
+        ) if under else 0
+    else:
+        under = random.random() < undercount_prob
+        decoy = random.randint(1, 2) if under else 0
+    return max(1, real_count - decoy) if under else real_count
 
 
-def compute_report_delay(distance_nm: float) -> int:
+def compute_report_delay(distance_nm: float, rng: RNGService | None = None) -> int:
     base = 20
     distance_factor = (distance_nm / 200) * 25
-    return int(base + distance_factor + random.randint(-5, 10))
+    if rng is not None:
+        jitter = rng.randint(
+            CheckType.COMMUNICATION_CHECK, "报告传输", -5, 10,
+            reason="报告延迟抖动", inputs={"distance_nm": round(distance_nm, 1)},
+        )
+    else:
+        jitter = random.randint(-5, 10)
+    return int(base + distance_factor + jitter)
 
 
 # ═══════════════════════════════════════════════════════
@@ -362,6 +399,8 @@ def _check_enemy_proximity(state: GameState, scout: ScoutMission) -> bool:
 def _process_returning(scout: ScoutMission, state: GameState) -> list[str]:
     """Process the return phase of a scout mission."""
     notifications = []
+    rng = RNGService(state)
+    unit = UNIT_REGISTRY["sbd_scout_section"]
     elapsed = (state.clock.game_time - scout.phase_started_at).total_seconds() / 60
 
     # Burn return fuel
@@ -411,7 +450,11 @@ def _process_returning(scout: ScoutMission, state: GameState) -> list[str]:
 
     elif scout.fuel_pct <= FUEL_LOW:
         # 50% chance of losing an aircraft
-        if random.random() < 0.5:
+        if rng.chance(
+            "raw_draw", unit.name, 0.5,
+            reason=f"{scout.id} 低燃油损失抽取",
+            inputs={"fuel_pct": round(scout.fuel_pct, 1)},
+        ):
             lost = 1
             scout.aircraft_lost += lost
             scout.loss_reasons.append(f"低燃油损失 {lost} 架")
@@ -427,7 +470,14 @@ def _process_returning(scout: ScoutMission, state: GameState) -> list[str]:
     if elapsed >= RETURN_TIME_MIN:
         # Check weather loss (5% per aircraft remaining)
         remaining = scout.aircraft_count - scout.aircraft_lost
-        weather_lost = sum(1 for _ in range(remaining) if random.random() < WEATHER_LOSS_PROB)
+        weather_lost = sum(
+            1 for i in range(remaining)
+            if rng.chance(
+                "raw_draw", unit.name, WEATHER_LOSS_PROB,
+                reason=f"{scout.id} 天气损失抽取",
+                inputs={"aircraft_index": i + 1},
+            )
+        )
         if weather_lost > 0:
             scout.aircraft_lost += weather_lost
             scout.loss_reasons.append(f"天气损失 {weather_lost} 架")
@@ -479,8 +529,9 @@ def _process_searching(scout: ScoutMission, state: GameState) -> list[str]:
         hidden = state.actual_enemy or []
         fleet_pos = _get_fleet_pos(state)
 
-        # Get NPC config for dice modifiers (Browning as default)
-        npc_config = NPC_REGISTRY["browning"]
+        # S2.1：检定用实际执行单位能力 + 可复现 RNG（骰子缺口 #1/#3）
+        rng = RNGService(state)
+        unit = UNIT_REGISTRY["sbd_scout_section"]
 
         detected = False
 
@@ -495,11 +546,16 @@ def _process_searching(scout: ScoutMission, state: GameState) -> list[str]:
             if distance > scout.search_distance_nm:
                 continue
 
-            # Roll dice for detection
-            result = roll_scout_check(
-                npc_config,
+            # Roll dice for detection（检定记录落 state.check_records）
+            result, _rec = rng.detection_check(
+                unit=unit,
                 distance_nm=distance,
                 pattern=scout.search_pattern.value,
+                reason=f"{scout.id} 侦察检定",
+                inputs={
+                    "sector": f"{scout.search_bearing_min}-{scout.search_bearing_max}",
+                    "enemy": enemy.get("name", "?"),
+                },
             )
 
             logger.info(f"[SCOUT] {scout.id} 侦察检定: {result} (距离{int(distance)}nm)")
@@ -507,21 +563,22 @@ def _process_searching(scout: ScoutMission, state: GameState) -> list[str]:
             if result.is_success():
                 # Successful detection
                 real_count = len(enemy.get("carriers", []))
-                delay = compute_report_delay(distance)
 
-                # Apply distortion based on dice result
+                # Apply distortion based on dice result（失真抽取全部落记录）
                 if result.is_critical():
                     # Critical success: minimal distortion
-                    reported_bearing = distort_bearing(bearing, max_error=2)
-                    reported_distance = distort_distance(distance, max_error_pct=0.05)
+                    reported_bearing = distort_bearing(bearing, max_error=2, rng=rng)
+                    reported_distance = distort_distance(distance, max_error_pct=0.05, rng=rng)
                     reported_count = real_count  # Accurate count
                     confidence = "high"
                 else:
                     # Normal success: standard distortion
-                    reported_bearing = distort_bearing(bearing)
-                    reported_distance = distort_distance(distance)
-                    reported_count = distort_count(real_count)
+                    reported_bearing = distort_bearing(bearing, rng=rng)
+                    reported_distance = distort_distance(distance, rng=rng)
+                    reported_count = distort_count(real_count, rng=rng)
                     confidence = "medium" if distance > 100 else "high"
+
+                delay = compute_report_delay(distance, rng=rng)
 
                 report = PendingReport(
                     scout_id=scout.id,

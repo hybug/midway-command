@@ -105,6 +105,7 @@ def roll_check(
     situational_mods: Optional[dict] = None,
     advantage: bool = False,
     disadvantage: bool = False,
+    raw_roller: Optional[callable] = None,
 ) -> DiceResult:
     """通用骰子检定（三层分离架构）。
 
@@ -113,6 +114,8 @@ def roll_check(
         situational_mods: 情境修正字典，如 {"weather": -10, "distance": +5}
         advantage: 是否有优势（掷2次取高）
         disadvantage: 是否有劣势（掷2次取低）
+        raw_roller: 注入骰源（可复现 RNG 服务用）；None 时走全局 random。
+            每次调用返回一个 1-100 的原始骰值，优劣势由本函数组合双骰。
 
     Returns:
         DiceResult 包含骰值、修正、结果等级
@@ -138,15 +141,16 @@ def roll_check(
     total_modifier = npc_layer + total_situational
     total_modifier = max(-TOTAL_MODIFIER_CAP, min(TOTAL_MODIFIER_CAP, total_modifier))
 
-    # ── 掷骰（随机性层）──
+    # ── 掷骰（随机性层；raw_roller 注入时不依赖全局随机状态）──
+    die = raw_roller if raw_roller is not None else _d100
     if advantage and not disadvantage:
-        raw = _d100_advantage()
+        raw = max(die(), die())
         modifiers.append("优势骰(2d100取高)")
     elif disadvantage and not advantage:
-        raw = _d100_disadvantage()
+        raw = min(die(), die())
         modifiers.append("劣势骰(2d100取低)")
     else:
-        raw = _d100()
+        raw = die()
 
     # ── 计算最终值 ──
     final = max(1, min(100, raw + total_modifier))
@@ -190,12 +194,8 @@ def roll_with_npc(npc_config, situational_mods=None, advantage=False, disadvanta
     )
 
 
-def roll_scout_check(npc_config, distance_nm=100, pattern="sector") -> DiceResult:
-    """侦察检定专用函数（三层架构）"""
-    # NPC层：competence × 2
-    npc_layer = npc_config.competence * 2
-
-    # 情境层
+def scout_situational_mods(distance_nm: float, pattern: str) -> dict:
+    """侦察检定情境修正（纯函数，§7.4：距离 + 搜索模式，供管线与测试共用）。"""
     situational = {}
     if distance_nm < 100:
         situational["近距离"] = 10
@@ -206,8 +206,23 @@ def roll_scout_check(npc_config, distance_nm=100, pattern="sector") -> DiceResul
     mod = pattern_mods.get(pattern, 0)
     if mod != 0:
         situational[f"搜索模式({pattern})"] = mod
+    return situational
 
-    return roll_check(npc_modifier=npc_layer, situational_mods=situational)
+
+def roll_scout_check(
+    npc_config,
+    distance_nm=100,
+    pattern="sector",
+    raw_roller: Optional[callable] = None,
+) -> DiceResult:
+    """侦察检定专用函数（三层架构）"""
+    # NPC层：competence × 2
+    npc_layer = npc_config.competence * 2
+    return roll_check(
+        npc_modifier=npc_layer,
+        situational_mods=scout_situational_mods(distance_nm, pattern),
+        raw_roller=raw_roller,
+    )
 
 
 def roll_attack_check(npc_config, target_state="normal", distance_nm=80, weather="clear") -> DiceResult:

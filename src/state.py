@@ -10,6 +10,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field, PrivateAttr
 from src.entities import TaskForce as EntityTaskForce
+from src.intel.rng import CheckRecord
 from src.routes import PendingRoute, Route
 
 
@@ -269,3 +270,6 @@ class GameState(BaseModel):
     action_points: int = Field(default=3, ge=0)
     max_action_points: int = Field(default=3, ge=0)
     enemy_fleet: Optional[EntityTaskForce] = Field(default=None)
+    # ── S2.1 可复现随机性（RNGService 种子 + 全量检定记录，回放用）──
+    rng_seed: int = 20260604
+    check_records: list[CheckRecord] = Field(default_factory=list)

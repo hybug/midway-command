@@ -30,14 +30,18 @@
 
 ## 修正值来源
 
-### NPC 参数修正（基于 npc_config.py）
+### NPC 参数修正（基于 npc_config.py，S2.1 起以代码为准）
 
 | 参数 | 公式 | 说明 |
 |------|------|------|
-| 自主度 | autonomy × 3 | 越自主，行动越果断 |
-| 风险容忍 | risk_tolerance × 20 | 越敢冒险，波动越大 |
-| 主动性 | initiative × 15 | 越主动，越可能抓住机会 |
-| 能力值 | competence × 25 | 越专业，执行质量越高 |
+| 能力值 competence | × 2（封顶 +20） | 执行类检定（侦察/攻击/着舰）：执行单位或 NPC 的 competence |
+| 自主度 + 主动性 | (autonomy + initiative)（封顶 +20） | NPC 自主决策（roll_npc_decision） |
+
+> 修订记录（2026-09-17，S2.1 骰子缺口审计 #5）：本表旧版 "autonomy × 3 /
+> risk_tolerance × 20 / initiative × 15 / competence × 25" 与实现不符，按
+> `src/dice.py`（GAME_SPEC §7.3 × 2）修订。侦察检定的 competence 取
+> **实际执行单位**（`UNIT_REGISTRY["sbd_scout_section"]`，S2.1 起），
+> 不再固定使用 Browning。
 
 ### 情境修正（每种检定不同）
 
@@ -94,13 +98,13 @@
 
 ### 1. 侦察检定
 - **触发**：侦察机进入敌军所在 hex
-- **NPC 修正**：Browning.competence × 25
+- **NPC 修正**：执行单位 competence × 2（SBD 侦察中队 = 6 → +12）
 - **情境修正**：天气、距离、搜索模式
 - **结果**：清晰识别/部分识别/误报/漏报/被击落
 
 ### 2. 攻击检定
 - **触发**：攻击机进入攻击距离
-- **NPC 修正**：Browning.competence × 25
+- **NPC 修正**：执行单位 competence × 2
 - **情境修正**：目标状态、距离、弹药类型
 - **结果**：命中/近失/未命中/被拦截
 
@@ -118,15 +122,27 @@
 
 ### 5. 着舰检定
 - **触发**：飞机返航着舰
-- **NPC 修正**：competence × 25
+- **NPC 修正**：competence × 2
 - **情境修正**：天气、燃油、甲板状态
 - **结果**：安全着舰/轻微事故/严重事故/坠毁
+
+## 可复现性与检定记录（S2.1）
+
+- 游戏级种子：`GameState.rng_seed`；检定经 `src/intel/rng.py` 的 `RNGService` 执行。
+- 每次检定/抽取追加一条 `CheckRecord`（check_id / check_type / actor_id /
+  game_time / random_seed / raw_roll / modifiers / final_roll / degree /
+  effects / context）到 `GameState.check_records`。
+- 同一局面 + 同一种子 ⇒ 完全一致的检定序列（确定性回放）。
+- `roll_check` 支持注入骰源（`raw_roller`）；未注入时回退全局 random
+  （仅限旧调用方/测试，游戏管线一律走 RNGService）。
 
 ## 实现文件
 
 | 文件 | 说明 |
 |------|------|
-| `src/dice.py` | 骰子系统核心 |
-| `src/scouting.py` | 使用骰子系统进行侦察检定 |
+| `src/dice.py` | 骰子系统核心（三层架构，可注入骰源） |
+| `src/intel/rng.py` | RNGService + CheckRecord（S2.1：可复现随机性） |
+| `src/scouting.py` | 使用骰子系统进行侦察检定（经 RNGService 落记录） |
 | `src/combat.py` | 使用骰子系统进行攻击检定（Day 9） |
 | `tests/test_dice.py` | 骰子系统测试 |
+| `tests/test_intel_rng.py` | 可复现随机性测试 |

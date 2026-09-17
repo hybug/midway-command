@@ -110,8 +110,8 @@ class TestPendingReportFlow:
     def _find_detection_seed(self):
         """Find a seed that produces a detection."""
         for seed in range(200):
-            random.seed(seed)
             state = make_state_with_enemy()
+            state.rng_seed = seed  # S2.1：检定随机性由游戏级种子驱动（可回放）
             handle_execute_action(state, "launch_scout", {"direction": "southwest"})
             self._advance_scout(state, ticks=9)
             if len(state.pending_reports) > 0:
@@ -160,8 +160,8 @@ class TestEventSchedulerIntegration:
         # Find a seed that works
         found = False
         for seed in range(200):
-            random.seed(seed)
             state = make_state_with_enemy()
+            state.rng_seed = seed  # S2.1：游戏级种子驱动
             scheduler = TestEventSchedulerIntegration.EventScheduler()
             handle_execute_action(state, "launch_scout", {"direction": "southwest"})
             all_notifications = []

@@ -167,7 +167,16 @@ def handle_execute_action(state: GameState, action_type: str, details: dict) -> 
         direction = details.get("direction", "northwest")
         count = details.get("count", 4)
         pattern_str = details.get("pattern", "sector")
-        pattern = SearchPattern(pattern_str) if pattern_str in ["sector", "parallel", "grid"] else SearchPattern.SECTOR
+        # S2.1 修复（骰子缺口 #4）："grid" 是口语别名，SearchPattern 无此值——
+        # 旧代码 SearchPattern("grid") 抛 ValueError、SearchPattern.GRID 抛 AttributeError；
+        # 现按 §6.2.1 映射：grid → EXPANDING_SQUARE（方格=扩展方形）
+        pattern_aliases = {
+            "sector": SearchPattern.SECTOR,
+            "parallel": SearchPattern.PARALLEL,
+            "expanding_square": SearchPattern.EXPANDING_SQUARE,
+            "grid": SearchPattern.EXPANDING_SQUARE,
+        }
+        pattern = pattern_aliases.get(pattern_str, SearchPattern.SECTOR)
 
         direction_map = {
             "northwest": 310, "north": 0, "northeast": 45,
@@ -181,10 +190,8 @@ def handle_execute_action(state: GameState, action_type: str, details: dict) -> 
             spread = 40   # Narrow sector
         elif pattern == SearchPattern.PARALLEL:
             spread = 120  # Wide sector
-        elif pattern == SearchPattern.GRID:
-            spread = 60   # Medium sector
         else:
-            spread = 40
+            spread = 60   # expanding_square（方格）：medium sector
 
         half = spread // 2
         bearing_min = (heading - half) % 360
