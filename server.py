@@ -122,6 +122,18 @@ async def root():
 async def get_state():
     """Return full game state as JSON."""
     ap = get_ap_status(game_state)
+    # S2.4（§十一迁移）：known_enemy 下发已批准标图公共视图（无批准标图时
+    # 直通 legacy 列表——迁移期兼容，不破坏既有 UI/测试）
+    from src.intel import service as intel_service
+    known_enemy_public = [
+        {
+            "description": e.description,
+            "confidence": e.confidence,
+            "source": e.source,
+            "position": {"lat": e.position.lat, "lon": e.position.lon},
+        }
+        for e in intel_service.known_enemy_compat_view(game_state)
+    ]
     # O.3：全舰队序列化（珊瑚海双盟军舰队 YOR/LEX；单舰队包不受影响）
     return {
         "clock": {
@@ -163,15 +175,7 @@ async def get_state():
             }
             for tf in game_state.task_forces
         ],
-        "known_enemy": [
-            {
-                "description": e.description,
-                "confidence": e.confidence,
-                "source": e.source,
-                "position": {"lat": e.position.lat, "lon": e.position.lon},
-            }
-            for e in game_state.known_enemy
-        ],
+        "known_enemy": known_enemy_public,
         "active_scouts": [
             {
                 "id": s.id,
@@ -456,6 +460,109 @@ async def intel_work_items():
             if i.status not in (WorkItemStatus.CLOSED.value, WorkItemStatus.CANCELLED.value)
         ]
     }
+
+
+# ── S2.4 标图审批接口（§十：玩家操作）──
+
+
+def _proposal_public(p):
+    return {
+        "id": p.id,
+        "plot_id": p.plot_id,
+        "version": p.version,
+        "author": p.author_actor_id,
+        "status": p.status,
+        "method": p.method,
+        "geometry": p.geometry.model_dump() if p.geometry else None,
+        "confidence": p.confidence,
+        "change_summary": p.change_summary,
+        "supersedes_version": p.supersedes_version,
+        "based_on_evidence_ids": p.based_on_evidence_ids,
+        "annotations": p.annotations,
+        "created_at": _iso(p.created_at),
+    }
+
+
+def _find_proposal(proposal_id: str):
+    from src.intel.models import PlotProposal
+    for p in game_state.plot_proposals:
+        if p.id == proposal_id:
+            return p
+    raise HTTPException(404, "标图提案不存在。")
+
+
+@app.get("/intel/plots")
+async def intel_plots():
+    """标图提案（PROPOSED/REVISION_REQUESTED/PARTIALLY_APPROVED 待审 + 历史）与正式图层。"""
+    from src.intel.contracts import ApprovalStatus
+    pending = [
+        _proposal_public(p) for p in game_state.plot_proposals
+        if p.status in (ApprovalStatus.PROPOSED.value,
+                        ApprovalStatus.REVISION_REQUESTED.value,
+                        ApprovalStatus.PARTIALLY_APPROVED.value,
+                        ApprovalStatus.DEFERRED.value)
+    ]
+    approved = [
+        {
+            "plot_id": ap.plot_id,
+            "current_version": ap.current_version,
+            "state": ap.state,
+            "approved_at": _iso(ap.approved_at),
+            "history": ap.history,
+        }
+        for ap in game_state.approved_plots
+    ]
+    return {"pending_proposals": pending, "approved_plots": approved}
+
+
+@app.get("/intel/plots/{plot_id}/history")
+async def intel_plot_history(plot_id: str):
+    """标图链版本历史（版本比较）。"""
+    from src.intel.plots import plot_chain_history
+    return {"plot_id": plot_id, "versions": plot_chain_history(game_state, plot_id)}
+
+
+class PlotDecisionRequest(BaseModel):
+    comment: str = ""
+    items_approved: list[str] = []
+
+
+@app.post("/intel/plots/{proposal_id}/approve")
+async def approve_plot(proposal_id: str, req: PlotDecisionRequest | None = None):
+    from src.intel import plots as plotsvc
+    proposal = _find_proposal(proposal_id)
+    comment = req.comment if req else ""
+    plotsvc.decide(game_state, proposal, action="approve", by="player",
+                   comment=comment)
+    return {"proposal": _proposal_public(proposal), "result": "已批准上图"}
+
+
+@app.post("/intel/plots/{proposal_id}/reject")
+async def reject_plot(proposal_id: str, req: PlotDecisionRequest | None = None):
+    from src.intel import plots as plotsvc
+    proposal = _find_proposal(proposal_id)
+    comment = req.comment if req else ""
+    plotsvc.decide(game_state, proposal, action="reject", by="player",
+                   comment=comment)
+    return {"proposal": _proposal_public(proposal), "result": "已驳回"}
+
+
+@app.post("/intel/plots/{proposal_id}/defer")
+async def defer_plot(proposal_id: str, req: PlotDecisionRequest | None = None):
+    from src.intel import plots as plotsvc
+    proposal = _find_proposal(proposal_id)
+    plotsvc.decide(game_state, proposal, action="defer", by="player")
+    return {"proposal": _proposal_public(proposal), "result": "已暂缓"}
+
+
+@app.post("/intel/plots/{proposal_id}/request-revision")
+async def request_plot_revision(proposal_id: str, req: PlotDecisionRequest | None = None):
+    from src.intel import plots as plotsvc
+    proposal = _find_proposal(proposal_id)
+    comment = req.comment if req else ""
+    plotsvc.decide(game_state, proposal, action="request_revision", by="player",
+                   comment=comment)
+    return {"proposal": _proposal_public(proposal), "result": "已要求修订"}
 
 
 # ── Theater context 下发（CHART_SYSTEM.md §四：前端 ChartEngine 唯一消费者）──

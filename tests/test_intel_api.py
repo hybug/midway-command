@@ -62,7 +62,9 @@ def _state_with_delivered_report():
     for coll in (state.messages, state.evidence, state.intel_work_items,
                  state.assessments, state.intel_briefs, state.observations,
                  state.claims, state.contacts, state.known_enemy,
-                 state.check_records, state.beliefs, state.intel_audit):
+                 state.check_records, state.beliefs, state.intel_audit,
+                 state.plot_proposals, state.commander_decisions,
+                 state.approved_plots):
         coll.clear()
     state.actual_enemy = [{
         "name": "Kido Butai",
@@ -148,3 +150,34 @@ def test_intel_briefs_published_only():
     brief = data["briefs"][0]
     assert brief["status"] != "draft"
     assert "narrative" in brief
+
+
+def test_plot_approval_flow_via_api():
+    client = TestClient(server_module.app)
+    state, msg = _state_with_delivered_report()
+    from src.intel.flow import intel_work_queue, run_intelligence_cycle
+    queue = intel_work_queue(state)
+    run_intelligence_cycle(state, queue[0])
+
+    # 未批准：pending 有提案、approved 为空，/state 无 APPROVED PLOT 视图
+    plots = client.get("/intel/plots").json()
+    assert len(plots["pending_proposals"]) == 1
+    assert plots["approved_plots"] == []
+    proposal_id = plots["pending_proposals"][0]["id"]
+    state_blob = json.dumps(client.get("/state").json(), ensure_ascii=False)
+    assert "APPROVED PLOT" not in state_blob
+
+    # 批准 → 上图 + 历史
+    resp = client.post(f"/intel/plots/{proposal_id}/approve",
+                       json={"comment": "按此标图"})
+    assert resp.status_code == 200
+    plots = client.get("/intel/plots").json()
+    assert plots["pending_proposals"] == []
+    assert plots["approved_plots"][0]["current_version"] == 1
+    state_blob = json.dumps(client.get("/state").json(), ensure_ascii=False)
+    assert "APPROVED PLOT v1" in state_blob
+
+    # 版本历史端点
+    plot_id = plots["approved_plots"][0]["plot_id"]
+    history = client.get(f"/intel/plots/{plot_id}/history").json()
+    assert [v["version"] for v in history["versions"]] == [1]

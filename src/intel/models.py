@@ -215,3 +215,61 @@ class IntelBrief(BaseModel):
     status: str = "draft"               # ApprovalStatus 值
     narrative: str = ""
     annotations: list[dict] = Field(default_factory=list)        # 参谋长批注（追加式，S2.4）
+
+
+# ── Phase S2.4：标图审批对象（§6.8/§6.9）──
+
+class PlotGeometry(BaseModel):
+    """标图几何（M2.6.3）：观测位/可能区域/方位线/距离/航向航速矢量。"""
+    lat: float
+    lon: float
+    uncertainty_radius_nm: float = 30.0
+    bearing_line_deg: Optional[float] = None      # 方位线（自参考点）
+    bearing_from_lat: Optional[float] = None
+    bearing_from_lon: Optional[float] = None
+    bearing_from_label: str = ""
+    distance_nm: Optional[float] = None
+    course_estimate: Optional[int] = None
+    speed_estimate: Optional[float] = None
+
+
+class PlotProposal(BaseModel):
+    """标图提案（§6.8）。version 链共享 plot_id；已批准版本不可覆盖（D14）。"""
+    id: str = ""
+    plot_id: str = ""                     # 修订链 id
+    version: int = 1
+    author_actor_id: str
+    created_at: Optional[datetime] = None
+    based_on_evidence_ids: list[str] = Field(default_factory=list)
+    assessment_ids: list[str] = Field(default_factory=list)
+    geometry: Optional[PlotGeometry] = None
+    method: str = "bearing_distance"      # bearing_distance / bearing_intersection / dead_reckoning
+    assumptions: list[str] = Field(default_factory=list)
+    confidence: dict[str, float] = Field(default_factory=dict)
+    change_summary: str = ""
+    supersedes_version: Optional[int] = None
+    status: str = "draft"                 # ApprovalStatus 值
+    annotations: list[dict] = Field(default_factory=list)   # 参谋长批注（追加式）
+    contact_id: Optional[str] = None
+
+
+class ApprovedPlot(BaseModel):
+    """正式标图（§6.9）：指挥官正式采纳过的作战认识——海图唯一敌情输入（D13）。"""
+    plot_id: str
+    current_version: int = 1
+    approved_by: str = "player"
+    approved_at: Optional[datetime] = None
+    state: str = "active"                 # active / superseded
+    decision_id: str = ""
+    history: list[dict] = Field(default_factory=list)   # 逐版本：{version, proposal_id, geometry, change_summary, approved_at, decision_id}
+
+
+class CommanderDecision(BaseModel):
+    """指挥官决议（追加式审计：谁在何时批准/驳回了什么）。"""
+    id: str = ""
+    at: Optional[datetime] = None
+    plot_id: str = ""
+    proposal_id: str = ""
+    action: str = ""                      # approve/reject/defer/request_revision/partial_approve
+    items_approved: list[str] = Field(default_factory=list)
+    comment: str = ""

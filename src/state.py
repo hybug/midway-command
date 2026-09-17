@@ -11,7 +11,9 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field, PrivateAttr
 from src.entities import TaskForce as EntityTaskForce
 from src.intel.models import (
+    ApprovedPlot,
     BeliefState,
+    CommanderDecision,
     ContactHypothesis,
     Evidence,
     IntelAuditEntry,
@@ -20,6 +22,7 @@ from src.intel.models import (
     MessageEnvelope,
     NPCClaim,
     NPCAssessment,
+    PlotProposal,
     SourceObservation,
 )
 from src.intel.rng import CheckRecord
@@ -298,3 +301,7 @@ class GameState(BaseModel):
     intel_work_items: list[IntelWorkItem] = Field(default_factory=list)
     assessments: list[NPCAssessment] = Field(default_factory=list)
     intel_briefs: list[IntelBrief] = Field(default_factory=list)
+    # ── S2.4 标图审批（提案/决议/正式标图）──
+    plot_proposals: list[PlotProposal] = Field(default_factory=list)
+    commander_decisions: list[CommanderDecision] = Field(default_factory=list)
+    approved_plots: list[ApprovedPlot] = Field(default_factory=list)

@@ -499,6 +499,31 @@ def run_intelligence_cycle(state, item: IntelWorkItem, *,
     )
     state.intel_briefs.append(brief)
 
+    # 简报产生标图提案（§7.1 步骤16；几何来自接触/证据，作者=情报参谋）
+    if contact_id:
+        from src.intel.plots import create_plot_proposal, latest_revision_base
+        contact_obj = next(c for c in state.contacts if c.id == contact_id)
+        base = latest_revision_base(state)
+        if base is not None:
+            # §7.2：新证据到达 → 形成同链新版修订提案（须重新审批，不静默上图）
+            proposal = create_plot_proposal(
+                state,
+                author_actor_id=actor.actor_id,
+                assessment=assessment,
+                contact=contact_obj,
+                change_summary=f"依据新证据修订 v{base.version} 标图",
+                supersedes=base,
+            )
+        else:
+            proposal = create_plot_proposal(
+                state,
+                author_actor_id=actor.actor_id,
+                assessment=assessment,
+                contact=contact_obj,
+                change_summary="初版接触标图（依据最新研判）",
+            )
+        brief.plot_proposal_ids.append(proposal.id)
+
     item.status = WorkItemStatus.SUBMITTED.value
     item.submitted_at = state.clock.game_time
     item.outcome_assessment_id = assessment.id
