@@ -13,20 +13,40 @@
 
   function asArray(v) { return Array.isArray(v) ? v : []; }
 
+  // S4 引擎未实施：事件桩（fixture）仅供测试/开发演示——
+  // installFixtures 后 fetch* 返回注入的事件，UI 按「事件+自然语言摘要」渲染。
+  let _fixtureVisits = [];
+  let _fixtureConflicts = [];
+  let _fixtureDossiers = [];
+
   const S4Adapter = {
     /** 参谋主动来访（STAFF_VISIT 通知源）。 */
     fetchVisitEvents() {
-      return Promise.resolve([]);
+      return Promise.resolve(_fixtureVisits.map(v => this.sanitizeVisitEvent(v)).filter(Boolean));
     },
 
     /** 分歧案卷（CONFLICT 通知源）。 */
     fetchConflictDossiers() {
-      return Promise.resolve([]);
+      return Promise.resolve(_fixtureConflicts.map(c => ({
+        conflict_id: c.conflict_id, parties: c.parties || [],
+        topic: String(c.topic || ''), at: String(c.at || ''),
+      })));
     },
 
     /** 极简档案摘要（STAFF 右栏；无数据回退到名册静态职责行）。 */
-      fetchDossierSummaries() {
-      return Promise.resolve([]);
+    fetchDossierSummaries() {
+      return Promise.resolve(_fixtureDossiers.map(d => this.sanitizeDossierSummary(d)).filter(Boolean));
+    },
+
+    /** fixture 注入（测试/开发桩；非玩法路径）。 */
+    installFixtures({ visits = [], conflicts = [], dossiers = [] } = {}) {
+      _fixtureVisits = visits.slice();
+      _fixtureConflicts = conflicts.slice();
+      _fixtureDossiers = dossiers.slice();
+    },
+
+    clearFixtures() {
+      _fixtureVisits = []; _fixtureConflicts = []; _fixtureDossiers = [];
     },
 
     /** 玩家转述记录（UI.6 接入转述链时的数据形状）。 */

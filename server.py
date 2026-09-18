@@ -817,6 +817,89 @@ async def reconsider_judgment(npc_id: str, result_id: str,
     }
 
 
+# ── S8 UI.6 S3/S4 联动（玩家转述链 / 指挥官反馈端点）──
+
+
+class RelayRequest(BaseModel):
+    from_result_id: str
+    to_actor_id: str
+    note: str = ""
+
+
+@app.post("/staff/relay")
+async def staff_relay(req: RelayRequest):
+    """玩家转述（M8.5.6/M4.4）：把某参谋的判断摘要转告另一名参谋。
+
+    只记录转述链（谁的话→转告谁），被转述者不获得任何越权数据；
+    是否影响其后续判断由该参谋自己的判断过程决定（S4 引擎落地前不自动注入）。
+    """
+    from src.cognition.roster import get_actor
+    from src.cognition import roster as roster_mod
+    result = next((r for r in game_state.judgment_results
+                   if r.id == req.from_result_id), None)
+    if result is None:
+        raise HTTPException(404, "要转述的判断不存在。")
+    try:
+        target = get_actor(req.to_actor_id)
+    except KeyError:
+        raise HTTPException(404, f"被转述参谋 '{req.to_actor_id}' 不在名册中。")
+    if target.actor_id == result.actor_id:
+        raise HTTPException(400, "不能转述给判断者本人。")
+    entry = {
+        "at": _iso(game_state.clock.game_time),
+        "from_actor": result.actor_id,
+        "to_actor": target.actor_id,
+        "from_result_id": result.id,
+        "note": req.note[:120],
+    }
+    game_state.intel_audit.append(__import__(
+        "src.intel.models", fromlist=["IntelAuditEntry"]).IntelAuditEntry(
+        id=__import__("src.intel", fromlist=["service"]).service.next_id(
+            game_state, "AUD"),
+        at=game_state.clock.game_time, actor_id="fletcher",
+        action="player_relay", target_id=target.actor_id,
+        reason=req.note[:80] or f"转述 {result.actor_id} 的判断 {result.id}",
+        details=dict(entry),
+    ))
+    return {"relay": entry, "result": "已转述（记录在案）"}
+
+
+@app.get("/staff/relays")
+async def staff_relays():
+    """转述记录（追加制，M8.5.6）。"""
+    return {"relays": [
+        {
+            "at": entry.details.get("at", _iso(entry.at)),
+            "from_actor": entry.details.get("from_actor", ""),
+            "to_actor": entry.details.get("to_actor", entry.target_id),
+            "from_result_id": entry.details.get("from_result_id", ""),
+            "note": entry.details.get("note", ""),
+        }
+        for entry in game_state.intel_audit
+        if entry.action == "player_relay"
+    ]}
+
+
+class FeedbackRequest(BaseModel):
+    decision: str
+    note: str = ""
+
+
+@app.post("/judgment/results/{result_id}/feedback")
+async def judgment_feedback(result_id: str, req: FeedbackRequest):
+    """指挥官对判断的反馈（§8.3/D10）：进记忆，不改写原结果。"""
+    from src.cognition.memory import record_commander_feedback
+    try:
+        memory = record_commander_feedback(
+            game_state, result_id, req.decision, by="fletcher", note=req.note)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    if memory is None:
+        raise HTTPException(404, "判断结果不存在或无对应记忆。")
+    return {"memory_id": memory.id, "decision": req.decision,
+            "result": "反馈已记录（原结果不变）"}
+
+
 # ── S8 UI.5 LOG 与复盘（M8.6：时间线/命令链/战后案卷）──
 
 
@@ -882,6 +965,13 @@ async def log_timeline():
         elif a.action == "otc_change":
             events.append({
                 "at": _iso(a.at), "kind": "otc_change",
+                "ref_id": a.target_id, "actor": a.actor_id,
+                "text": a.reason[:60],
+                "jump": {"workbench": "STAFF", "target": a.target_id},
+            })
+        elif a.action == "player_relay":
+            events.append({
+                "at": _iso(a.at), "kind": "player_relay",
                 "ref_id": a.target_id, "actor": a.actor_id,
                 "text": a.reason[:60],
                 "jump": {"workbench": "STAFF", "target": a.target_id},

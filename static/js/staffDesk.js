@@ -57,8 +57,9 @@ class StaffDesk {
 
   rosterRow(s) {
     const esc = window.escapeHtml;
-    const dot = s.source === 'judgment'
-      && s.dossier.status_line !== '在舱待命' ? ' staff-dot-active' : '';
+    const visited = (window.__staffVisits || []).some(v => v.actor_id === s.actor_id);
+    const dot = visited || (s.source === 'judgment'
+      && s.dossier.status_line !== '在舱待命') ? ' staff-dot-active' : '';
     return `<button class="staff-row${s.actor_id === this.activeId ? ' active' : ''}${dot}"
       data-staff="${esc(s.actor_id)}">
       <span class="staff-row-name">${esc(s.display_name)}</span>
@@ -176,6 +177,41 @@ class StaffDesk {
     }
   }
 
+  bindJudgmentActions(s) {
+    const box = this.el && this.el.querySelector('#staff-judgments');
+    if (!box) return;
+    box.querySelectorAll('[data-feedback]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        try {
+          const res = await fetch(`/judgment/results/${btn.dataset.rid}/feedback`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ decision: btn.dataset.feedback }),
+          });
+          if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || '失败');
+          if (window.ui) window.ui.showNotification(`反馈已记录（${btn.dataset.feedback}）`);
+          this.refresh(true);
+        } catch (e) {
+          if (window.ui) window.ui.showNotification('❌ ' + e.message);
+        }
+      });
+    });
+    box.querySelectorAll('[data-relay]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        try {
+          const res = await fetch('/staff/relay', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ from_result_id: btn.dataset.rid,
+                                   to_actor_id: btn.dataset.relay }),
+          });
+          if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || '失败');
+          if (window.ui) window.ui.showNotification(`已转述给 ${btn.dataset.relay}（记录在案）`);
+        } catch (e) {
+          if (window.ui) window.ui.showNotification('❌ ' + e.message);
+        }
+      });
+    });
+  }
+
   async loadJudgments(s, preloaded) {
     const box = this.el && this.el.querySelector('#staff-judgments');
     if (!box) return;
@@ -198,6 +234,21 @@ class StaffDesk {
         ? `<p class="staff-refusal">拒绝判断：${esc(r.refusal_reason)}</p>` : '';
       const cmm = (r.change_my_mind || []).length
         ? `<p class="staff-meta">改变判断的条件：${esc(r.change_my_mind.join('；'))}</p>` : '';
+      // S8 UI.6：S3 候选判断展示——备选解释（兼容集内非选定候选）
+      const alts = (j.hypotheses || []).filter(h => h.id !== r.chosen_hypothesis_id);
+      const altsHtml = alts.length
+        ? `<p class="staff-meta">备选解释：${alts.map(h => esc(h.text)).join('；')}</p>` : '';
+      // S8 UI.6：指挥官反馈 + 玩家转述（正式结果只读，反馈进记忆）
+      const actions = `
+        <div class="staff-judgment-actions">
+          <span class="staff-kw">指挥官反馈：</span>
+          <button class="btn" data-feedback="approve" data-rid="${esc(r.id)}">采纳</button>
+          <button class="btn" data-feedback="reject" data-rid="${esc(r.id)}">驳回</button>
+          <button class="btn" data-feedback="defer" data-rid="${esc(r.id)}">暂缓</button>
+          <span class="staff-kw">转述给：</span>
+          ${this.staff.filter(o => o.actor_id !== s.actor_id && o.source === 'judgment')
+            .map(o => `<button class="btn" data-relay="${esc(o.actor_id)}" data-rid="${esc(r.id)}">${esc(o.display_name)}</button>`).join(' ')}
+        </div>`;
       const hypo = chosen
         ? `<p class="staff-chosen">【判断】${esc(chosen.text)}</p>` : '';
       const assumptions = (r.assumptions || []).length
@@ -211,10 +262,12 @@ class StaffDesk {
         </header>
         ${hypo}${refusal}
         ${r.recommendation ? `<p class="staff-recommendation">建议：${esc(r.recommendation)}</p>` : ''}
-        ${assumptions}${cmm}${errLine}
+        ${assumptions}${cmm}${altsHtml}${errLine}
         ${j.report ? `<p class="staff-report">${esc(j.report)}</p>` : ''}
+        ${actions}
       </article>`;
     }).join('') : '<p class="staff-empty">尚无正式判断——用上方入口要求判断</p>';
+    this.bindJudgmentActions(s);
   }
 }
 

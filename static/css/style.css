@@ -1167,5 +1167,15 @@ button.duty-item { cursor: pointer; text-decoration: underline; }
 .log-error-table { border-collapse: collapse; font-size: 11px; color: var(--color-ink-main); margin: 4px 0 10px; }
 .log-error-table th, .log-error-table td { border: 1px solid rgba(42, 34, 24, 0.35); padding: 3px 10px; text-align: left; }
 .log-error-table th { font-weight: bold; background: rgba(232, 220, 200, 0.6); }
+/* ── S8 UI.6 · S3/S4 联动（反馈/转述/备选解释/来访指示）── */
+.staff-judgment-actions {
+  display: flex; gap: 4px; align-items: center; flex-wrap: wrap;
+  border-top: 1px dashed rgba(42, 34, 24, 0.25); margin-top: 6px; padding-top: 5px;
+}
+.staff-judgment-actions button { font-size: 9px; padding: 1px 6px; }
+.staff-judgment-actions .staff-kw { margin: 0 2px; }
+.staff-row.staff-dot-active::after {
+  content: "●"; color: var(--color-enemy-red); margin-left: 4px; font-size: 9px;
+}
 
 
