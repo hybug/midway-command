@@ -14,8 +14,45 @@ from src.intel.judgment import EvidenceView
 from src.intel.models import Evidence
 
 
+def _identity_signal_from_classification(text: str) -> float:
+    """证据识别文本 → 识别信号（float 刻度；与 evidence_fit._CLASS_IDENTITY_SIGNAL 同族）。"""
+    t = (text or "").lower()
+    if "cv" in t or "航母" in text or "carrier" in t:
+        # 轻航母/护航航母识别弱于正规航母
+        return 0.8 if ("轻" in text or "cvl" in t) else 1.0
+    if "战列" in text or "bb" in t:
+        return 0.9
+    if "巡洋" in text or "ca" in t or "cl" in t:
+        return 0.4
+    if "运输" in text or "transport" in t:
+        return 0.2
+    if "未识别" in text or "unknown" in t:
+        return 0.0
+    return 0.3
+
+
 def _view_from_evidence(ev: Evidence) -> EvidenceView:
-    """规则侧装配投影（字段集与 intel.evidence_view 一致，无真值）。"""
+    """规则侧装配投影（字段集与 intel.evidence_view 一致，无真值）。
+
+    dimensions 额外携带证据的失真报告值（bearing/distance/count/位置/航向航速/
+    identity_signal）——evidence_fit 的评分输入；全部来自玩家所见同一失真值，
+    非规则侧真值。
+    """
+    reported = ev.reported or {}
+    dims: dict[str, float] = {
+        "identity_precision": ev.identity_precision,
+        "position_precision": ev.position_precision,
+        "count_precision": ev.count_precision,
+        "identity_signal": _identity_signal_from_classification(
+            str(reported.get("classification", "")) or ev.summary),
+    }
+    for key in ("bearing", "distance_nm", "count", "course", "speed"):
+        val = reported.get(key)
+        if isinstance(val, (int, float)):
+            dims[f"reported_{key}"] = float(val)
+    if ev.lat is not None and ev.lon is not None:
+        dims["reported_lat"] = float(ev.lat)
+        dims["reported_lon"] = float(ev.lon)
     return EvidenceView(
         evidence_id=ev.id,
         message_id=ev.message_id,
@@ -25,11 +62,7 @@ def _view_from_evidence(ev: Evidence) -> EvidenceView:
         received_at=ev.received_at,
         source_reliability=ev.source_reliability,
         summary=ev.summary,
-        dimensions={
-            "identity_precision": ev.identity_precision,
-            "position_precision": ev.position_precision,
-            "count_precision": ev.count_precision,
-        },
+        dimensions=dims,
     )
 
 
