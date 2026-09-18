@@ -176,8 +176,9 @@ curl -X POST localhost:8000/game/new -H "Content-Type: application/json" -d '{"t
 ## 八、给下一位的开工建议（顺序）
 
 1. 先跑 `pytest tests/ -q`（应 352 passed）与 `uvicorn server:app`，浏览器打开确认中途岛/珊瑚海都能进——**确认基线可信再动手**。
-2. 想动玩法 → 以 `docs/plans/gameplay-system-roadmap.md` 为长期路线图；S2 已完成，当前主攻 **S3 参谋认知与判断系统**，执行 `docs/plans/s3-staff-cognition-system-plan.md`；先完成珊瑚海判断纵切，不要同时铺开完整关系层。
-3. 想补 UI → 以 `docs/plans/s8-ui-ux-system-plan.md` 为现行跨系统 UI/UX 契约；先做五工作台与 Commander Desk 壳，再迁移 COMMS / INTEL / STAFF / LOG。
+2. 想动玩法 → 以 `docs/plans/gameplay-system-roadmap.md` 为长期路线图；S2 感知与情报、**S3 参谋认知与判断（Phase S3.0–S3.7，珊瑚海 5/7 与 5/8 纵切全通）均已执行完成**（规格 `docs/design/S3_COGNITION_SYSTEM.md`，代码 `src/cognition/`）；下一步按路线图是 **S4 参谋班子与关系系统**（前端契约桩已就位：`static/js/s4Adapter.js`，落地后只需接真实事件源）。
+3. 想补 UI → S8 五工作台重构已执行完成（Phase UI.0–UI.7，规格 `docs/design/S8_INTERFACE.md`：CHART/COMMS/INTEL/STAFF/LOG + Commander Desk + NotificationCenter + ISSUE ORDER）；收尾项见 `docs/plans/s8-ui-ux-system-plan.md` 执行记录。
+4. S3.8 收尾项：真实 LLM 接入后跑人物行为评估（Browning 风格/谨慎情报官/航空指挥官三类）并冻结五维权重（当前权重全部标注 v0，集中于 `src/cognition/formula.py` 与 `src/cognition/evidence_fit.py`）。
 4. 任何阶段改动前，读 `docs/reports/product-compare/sdd-ledger-final.md`——**所有历史裁定都在那**，避免重蹈。
 
 ---

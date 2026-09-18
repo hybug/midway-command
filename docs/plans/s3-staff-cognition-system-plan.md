@@ -1,6 +1,6 @@
 # S3 参谋认知与判断系统实施计划（s3-staff-cognition-system-plan）
 
-> 状态：**现行专项实施计划**
+> 状态：**已执行完成（Phase S3.0–S3.7 于 2026-09-18/19；S3.8 部分完成：统计方向评估已建，权重冻结留待真实 LLM 校准）**
 > 创建日期：2026-09-18
 > 上级路线图：`docs/plans/gameplay-system-roadmap.md`
 > 上游依赖：`docs/plans/s2-intelligence-system-plan.md`、`docs/design/S2_INTEL_SYSTEM.md`
@@ -9,6 +9,20 @@
 > 首批场景：珊瑚海 1942-05-07
 
 ---
+
+## 执行记录（各阶段收口时追加）
+
+| Phase | 状态 | 收口摘要 | Commit |
+|---|---|---|---|
+| S3.0 | ✅ 完成 | `src/cognition/{contracts,models,engine,roster,context}.py`：六模型（ActorProfile 五维校验/JudgmentTask 稳定键/Hypothesis 无评分字段/EvidenceFit/JudgmentResult/JudgmentMemory/Audit）+ TaskType/ConfidenceBand/ErrorType/RefusalReason + JudgmentEngine Protocol + 珊瑚海名册（fletcher 玩家/fitch/tf17_intel/tf17_ops）+ 角色证据权限矩阵 + 一手史料登记（TF17 报告/约克城行动报告）+ GameState 四容器；规格 `docs/design/S3_COGNITION_SYSTEM.md`；tests/test_cognition_contracts.py 23 测试；全量 498 passed | 1a1a4df |
+| S3.1 | ✅ 完成 | `candidates.py`（规范化：剥除 LLM 评分字段/结构去重/限量 3/规则侧 aggressiveness·novelty）+ `evidence_fit.py`（六维适配评分·缺维重新归一化·冲突惩罚·§7.3 plausible_set 容带 0.15）+ context.py 证据装配带失真报告值维度；fake LLM 生成测试；全量 511 passed | bacbda8 |
+| S3.2 | ✅ 完成 | `formula.py`（§7.4 五维评分公式/§7.5 偏差预算 level×(1.2−c)/persona_affinity 规则计算）+ `rule_engine.py`（恰好一次 JUDGMENT_CHECK/稳定键缓存防重骰/审计快照含种子）+ `errors.py`（§7.8 五维结构化距离）+ §7.7 三档置信度随引擎落地；统计方向测试（competence 100%↔25%、risk 均值 0.7↔−0.26、imagination 0.9↔0.1、initiative/autonomy 零影响，60 种子真实引擎）；同种子回放逐字段一致；全量 526 passed | 336d7db |
+| S3.3 | ✅ 完成 | 兼容集内零误判锁定/集外认知错误即时标记（低容带+高风险场景）/建议域随 chosen 转移（recommendation/change_my_mind/assumptions）/候选快照入审计/`evaluate_factual_error`+`after_action_error_report`（D11：真值只进入复盘入参，no_claim 口径：未主张维度不构成事实错误）；全量 536 passed | d949158 |
+| S3.4 | ✅ 完成 | `memory.py`：按 actor 硬隔离召回（D7 结构性）/锚定坚持（0.06×置信权重，审计留痕）/修订任务强制引用新证据或反馈（无引用 ValueError）/supersedes 版本链（旧记忆翻状态不删除）/指挥官反馈进记忆不改写原结果（§8.3）；锚定近平局选择级测试；全量 545 passed | 15b1f5d |
+| S3.5 | ✅ 完成 | `persona.py`：LLM 候选生成（人物 prompt=档案+职责边界+自身记忆，防泄漏字段白名单）/结构化结果只读渲染（【事实】【判断】【推测】markers，渲染不改写 result）/拒绝-不知道-职责外 refusal 路径（无骰子+转交建议）/无 LLM 机械降级显式标记「机械降级·非正式玩法路径」；不同人物 prompt 稳定差异测试；全量 553 passed | 54a0ab1 |
+| S3.6 | ✅ 完成 | `scenarios/coral_may7.py`：米西马 contact pad 错误事件（S2 协议无旁路：拍发→通信检定→收报→证据→工作项→简报）/三名参谋独立判断（候选-公式-报告-记忆全链）/勘误+陆军报告触发修订链（至少一名修订+旧版本保留+修订理由引用新证据）/指挥官反馈不改写原结果/认知错误 vs 事实误差分离复盘/同种子全链回放；泄漏扫描（shokaku/zuikaku/kido butai 不可见面）；全量 605 passed | a254ba6 |
+| S3.7 | ✅ 完成 | `scenarios/coral_may8.py`：多阶段侦察报告（航向 006/120 → 真方位 028/175 勘误链）/motion 维随 course-speed 要素激活/坚持与修订比较视图 `revision_comparison`（玩家可比较谁因证据合理改变）/Fitch 09:08 任 OTC 入档并呈现名册档案；修复 S2 勘误登记质量带精度传播（conflicts.py）；同种子回放；全量 609 passed | 3679ce5 |
+| S3.8 | ◐ 部分完成 | UI 区分判断/依据/建议/修订已由 S8 UI.4-STAFF 与 UI.5-LOG 落地；战后认知链展示已由 /log/after-action + LOG-AFTER 视图落地；统计方向评估（参数消融雏形）已由 S3.2 方向测试建立；**权重冻结与真实 LLM 行为评估（Browning 风格/谨慎情报官/航空指挥官三类验证）留待接入真实 LLM 后执行**——本环境 LLM 配额受限，全部判断走降级路径验证 | —（UI 部分见 S8 提交） |
 
 ## 一、S3 的目标
 

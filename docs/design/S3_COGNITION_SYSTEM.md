@@ -99,14 +99,14 @@ fletcher   : via=[inbox, briefs_submitted, approved_plots]（=S2 PLAYER_VISIBLE_
 
 ## 五、实施阶段对照（计划 §十四）
 
-| Phase | 内容 | 状态 |
+| Phase | 内容 | 状态（Commit） |
 |---|---|---|
-| S3.0 | 契约与战区班子（六模型+stable key+Engine 接口+名册权限+史料） | ✅ 本文件 + src/cognition/{contracts,models,engine,roster,context}.py + GameState 四容器；tests/test_cognition_contracts.py 23 测试 |
-| S3.1 | 候选与 evidence_fit | 进行中 |
-| S3.2 | 判断公式与骰子 | — |
-| S3.3 | 错误、置信度与建议 | — |
-| S3.4 | 判断记忆与修订 | — |
-| S3.5 | LLM 候选生成与人物化表达 | — |
-| S3.6 | 珊瑚海五月七日纵切 | — |
-| S3.7 | 珊瑚海五月八日扩展 | — |
-| S3.8 | 调参、评估与界面 | — |
+| S3.0 | 契约与战区班子 | ✅ 1a1a4df（tests/test_cognition_contracts.py） |
+| S3.1 | 候选与 evidence_fit（candidates.py/evidence_fit.py） | ✅ bacbda8 |
+| S3.2 | 判断公式与骰子（formula.py/rule_engine.py/errors.py+置信度） | ✅ 336d7db |
+| S3.3 | 错误、置信度与建议（建议域转移/认知-事实误差分离） | ✅ d949158 |
+| S3.4 | 判断记忆与修订（memory.py 召回/锚定/supersedes/反馈） | ✅ 15b1f5d |
+| S3.5 | LLM 候选生成与人物化表达（persona.py+refusal 路径+降级） | ✅ 54a0ab1 |
+| S3.6 | 珊瑚海五月七日纵切（scenarios/coral_may7.py） | ✅ a254ba6 |
+| S3.7 | 珊瑚海五月八日扩展（scenarios/coral_may8.py+revision_comparison+OTC） | ✅ 3679ce5 |
+| S3.8 | 调参、评估与界面 | ◐ UI/认知链展示已由 S8 UI.4/UI.5 落地；统计方向评估已建（S3.2 方向测试）；权重冻结与真实 LLM 行为评估待接入真实 LLM |

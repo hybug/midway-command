@@ -1,12 +1,30 @@
 # S8 交互与表现系统实施计划（s8-ui-ux-system-plan）
 
-> 状态：**现行跨系统专项计划**
+> 状态：**已执行完成（Phase UI.0–UI.7 于 2026-09-18/19）**
 > 创建日期：2026-09-18
 > 上级路线图：`docs/plans/gameplay-system-roadmap.md`
 > 关联系统：S2 / S3 / S4 / S5 / S7
 > 目标：把 S2 的文书链与 S4 的参谋班子行为转化为可读、可操作、可追溯的指挥官体验
 
 ---
+
+## 执行记录（各阶段收口时追加）
+
+规格文件：`docs/design/S8_INTERFACE.md`（三层结构/1440×900 线框/通知分级/数据源对照/S4 契约形状）。
+缓存号全链 1780998019 → 1780998028（每阶段递增，一致性守卫锁定）。
+
+| Phase | 状态 | 收口摘要 | Commit |
+|---|---|---|---|
+| UI.0 | ✅ 完成 | S8_INTERFACE.md：L0/L1/L2 三层结构+z-index 台账+五工作台唯一入口+通知六级taxonomy+工作台数据源白名单对照（含 S4 适配器契约形状 StaffVisitEvent/RelayRecord/DossierSummary/ConflictDossier）；test_s8_interface.py 5 测试 | 0da7879 |
+| UI.1 | ✅ 完成 | 五工作台导航退役 NPC 页签（npc-tabs→workbench-nav，NPC_TAB_ABBR 保留供名册）/Commander Desk 壳（ESC 返回+来源上下文+不含推进调用）/右栏值班栏（灯号+最高优先级+最近动态+打开案卷台）/NotificationCenter（六级+FLASH·STAFF_VISIT 打断制+队列）/ISSUE ORDER 全局唯一正式命令入口（建议卡迁入弹层）/全局聊天输入移除/s4Adapter 桩；全量 566 passed | 236681b |
+| UI.2 | ✅ 完成 | commsDesk.js 五频道（INCOMING/TF17·TF11/CORRECTIONS/OUTGOING/ARCHIVE）+/comms/channels 分区端点（D1：在途丢失不可见，outgoing FILED 例外明示）+inbox 白名单扩展（时间链/路由/转述链/关联 brief·assessment 跳转）+原文只读 pre+发报草稿确认（POST /comms/outgoing，不构成正式命令）；全量 577 passed | c253c20（+守卫修复 59c672d） |
+| UI.3 | ✅ 完成 | intelBoard 重构为案卷台四视图：SITREP（/intel/sitrep 派生摘要）/BRIEFS（三色语义+证据跳转）/PLOTS 审图模式（S2 四动作保留+批注+版本链比较 compareVersions）/EVIDENCE（/intel/evidence 已呈报证据+used-by 跳转）+右栏迷你摘要；默认海图仍只显示已批准标图；全量 586 passed | 0b20cfb |
+| UI.4 | ✅ 完成 | staffDesk.js 三栏（名册/对话与正式呈报/极简档案）+/staff/roster 白名单（无 competence 等内部数值，玩家本人不进名册）+/judgment/tasks（权限装配→引擎→人物化报告）+/npcs/{id}/judgments+/judgment/results/{id}+/reconsider（无新证据反馈拒绝建版，context_version+1 新稳定键）+判断卡（置信度/错误/建议/假设/反证/报告）；全量 599 passed | 08db086 |
+| UI.5 | ✅ 完成 | logDesk.js 三视图：TIMELINE（/log/timeline 统一事件：电报/判断/标图决议/反馈/OTC，可跳转来源工作台）/ORDERS（决议+外发电报+指挥权变化）/AFTER ACTION（/log/after-action：S2 因果链+S3 判断复盘+认知错误 vs 事实误差分离表+工具/骰子审计）；全量 618 passed | 503be7c |
+| UI.6 | ✅ 完成 | 玩家转述链（POST /staff/relay 记录 from_actor/to_actor/from_result_id，GET /staff/relays，时间线 player_relay 事件）/指挥官反馈端点（POST /judgment/results/{id}/feedback→进记忆不改写结果，非法值 400）/判断卡备选解释+反馈采纳驳回暂缓按钮+转述目标按钮/S4 事件桩（installFixtures/clearFixtures+形状消毒）+来访分歧经 NotificationCenter 消费；红线测试（无共识计算/无数值关系渲染）；全量 626 passed | a34e909 |
+| UI.7 | ✅ 完成 | 可读性（案卷正文 13px 下限）+键盘（ESC 关闭/Alt+1-5 工作台直达/焦点可见 outline）/滚动隔离（overscroll-behavior contain）/时间线渲染上限 200（增量保护）/1280 与 1360 断点降级（右栏 280px/案卷三栏收窄/SITREP 两列）；无头 Chrome 1440×900+1280×720 截图+browser-use 实况交互验证（珊瑚海开局/STAFF 判断流/ESC/Alt 键/ISSUE ORDER）**抓出并修复 renderShell↔onSectionChange 无限递归**；全量 631 passed | 9685c9e（+递归修复与截图 8ee7fd4） |
+
+截图证据：`docs/reports/s3-s8/`（fixture-desk-1440×900 / fixture-desk-1280×720 / live-campaign-select-1440×900）。
 
 ## 一、目标
 

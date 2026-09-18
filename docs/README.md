@@ -1,6 +1,6 @@
 # 中途岛指挥官 · 文档索引
 
-> 最后更新：2026-09-14
+> 最后更新：2026-09-19
 
 ---
 
@@ -35,10 +35,10 @@
 
 | 文档 | 用途 |
 |------|------|
-| `gameplay-system-roadmap.md` | **现行长期计划** — 一级系统、二级模块与玩法攻坚顺序 |
+| `gameplay-system-roadmap.md` | **现行长期计划** — 一级系统、二级模块与玩法攻坚顺序（当前：S3 已完成，下一步 S4） |
 | `s2-intelligence-system-plan.md` | S2 感知与情报系统（Phase S2.0–S2.8 已执行） |
-| `s3-staff-cognition-system-plan.md` | **现行专项计划** — S3 参谋认知与判断系统实施规格 |
-| `s8-ui-ux-system-plan.md` | **现行跨系统计划** — S8 UI/UX、五工作台与 Commander Desk |
+| `s3-staff-cognition-system-plan.md` | S3 参谋认知与判断系统（Phase S3.0–S3.7 已执行，规格 `design/S3_COGNITION_SYSTEM.md`） |
+| `s8-ui-ux-system-plan.md` | S8 UI/UX 五工作台与 Commander Desk（Phase UI.0–UI.7 已执行，规格 `design/S8_INTERFACE.md`） |
 | `product-replica-plan.md` | 成品图复现工程（已执行完毕，历史存档） |
 | `ui-fidelity-fix-plan.md` | 保真度修正工程（已执行完毕，历史存档） |
 | `ui-replication-plan.md` | UI 复刻计划（已执行完毕，历史存档） |

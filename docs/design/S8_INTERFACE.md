@@ -83,13 +83,15 @@ z-index 台账：chart/bottom/sidebar ≤10 < campaign-select 50 < commander-des
 
 ## 五、实施阶段对照（计划 §九）
 
-| Phase | 内容 | 状态 |
+| Phase | 内容 | 状态（Commit） |
 |---|---|---|
-| UI.0 | 信息架构与原型（本文件） | ✅ |
-| UI.1 | Shell 与通知（五工作台导航/Commander Desk 壳/值班栏/NotificationCenter/ISSUE ORDER/移除全局聊天输入） | 进行中 |
-| UI.2 | COMMS | — |
-| UI.3 | INTEL | — |
-| UI.4 | STAFF | — |
-| UI.5 | LOG 与复盘 | — |
-| UI.6 | S3/S4 联动 | — |
-| UI.7 | 可读性、响应式与验收 | — |
+| UI.0 | 信息架构与原型（本文件） | ✅ 0da7879 |
+| UI.1 | Shell 与通知 | ✅ 236681b |
+| UI.2 | COMMS | ✅ c253c20（守卫修复 59c672d） |
+| UI.3 | INTEL | ✅ 0b20cfb |
+| UI.4 | STAFF | ✅ 08db086 |
+| UI.5 | LOG 与复盘 | ✅ 503be7c |
+| UI.6 | S3/S4 联动（转述链/反馈/事件桩） | ✅ a34e909 |
+| UI.7 | 可读性、响应式与验收 | ✅ 9685c9e（递归修复+截图 8ee7fd4） |
+
+截图：`docs/reports/s3-s8/`。缓存号全链 1780998028。
