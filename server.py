@@ -817,6 +817,178 @@ async def reconsider_judgment(npc_id: str, result_id: str,
     }
 
 
+# ── S8 UI.5 LOG 与复盘（M8.6：时间线/命令链/战后案卷）──
+
+
+def _actual_reference_dict(state):
+    """战后复盘真值参照（D11：只在此构造，产物只有误差结论，无真值字符串）。"""
+    for enemy in state.actual_enemy:
+        carriers = enemy.get("carriers", [])
+        pos = enemy.get("position", {})
+        if carriers:
+            return {
+                "classification": "CV",
+                "count": len(carriers),
+                "position": (pos.get("lat"), pos.get("lon")),
+            }
+    return {}
+
+
+@app.get("/log/timeline")
+async def log_timeline():
+    """统一事件时间线（M8.6.1）：电报/判断/批准/反馈/OTC/S4 冲突——追加制可回溯。"""
+    from src.intel.contracts import MessageStatus
+    events = []
+    for m in game_state.messages:
+        if m.status not in {MessageStatus.RECEIVED, MessageStatus.LOGGED,
+                            MessageStatus.ROUTED, MessageStatus.PROCESSED,
+                            MessageStatus.ARCHIVED, MessageStatus.CORRECTED}:
+            continue
+        events.append({
+            "at": _iso(m.received_at or m.filed_at),
+            "kind": "message",
+            "ref_id": m.id,
+            "actor": m.sender_call_sign or m.sender_id,
+            "text": (m.raw_text or "")[:60],
+            "jump": {"workbench": "COMMS", "target": m.id},
+        })
+    for r in game_state.judgment_results:
+        events.append({
+            "at": _iso(r.created_at),
+            "kind": "judgment",
+            "ref_id": r.id,
+            "actor": r.actor_id,
+            "text": f"正式判断（{r.confidence_band}）"
+                    + (f" · {r.refusal_reason}" if r.refusal_reason else ""),
+            "jump": {"workbench": "STAFF", "target": r.actor_id},
+        })
+    for d in game_state.commander_decisions:
+        events.append({
+            "at": _iso(d.at),
+            "kind": "plot_decision",
+            "ref_id": d.id,
+            "actor": "player",
+            "text": f"标图 {d.plot_id} · {d.action} · {d.comment[:40]}",
+            "jump": {"workbench": "INTEL", "target": d.plot_id},
+        })
+    for a in game_state.intel_audit:
+        if a.action == "commander_feedback":
+            events.append({
+                "at": _iso(a.at), "kind": "commander_feedback",
+                "ref_id": a.target_id, "actor": a.actor_id,
+                "text": a.reason[:60],
+                "jump": {"workbench": "STAFF", "target": a.actor_id},
+            })
+        elif a.action == "otc_change":
+            events.append({
+                "at": _iso(a.at), "kind": "otc_change",
+                "ref_id": a.target_id, "actor": a.actor_id,
+                "text": a.reason[:60],
+                "jump": {"workbench": "STAFF", "target": a.target_id},
+            })
+    events.sort(key=lambda e: e["at"] or "")
+    # S4 冲突事件（引擎未实施：经前端适配器补充；v0 为空集合，字段契约在案）
+    return {"events": events, "s4_events": []}
+
+
+@app.get("/log/after-action")
+async def log_after_action():
+    """战后案卷（M8.6.5-6）：S2 因果链 + S3 认知错误/事实误差分离报告。
+
+    真值只在服务端本调用内用于误差计算（D11），下发负载只含误差结论。
+    """
+    from src.cognition.errors import after_action_error_report
+    chains = []
+    plot_ids = {p.plot_id for p in game_state.plot_proposals}
+    for plot_id in sorted(plot_ids):
+        proposals = sorted(
+            (p for p in game_state.plot_proposals if p.plot_id == plot_id),
+            key=lambda p: p.version,
+        )
+        decisions = [d for d in game_state.commander_decisions
+                     if d.plot_id == plot_id]
+        assessment_ids = {a.id for p in proposals for a in game_state.assessments
+                          if a.id in p.assessment_ids}
+        assessments = [a for a in game_state.assessments
+                       if a.id in assessment_ids]
+        claims = [c for c in game_state.claims
+                  if c.assessment_id in assessment_ids]
+        evidence_ids = {e for a in assessments for e in a.based_on_evidence_ids}
+        evidence = [e for e in game_state.evidence if e.id in evidence_ids]
+        approved = next((ap for ap in game_state.approved_plots
+                         if ap.plot_id == plot_id), None)
+        chains.append({
+            "plot_id": plot_id,
+            "versions": [
+                {
+                    "version": p.version,
+                    "proposal_id": p.id,
+                    "status": p.status,
+                    "change_summary": p.change_summary,
+                    "author": p.author_actor_id,
+                    "created_at": _iso(p.created_at),
+                    "annotations": p.annotations,
+                    "method": p.method,
+                }
+                for p in proposals
+            ],
+            "decisions": [
+                {
+                    "id": d.id, "at": _iso(d.at), "action": d.action,
+                    "proposal_id": d.proposal_id, "comment": d.comment,
+                }
+                for d in decisions
+            ],
+            "assessments": [
+                {
+                    "id": a.id, "author": a.author_actor_id,
+                    "narrative": a.narrative,
+                    "confidence": a.confidence_dimensions,
+                    "dice_record_ids": a.dice_record_ids,
+                    "conflict_ids": a.conflict_ids,
+                }
+                for a in assessments
+            ],
+            "claims": [
+                {"id": c.id, "type": c.claim_type, "text": c.text,
+                 "actor": c.actor_id}
+                for c in claims
+            ],
+            "evidence": [
+                {"id": e.id, "source": e.source_id, "summary": e.summary,
+                 "status": e.status.value, "received_at": _iso(e.received_at)}
+                for e in evidence
+            ],
+            "approved_state": approved.state if approved else None,
+            "current_version": approved.current_version if approved else None,
+        })
+    # S3 判断的复盘数据 + 认知/事实误差分离
+    judgments = [
+        {
+            "result": _result_public(r),
+            "report": game_state.judgment_reports.get(r.id, ""),
+        }
+        for r in game_state.judgment_results
+    ]
+    actual = _actual_reference_dict(game_state)
+    error_report = [r.model_dump() for r in
+                    after_action_error_report(game_state, actual)]
+    tool_calls = [
+        {"id": t.id, "at": _iso(t.at), "actor": t.actor_id,
+         "tool": t.tool_name, "evidence_ids": t.evidence_ids}
+        for t in game_state.tool_calls
+    ]
+    dice = [
+        {"id": r.check_id, "type": r.check_type, "actor": r.actor_id,
+         "at": _iso(r.game_time), "seed": r.random_seed,
+         "final": r.final_roll, "degree": r.degree}
+        for r in game_state.check_records
+    ]
+    return {"chains": chains, "judgments": judgments,
+            "error_report": error_report,
+            "tool_calls": tool_calls, "check_records": dice}
+
+
 # ── S8 UI.2 COMMS 收报室（M8.3：频道分区/发报草稿确认）──
 
 

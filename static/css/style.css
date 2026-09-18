@@ -1142,5 +1142,30 @@ button.duty-item { cursor: pointer; text-decoration: underline; }
 .dossier-role { font-size: 10px; color: var(--color-ink-fade); margin-bottom: 6px; }
 .dossier-line { font-size: 12px; line-height: 1.5; color: var(--color-ink-main); margin-bottom: 6px; }
 .dossier-recent-item { font-size: 10px; color: var(--color-ink-fade); line-height: 1.5; margin: 2px 0; }
+/* ── S8 UI.5 · LOG 三视图（M8.6）── */
+.log-head { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(42, 34, 24, 0.4); padding-bottom: 6px; margin-bottom: 8px; }
+.log-tabs { display: flex; gap: 4px; }
+.log-tab {
+  font-family: var(--font-typewriter); font-size: 11px; letter-spacing: 1px;
+  background: transparent; border: 1px solid var(--color-ink-faint);
+  color: var(--color-ink-main); padding: 3px 10px; cursor: pointer;
+}
+.log-tab.active { background: var(--color-ink-main); color: var(--color-paper-base); border-color: var(--color-ink-main); font-weight: bold; }
+.log-timeline { list-style: none; margin: 0; padding: 0; max-width: 900px; }
+.log-event {
+  display: flex; gap: 8px; align-items: baseline; padding: 5px 4px;
+  border-bottom: 1px solid rgba(42, 34, 24, 0.1); font-size: 12px; color: var(--color-ink-main);
+}
+.log-time { color: var(--color-ink-fade); font-size: 11px; min-width: 44px; }
+.log-kind { font-size: 10px; font-weight: bold; letter-spacing: 1px; min-width: 72px; color: var(--color-ink-fade); }
+.log-event-judgment .log-kind { color: var(--color-enemy-red); }
+.log-event-plot_decision .log-kind { color: var(--color-ink-main); }
+.log-event-commander_feedback .log-kind { color: #a06020; }
+.log-event-otc_change .log-kind { color: #4a6a4a; }
+.log-text { flex: 1; line-height: 1.45; }
+.log-jump { font-size: 9px; padding: 1px 6px; }
+.log-error-table { border-collapse: collapse; font-size: 11px; color: var(--color-ink-main); margin: 4px 0 10px; }
+.log-error-table th, .log-error-table td { border: 1px solid rgba(42, 34, 24, 0.35); padding: 3px 10px; text-align: left; }
+.log-error-table th { font-weight: bold; background: rgba(232, 220, 200, 0.6); }
 
 

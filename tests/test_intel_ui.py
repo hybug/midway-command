@@ -21,7 +21,7 @@ def test_index_has_intel_containers():
 def test_index_cache_version_bumped_and_consistent():
     html = INDEX.read_text()
     versions = set(re.findall(r"\?v=(\d+)", html))
-    assert versions == {"1780998023"}, f"index.html 缓存号应为 1780998023: {versions}"
+    assert versions == {"1780998024"}, f"index.html 缓存号应为 1780998024: {versions}"
 
 
 def test_intel_board_consumes_whitelist_endpoints():
@@ -72,7 +72,7 @@ def test_intel_fixture_page_marked_and_wired():
     """定妆页必须带 FIXTURE 标识（HANDOFF 纪律），且走真实 intelBoard.js。"""
     fx = (ROOT / "static" / "dev" / "intel-fixture.html").read_text()
     assert "FIXTURE — 非游戏画面" in fx
-    assert "intelBoard.js?v=1780998023" in fx
+    assert "intelBoard.js?v=1780998024" in fx
     assert "window.fetch = " in fx      # 数据为桩，不触真实接口
 
 

@@ -87,8 +87,13 @@ async function init() {
       unmount: () => {},
     });
   }
-  desk.registerSection('LOG', { mount: el => { el.innerHTML =
-    '<p class="desk-placeholder">LOG 时间线与复盘（UI.5 迁入）</p>'; } });
+  if (window.LogDesk) {
+    const logDesk = new LogDesk();
+    desk.registerSection('LOG', {
+      mount: el => logDesk.mount(el),
+      unmount: () => {},
+    });
+  }
   window.__desk = desk;
   desk.onSectionChange = (section) => {
     activeSection = section || 'CHART';
