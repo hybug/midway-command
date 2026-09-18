@@ -306,13 +306,18 @@ def _observation_by_id(state, obs_id):
 def _reported_from_message(msg, obs) -> dict:
     """电文可见值（失真后的报告要素，非真值）。"""
     if msg.fields:
-        return {
+        reported = {
             "bearing": msg.fields.get("bearing"),
             "distance_nm": msg.fields.get("distance_nm"),
             "count": msg.fields.get("count"),
             "classification": msg.fields.get("classification", ""),
             "source_quality": msg.fields.get("quality", ""),
         }
+        # S3.7：航向/航速要素随证据保留（motion 维评分输入）
+        for key in ("course", "speed"):
+            if msg.fields.get(key) is not None:
+                reported[key] = msg.fields[key]
+        return reported
     if obs:  # 旧电文无要素字段时退回观测（不含真值引用）
         return {"bearing": int(obs.bearing_true), "distance_nm": int(obs.distance_nm_true),
                 "count": obs.carrier_count_true}

@@ -634,6 +634,14 @@ async def staff_roster():
             if task:
                 current_focus = task.question_normalized[:40]
         recent = []
+        # S3.7：指挥权变化（OTC）入档案（自然语言，非数值）
+        for entry in game_state.intel_audit:
+            if entry.action == "otc_change" and entry.target_id == actor.actor_id:
+                recent.append({
+                    "at": _iso(entry.at),
+                    "kind": "otc",
+                    "note": entry.reason or "被指定为战术指挥官（OTC）",
+                })
         if last_feedback:
             recent.append({
                 "at": _iso(last_feedback.created_at),

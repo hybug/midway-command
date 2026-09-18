@@ -206,6 +206,8 @@ def apply_correction_on_arrival(state, correction: MessageEnvelope) -> list:
         fleet_pos = (tf.carriers[0].position.lat, tf.carriers[0].position.lon)
         position = _bearing_distance_to_position(
             fleet_pos, float(fields["bearing"]), float(fields["distance_nm"]))
+    precision = {"high": 0.9, "standard": 0.7, "low": 0.4}.get(
+        str(fields.get("quality", "")), 0.5)
     new_ev = intel.register_evidence(
         state,
         message=correction,
@@ -217,6 +219,11 @@ def apply_correction_on_arrival(state, correction: MessageEnvelope) -> list:
         reported=dict(fields),
         observed_at=correction.observed_at,
         source_reliability=(old_ev.source_reliability if old_ev else 0.6),
+        # S3.7 修复：勘误电文的质量带同样决定识别/位置/数量精度
+        # （与 flow._receive_report 的 quality 映射一致）
+        identity_precision=precision,
+        position_precision=precision,
+        count_precision=precision,
     )
     if old_ev is not None:
         new_ev.supersedes_evidence_id = old_ev.id

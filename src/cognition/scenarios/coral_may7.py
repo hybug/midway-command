@@ -86,13 +86,15 @@ def build_coral_may7_state(seed=42):
 
 
 def _file_and_transmit(state, *, sender_id, call_sign, kind, raw_text, fields,
-                       observation=None, priority=WorkPriority.FLASH):
+                       observation=None, priority=WorkPriority.FLASH,
+                       supersedes_message_id=None):
     """按 S2 统一协议拍发：落档 → 通信链 → 通信检定（延迟/丢失）→ ETA。"""
     msg = MessageEnvelope(
         sender_id=sender_id, sender_call_sign=call_sign,
         recipient_ids=["TF17 FLAG"], priority=priority, message_kind=kind,
         observed_at=state.clock.game_time, raw_text=raw_text,
         fields=dict(fields), observation_id=observation.id if observation else None,
+        supersedes_message_id=supersedes_message_id,
     )
     intel.file_message(state, msg, by=sender_id, reason="纵切电文拍发")
     intel.mark_in_transit(state, msg, by="TBS 通信链", reason="发往旗舰")
@@ -143,7 +145,7 @@ def file_pad_error_correction(state, original):
     return _file_and_transmit(
         state, sender_id="sbd_scout_pilot", call_sign=original.sender_call_sign,
         kind="correction", raw_text=text, fields=dict(_CORRECTION_REPORT),
-        priority=WorkPriority.CORRECTION)
+        priority=WorkPriority.CORRECTION, supersedes_message_id=original.id)
 
 
 def file_army_air_report(state):
