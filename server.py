@@ -28,6 +28,7 @@ from src.agents.intel_officer import IntelOfficerNPC
 from src.agents.navigator import NavigatorNPC
 from src.npc_config import NPC_REGISTRY
 from src.pipeline import build_default_pipeline
+from src.cognition.persona import render_report
 from src.ap import consume_ap, has_ap, get_ap_status
 from src.mission import plan_mission, confirm_mission, reject_mission
 from src.aircraft import recall_air_group
@@ -535,6 +536,277 @@ async def intel_evidence():
             "used_in_plot_ids": sorted(set(in_plots.get(e.id, []))),
         })
     return {"evidence": out}
+
+
+# ── S8 UI.4 STAFF 参谋工作台（M8.5：名册/正式判断/极简档案）──
+
+
+def _make_generator(actor):
+    """候选生成工厂：LLM 可用则人物化生成；不可用由调用方降级（测试可替换）。"""
+    from src.cognition.persona import LLMCandidateGenerator
+    return LLMCandidateGenerator(actor)
+
+
+def _render_for(actor, task, result, hypotheses, client=None):
+    """人物化渲染（测试可替换）；无 LLM 时 render_report 内部走机械降级。"""
+    from src.cognition.persona import render_report
+    if client is None:
+        try:
+            from src.llm import get_client
+            client = get_client()
+        except Exception:
+            client = None
+    return render_report(actor, task, result, hypotheses, client=client)
+
+
+def _result_public(r):
+    return {
+        "id": r.id,
+        "task_id": r.task_id,
+        "actor_id": r.actor_id,
+        "chosen_hypothesis_id": r.chosen_hypothesis_id,
+        "plausible_hypothesis_ids": r.plausible_hypothesis_ids,
+        "confidence_band": r.confidence_band,
+        "error_type": r.error_type,
+        "error_severity": r.error_severity,
+        "recommendation": r.recommendation,
+        "assumptions": r.assumptions,
+        "change_my_mind": r.change_my_mind,
+        "refusal_reason": r.refusal_reason,
+        "created_at": _iso(r.created_at),
+        "supersedes_result_id": r.supersedes_result_id,
+    }
+
+
+def _hypotheses_public(audit):
+    return [
+        {
+            "id": h.get("id"), "text": h.get("text"),
+            "predicted_class": h.get("predicted_class"),
+            "assumptions": h.get("assumptions", []),
+        }
+        for h in (audit.hypotheses if audit else [])
+    ]
+
+
+@app.get("/staff/roster")
+async def staff_roster():
+    """参谋名册（M8.5.1/M8.5.5 极简档案）：身份/状态/关注/最近互动。
+
+    白名单红线：不输出 competence 等内部参数、不输出他人私有判断记忆。
+    """
+    from src.cognition.roster import CORAL_SEA_ACTORS
+    staff = []
+    for actor_id, display in NPC_DISPLAY.items():
+        staff.append({
+            "actor_id": actor_id,
+            "display_name": display["sender"],
+            "role": display["role"],
+            "source": "chat",
+            "dossier": {
+                "status_line": "在舱待命",
+                "current_focus": "—",
+                "recent": [],
+            },
+        })
+    for actor in CORAL_SEA_ACTORS:
+        if actor.is_player:
+            # 玩家本人不进名册（指挥官不给自己写档案）
+            continue
+        memories = [m for m in reversed(game_state.judgment_memories)
+                    if m.actor_id == actor.actor_id]
+        open_mem = next((m for m in memories
+                         if m.status == "open" and m.selected_hypothesis), None)
+        last_feedback = next((m for m in memories if m.commander_decision), None)
+        status_line = "在舱待命"
+        if last_feedback and memories and memories[0] is last_feedback:
+            status_line = f"指挥官已{FEEDBACK_CN.get(last_feedback.commander_decision, '回应')}其最新建议"
+        elif open_mem:
+            status_line = "已呈报判断，待指挥官指示"
+        elif memories:
+            status_line = "判断已被修订，观察新证据"
+        current_focus = "—"
+        if open_mem:
+            result = next((r for r in game_state.judgment_results
+                           if r.id == open_mem.result_id), None)
+            task = next((t for t in game_state.judgment_tasks
+                         if t.id == (result.task_id if result else "")), None)
+            if task:
+                current_focus = task.question_normalized[:40]
+        recent = []
+        if last_feedback:
+            recent.append({
+                "at": _iso(last_feedback.created_at),
+                "kind": "feedback",
+                "note": f"指挥官{FEEDBACK_CN.get(last_feedback.commander_decision, '反馈')}其对「"
+                        f"{(last_feedback.revision_reason or '此前判断')[:24]}」的处理",
+            })
+        if open_mem:
+            recent.append({
+                "at": _iso(open_mem.created_at),
+                "kind": "judgment",
+                "note": "就当前关注呈报正式判断",
+            })
+        staff.append({
+            "actor_id": actor.actor_id,
+            "display_name": actor.display_name,
+            "role": actor.role,
+            "domain": actor.domain,
+            "source": "judgment",
+            "dossier": {
+                "status_line": status_line,
+                "current_focus": current_focus,
+                "recent": recent[:2],        # 极简档案：最近两次互动
+            },
+        })
+    return {"staff": staff}
+
+
+FEEDBACK_CN = {
+    "approve": "批准", "reject": "驳回", "defer": "暂缓",
+    "request_revision": "要求修订", "partial_approve": "部分批准",
+}
+
+
+class JudgmentTaskRequest(BaseModel):
+    actor_id: str
+    question: str
+    domain: str = ""          # 缺省用角色 domain
+    evidence_ids: list[str] = []   # 缺省=该角色权限内全部
+
+
+def _run_judgment(actor, question: str, domain: str = "",
+                  evidence_ids: Optional[list[str]] = None,
+                  revision_reason: str = "",
+                  supersedes_task_id: Optional[str] = None,
+                  context_version: int = 1):
+    """创建 JudgmentTask 并经规则引擎执行（恰好一次检定），返回 (task, result)。"""
+    from src.cognition import context as cognition
+    from src.cognition.memory import recall_relevant_memories
+    from src.cognition.models import JudgmentContext, JudgmentTask
+    from src.cognition.rule_engine import RuleJudgmentEngine
+    views = cognition.actor_evidence_views(game_state, actor)
+    if evidence_ids:
+        allow = set(evidence_ids)
+        views = [v for v in views if v.evidence_id in allow]
+    memories = recall_relevant_memories(
+        game_state, actor.actor_id,
+        evidence_ids=[v.evidence_id for v in views])
+    ctx = JudgmentContext(
+        actor=actor, evidence=views, memories=memories,
+        now=game_state.clock.game_time,
+        duty_boundary=list(actor.duty_boundary),
+    )
+    task = JudgmentTask(
+        task_type="assess", domain=domain or actor.domain,
+        actor_id=actor.actor_id, question=question,
+        evidence_ids=[v.evidence_id for v in views],
+        context_version=context_version,
+        source="revision" if supersedes_task_id else "commander",
+        supersedes_task_id=supersedes_task_id,
+        revision_reason=revision_reason or None,
+    )
+    engine = RuleJudgmentEngine(game_state, _make_generator(actor))
+    return task, engine.assess(task, ctx)
+
+
+@app.post("/judgment/tasks")
+async def create_judgment_task(req: JudgmentTaskRequest):
+    """指挥官要求正式判断（§7.3 用户流程）：JudgmentTask → 结果 + 人物化报告。"""
+    from src.cognition.roster import get_actor
+    try:
+        actor = get_actor(req.actor_id)
+    except KeyError:
+        raise HTTPException(404, f"参谋 '{req.actor_id}' 不在名册中。")
+    if not req.question.strip():
+        raise HTTPException(400, "判断问题不能为空。")
+    task, result = _run_judgment(actor, req.question.strip(), domain=req.domain,
+                                 evidence_ids=req.evidence_ids)
+    audit = next((a for a in game_state.judgment_audits
+                  if a.result_id == result.id), None)
+    report = _render_for(actor, task, result, _hypotheses_public(audit))
+    game_state.judgment_reports[result.id] = report
+    return {
+        "result": _result_public(result),
+        "hypotheses": _hypotheses_public(audit),
+        "report": report,
+    }
+
+
+@app.get("/judgment/results/{result_id}")
+async def judgment_result_detail(result_id: str):
+    result = next((r for r in game_state.judgment_results if r.id == result_id), None)
+    if result is None:
+        raise HTTPException(404, "判断结果不存在。")
+    audit = next((a for a in game_state.judgment_audits
+                  if a.result_id == result_id), None)
+    return {
+        "result": _result_public(result),
+        "hypotheses": _hypotheses_public(audit),
+        "report": game_state.judgment_reports.get(result_id, ""),
+    }
+
+
+@app.get("/npcs/{npc_id}/judgments")
+async def npc_judgments(npc_id: str):
+    """某参谋的正式判断历史（旧版本完整保留，追加制）。"""
+    results = [r for r in game_state.judgment_results if r.actor_id == npc_id]
+    audits = {a.result_id: a for a in game_state.judgment_audits}
+    return {
+        "judgments": [
+            {
+                "result": _result_public(r),
+                "hypotheses": _hypotheses_public(audits.get(r.id)),
+                "report": game_state.judgment_reports.get(r.id, ""),
+            }
+            for r in results
+        ]
+    }
+
+
+class ReconsiderRequest(BaseModel):
+    reason: str = ""
+    new_evidence_ids: list[str] = []
+
+
+@app.post("/npcs/{npc_id}/judgments/{result_id}/reconsider")
+async def reconsider_judgment(npc_id: str, result_id: str,
+                              req: ReconsiderRequest):
+    """要求重判（§十二）：只有新证据或反馈才允许创建新版本（D9/M3.6.4）。"""
+    from src.cognition.memory import create_revision_task
+    from src.cognition.roster import get_actor
+    try:
+        actor = get_actor(npc_id)
+    except KeyError:
+        raise HTTPException(404, f"参谋 '{npc_id}' 不在名册中。")
+    result = next((r for r in game_state.judgment_results if r.id == result_id), None)
+    if result is None or result.actor_id != npc_id:
+        raise HTTPException(404, "判断结果不存在。")
+    old_task = next((t for t in game_state.judgment_tasks
+                     if t.id == result.task_id), None)
+    if old_task is None:
+        raise HTTPException(404, "原判断任务不存在。")
+    if not req.new_evidence_ids and not req.reason.strip():
+        raise HTTPException(400, "重判必须引用新证据或反馈理由。")
+    task, new_result = _run_judgment(
+        actor, old_task.question, domain=old_task.domain,
+        evidence_ids=None,   # 权限内证据全量装配（新证据到达后自然进入视图）
+        revision_reason=req.reason.strip() or "新证据到达",
+        supersedes_task_id=old_task.id,
+        context_version=old_task.context_version + 1,   # 新稳定键（D9 不被缓存绕过）
+    )
+    # 证据并集已由 create_revision_task 处理？——_run_judgment 直建任务；
+    # 此处补修订链语义：新结果记录 supersedes
+    new_result.supersedes_result_id = result.id
+    audit = next((a for a in game_state.judgment_audits
+                  if a.result_id == new_result.id), None)
+    report = _render_for(actor, task, new_result, _hypotheses_public(audit))
+    game_state.judgment_reports[new_result.id] = report
+    return {
+        "result": _result_public(new_result),
+        "hypotheses": _hypotheses_public(audit),
+        "report": report,
+    }
 
 
 # ── S8 UI.2 COMMS 收报室（M8.3：频道分区/发报草稿确认）──

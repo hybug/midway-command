@@ -1086,4 +1086,61 @@ button.duty-item { cursor: pointer; text-decoration: underline; }
 .intel-ev-link { font-size: 9px; padding: 1px 6px; margin: 0 2px; }
 #intel-board .intel-mini { padding: 5px 6px; }
 .intel-mini-brief { font-size: 10px; color: var(--color-ink-main); line-height: 1.45; margin: 0; }
+/* ── S8 UI.4 · STAFF 三栏工作台（M8.5）── */
+.staff-wrap { display: grid; grid-template-columns: 220px 1fr 240px; gap: 12px; min-height: 100%; }
+.staff-kw { font-size: 10px; font-weight: bold; letter-spacing: 2px; color: var(--color-ink-fade); margin: 0 0 6px; }
+.staff-roster { border-right: 1px dashed rgba(42, 34, 24, 0.35); padding-right: 8px; }
+.staff-row {
+  display: flex; flex-direction: column; align-items: flex-start; width: 100%;
+  text-align: left; background: transparent; border: 1px solid transparent;
+  border-bottom: 1px solid rgba(42, 34, 24, 0.12); padding: 7px 6px; cursor: pointer;
+  font-family: var(--font-typewriter);
+}
+.staff-row:hover { background: rgba(42, 34, 24, 0.06); }
+.staff-row.active { background: rgba(42, 34, 24, 0.12); border-color: var(--color-ink-faint); }
+.staff-dot-active .staff-row-role::after { content: " ●"; color: var(--color-enemy-red); }
+.staff-row-name { font-size: 12px; font-weight: bold; color: var(--color-ink-main); }
+.staff-row-role { font-size: 10px; color: var(--color-ink-fade); }
+.staff-empty { font-size: 11px; color: var(--color-ink-fade); font-style: italic; padding: 12px 2px; }
+.staff-chat { max-height: 46vh; overflow-y: auto; margin-bottom: 8px; }
+.staff-msg { margin: 4px 0; padding: 6px 9px; background: rgba(232, 220, 200, 0.55); border: 1px solid rgba(42, 34, 24, 0.2); }
+.staff-msg-player { background: rgba(42, 34, 24, 0.08); }
+.staff-msg-sender { font-size: 9px; letter-spacing: 1px; color: var(--color-ink-fade); display: block; }
+.staff-msg p { font-size: 12px; line-height: 1.5; color: var(--color-ink-main); }
+.staff-input { display: flex; gap: 4px; }
+.staff-input input {
+  flex: 1; font-family: var(--font-typewriter); font-size: 12px;
+  border: 1px solid var(--color-ink-faint); background: var(--color-paper-base);
+  color: var(--color-ink-main); padding: 5px 8px;
+}
+.staff-ask { display: flex; gap: 4px; margin-bottom: 10px; }
+.staff-ask input {
+  flex: 1; font-family: var(--font-typewriter); font-size: 12px;
+  border: 1px solid var(--color-ink-faint); background: var(--color-paper-base);
+  color: var(--color-ink-main); padding: 5px 8px;
+}
+.staff-judgments { max-height: 52vh; overflow-y: auto; }
+.staff-judgment-card {
+  border: 1px solid var(--color-ink-main); background: rgba(245, 237, 214, 0.65);
+  padding: 8px 10px; margin-bottom: 8px;
+}
+.staff-judgment-head { display: flex; align-items: baseline; gap: 8px; border-bottom: 1px dashed rgba(42, 34, 24, 0.3); padding-bottom: 3px; }
+.staff-judgment-title { flex: 1; font-size: 11px; color: var(--color-ink-fade); }
+.staff-conf { font-size: 10px; font-weight: bold; letter-spacing: 1px; padding: 0 6px; border: 1px solid; }
+.conf-high { color: var(--color-ink-main); border-color: var(--color-ink-main); }
+.conf-medium { color: #a06020; border-color: #a06020; }
+.conf-low { color: var(--color-enemy-red); border-color: var(--color-enemy-red); }
+.staff-chosen { font-size: 13px; line-height: 1.6; color: var(--color-enemy-red); margin: 6px 0 2px; }
+.staff-recommendation { font-size: 12px; color: var(--color-ink-main); margin: 4px 0; }
+.staff-meta { font-size: 10px; color: var(--color-ink-fade); margin: 3px 0; }
+.staff-err { display: inline-block; font-size: 10px; color: var(--color-secret-red); border: 1px solid var(--color-secret-red); padding: 0 5px; margin-top: 4px; }
+.staff-refusal { font-size: 12px; color: var(--color-ink-fade); font-style: italic; margin: 6px 0; }
+.staff-report { font-size: 12px; line-height: 1.55; color: var(--color-ink-main); border-left: 2px solid rgba(168, 152, 120, 0.6); padding-left: 8px; margin: 6px 0 0; }
+/* 极简档案（M8.5.5：只四行，无好感度/雷达图/内部数值） */
+.staff-dossier { border-left: 1px dashed rgba(42, 34, 24, 0.35); padding-left: 10px; }
+.dossier-name { font-size: 15px; font-weight: bold; color: var(--color-ink-main); }
+.dossier-role { font-size: 10px; color: var(--color-ink-fade); margin-bottom: 6px; }
+.dossier-line { font-size: 12px; line-height: 1.5; color: var(--color-ink-main); margin-bottom: 6px; }
+.dossier-recent-item { font-size: 10px; color: var(--color-ink-fade); line-height: 1.5; margin: 2px 0; }
+
 

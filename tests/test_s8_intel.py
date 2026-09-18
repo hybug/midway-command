@@ -55,5 +55,6 @@ def test_intel_css_tokens():
 
 
 def test_cache_bumped_for_intel():
+    """INTEL 阶段为 822；后续阶段全链继续递增（不回退即可）。"""
     versions = set(re.findall(r"\?v=(\d+)", INDEX.read_text()))
-    assert versions == {"1780998022"}, f"INTEL 阶段缓存号应全链为 1780998022: {versions}"
+    assert int(min(versions)) >= 1780998022, f"缓存号不得回退: {versions}"

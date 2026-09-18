@@ -80,8 +80,13 @@ async function init() {
       unmount: () => { intelBoard.deskEl = null; },
     });
   }
-  desk.registerSection('STAFF', { mount: el => { el.innerHTML =
-    '<p class="desk-placeholder">STAFF 参谋工作台（UI.4 迁入）——当前对话见右栏</p>'; } });
+  if (window.StaffDesk) {
+    const staffDesk = new StaffDesk();
+    desk.registerSection('STAFF', {
+      mount: el => staffDesk.mount(el),
+      unmount: () => {},
+    });
+  }
   desk.registerSection('LOG', { mount: el => { el.innerHTML =
     '<p class="desk-placeholder">LOG 时间线与复盘（UI.5 迁入）</p>'; } });
   window.__desk = desk;

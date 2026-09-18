@@ -322,3 +322,5 @@ class GameState(BaseModel):
     judgment_results: list[JudgmentResult] = Field(default_factory=list)
     judgment_memories: list[JudgmentMemory] = Field(default_factory=list)
     judgment_audits: list[JudgmentAuditRecord] = Field(default_factory=list)
+    # ── S8 UI.4 人物化报告（result_id → 渲染文本；不改写结构化结果）──
+    judgment_reports: dict[str, str] = Field(default_factory=dict)
