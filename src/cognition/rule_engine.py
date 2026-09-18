@@ -129,9 +129,16 @@ class RuleJudgmentEngine:
         task.created_at = context.now or state.clock.game_time
         state.judgment_tasks.append(task)
 
+        # 1.5 拒绝路径（M3.7）：证据不足 / 职责外——不形成判断、不掷骰
+        actor = context.actor
+        if not context.evidence:
+            return self._refuse(task, context, "evidence_insufficient")
+        if actor.domain and task.domain and actor.domain != task.domain:
+            return self._refuse(task, context, "out_of_duty",
+                                task_domain=task.domain)
+
         # 2. 恰好一次 JUDGMENT_CHECK（D3）
         rng = self._rng or RNGService(state)
-        actor = context.actor
         situational = _situational_mods(context.evidence)
         dice_result, check_rec = rng.roll_check(
             check_type=CheckType.JUDGMENT_CHECK,
@@ -273,4 +280,64 @@ class RuleJudgmentEngine:
                      evidence_ids=list(task.evidence_ids),
                      details={"task": task.id, "dice": check_rec.check_id,
                               "memory": memory.id})
+        return result
+
+    # ── 拒绝 / 不知道 / 职责外（M3.7；不把推测自动升级为自信答案）──
+
+    def _refuse(self, task: JudgmentTask, context: JudgmentContext,
+                reason: str, task_domain: str = "") -> JudgmentResult:
+        """拒绝也是正式结果：无骰子、无候选、置信度 low；职责外建议转交对象。"""
+        state = self._state
+        actor = context.actor
+        now = context.now or state.clock.game_time
+        referral = None
+        if reason == "out_of_duty":
+            from src.cognition.roster import CORAL_SEA_ACTORS
+            referral = next((a.actor_id for a in CORAL_SEA_ACTORS
+                             if a.domain == task_domain and not a.is_player), None)
+        result = JudgmentResult(
+            id=intel.next_id(state, "JR"),
+            task_id=task.id,
+            actor_id=actor.actor_id,
+            chosen_hypothesis_id=None,
+            plausible_hypothesis_ids=[],
+            dice_record_id="",
+            confidence_band="low",
+            recommendation=(f"此项判断超出我的职责范围，建议转交 {referral} 处理。"
+                            if referral else None),
+            refusal_reason=reason,
+            formula_version=FORMULA_VERSION,
+            created_at=now,
+        )
+        state.judgment_results.append(result)
+        memory = JudgmentMemory(
+            id=intel.next_id(state, "JM"),
+            actor_id=actor.actor_id,
+            task_type=task.task_type,
+            domain=task.domain,
+            result_id=result.id,
+            evidence_ids=list(task.evidence_ids),
+            confidence="low",
+            created_at=now,
+            revision_reason=task.revision_reason,
+        )
+        state.judgment_memories.append(memory)
+        state.judgment_audits.append(JudgmentAuditRecord(
+            id=intel.next_id(state, "JA"),
+            task_id=task.id,
+            result_id=result.id,
+            actor_id=actor.actor_id,
+            formula_version=FORMULA_VERSION,
+            attribute_snapshot=dict(actor.attributes),
+            plausible_set=[],
+            dice_record_id="",
+            memory_ids=[memory.id],
+            context_version=task.context_version,
+            random_seed="",
+            created_at=now,
+        ))
+        intel._audit(state, actor_id=actor.actor_id, action="judgment_refusal",
+                     target_id=result.id, reason=reason,
+                     evidence_ids=list(task.evidence_ids),
+                     details={"task": task.id})
         return result
