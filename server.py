@@ -393,8 +393,26 @@ def _iso(dt):
 
 @app.get("/intel/inbox")
 async def intel_inbox():
-    """旗舰收报室（D1）：只含真正送达的电文（RECEIVED 及之后；LOST 永不出现）。"""
+    """旗舰收报室（D1）：只含真正送达的电文（RECEIVED 及之后；LOST 永不出现）。
+
+    S8 UI.2：补充电文详情白名单字段（时间链/路由/转述链/勘误引用）与
+    关联跳转（引用该电文证据的简报与判断）。
+    """
     from src.intel import service as intel_service
+    # 电文 → 证据 → 简报/判断 关联索引（跳转数据，玩家可读面）
+    ev_by_message: dict[str, list[str]] = {}
+    for e in game_state.evidence:
+        ev_by_message.setdefault(e.message_id, []).append(e.id)
+    briefs_by_evidence: dict[str, list[str]] = {}
+    for b in game_state.intel_briefs:
+        if b.status == "draft":
+            continue
+        for ev_id in b.new_evidence_ids:
+            briefs_by_evidence.setdefault(ev_id, []).append(b.id)
+    assessments_by_evidence: dict[str, list[str]] = {}
+    for a in game_state.assessments:
+        for ev_id in a.based_on_evidence_ids:
+            assessments_by_evidence.setdefault(ev_id, []).append(a.id)
     return {
         "messages": [
             {
@@ -409,10 +427,110 @@ async def intel_inbox():
                 "received_at": _iso(m.received_at),
                 "raw_text": m.raw_text,
                 "supersedes_message_id": m.supersedes_message_id,
+                # UI.2 电文详情与关联跳转（白名单）
+                "origin_sender": m.origin_sender,
+                "relay_chain": list(m.relay_chain),
+                "routed_to": list(m.routed_to),
+                "related_brief_ids": sorted({b for ev in ev_by_message.get(m.id, [])
+                                             for b in briefs_by_evidence.get(ev, [])}),
+                "related_assessment_ids": sorted(
+                    {a for ev in ev_by_message.get(m.id, [])
+                     for a in assessments_by_evidence.get(ev, [])}),
             }
             for m in intel_service.player_inbox(game_state)
         ]
     }
+
+
+# ── S8 UI.2 COMMS 收报室（M8.3：频道分区/发报草稿确认）──
+
+
+def _comms_message_public(m):
+    return {
+        "id": m.id,
+        "sender": m.sender_call_sign or m.sender_id,
+        "sender_id": m.sender_id,
+        "kind": m.message_kind,
+        "priority": m.priority.value,
+        "status": m.status.value,
+        "condition": m.condition.value,
+        "observed_at": _iso(m.observed_at),
+        "filed_at": _iso(m.filed_at),
+        "received_at": _iso(m.received_at),
+        "raw_text": m.raw_text,
+        "supersedes_message_id": m.supersedes_message_id,
+        "origin_sender": m.origin_sender,
+        "relay_chain": list(m.relay_chain),
+        "routed_to": list(m.routed_to),
+    }
+
+
+@app.get("/comms/channels")
+async def comms_channels():
+    """收报室频道分区（M8.3.1；全部来自玩家可读电文，在途/丢失不可见）。"""
+    from src.intel.contracts import MessageStatus as MS
+    channels: dict[str, list] = {"INCOMING": [], "OUTGOING": [],
+                                 "TF17_TF11": [], "CORRECTIONS": [], "ARCHIVE": []}
+    for m in game_state.messages:
+        is_outgoing = m.message_kind == "outgoing" and m.sender_id in ("fletcher", "player")
+        # 外发电文是玩家自己的通信产物（FILED 即存档可见）；
+        # 其余电文一律以 RECEIVED 起点为准（D1：在途/丢失内容不可见）
+        if not is_outgoing and m.status not in intel_service_readable():
+            continue
+        pub = _comms_message_public(m)
+        if is_outgoing:
+            channels["OUTGOING"].append(pub)
+        elif m.message_kind == "correction":
+            channels["CORRECTIONS"].append(pub)
+        elif m.relay_chain or m.origin_sender:
+            channels["TF17_TF11"].append(pub)
+        elif m.status in (MS.ARCHIVED, MS.CORRECTED):
+            channels["ARCHIVE"].append(pub)
+        else:
+            channels["INCOMING"].append(pub)
+    return {"channels": channels}
+
+
+def intel_service_readable():
+    """频道分区的可读状态集（D1：玩家可读起点=RECEIVED）。"""
+    from src.intel.contracts import MessageStatus as MS
+    return {MS.RECEIVED, MS.LOGGED, MS.ROUTED, MS.PROCESSED, MS.ARCHIVED,
+            MS.CORRECTED}
+
+
+class OutgoingDraft(BaseModel):
+    raw_text: str
+    priority: str = "routine"
+
+
+@app.post("/comms/outgoing")
+async def comms_outgoing(req: OutgoingDraft):
+    """发报草稿与确认（M8.3.7）：指挥官外发电文存档（FILED）。
+
+    外发电文是玩家自己的通信产物，存档即玩家可见（OUTGOING 频道）；
+    不触发任何参谋判断或命令执行——正式命令仍走 ISSUE ORDER。
+    """
+    from src.intel import service as intel_service
+    from src.intel.contracts import WorkPriority as WP
+    from src.intel.models import MessageEnvelope
+    text = req.raw_text.strip()
+    if not text:
+        raise HTTPException(400, "电文正文不能为空。")
+    try:
+        priority = WP(req.priority)
+    except ValueError:
+        priority = WP.ROUTINE
+    msg = MessageEnvelope(
+        sender_id="fletcher",
+        sender_call_sign="CTF-17 FLAG",
+        recipient_ids=["TF16 FLAG", "TF11 FLAG"],
+        priority=priority,
+        message_kind="outgoing",
+        observed_at=game_state.clock.game_time,
+        raw_text=text,
+    )
+    intel_service.file_message(game_state, msg, by="fletcher", reason="指挥官外发电报")
+    return {"message": _comms_message_public(msg), "result": "已拍发存档"}
 
 
 @app.get("/intel/briefs")

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <title>INTEL FIXTURE — 非游戏画面</title>
-  <link rel="stylesheet" href="/static/css/style.css?v=1780998020">
+  <link rel="stylesheet" href="/static/css/style.css?v=1780998021">
   <style>
     body { background:#3a3226; display:flex; gap:16px; padding:16px; margin:0; }
     .fx-col { width: 330px; }
@@ -101,7 +101,7 @@ const FIX = {
 window.fetch = (path) => Promise.resolve({
   ok: true, json: () => Promise.resolve(FIX[path] || {}) });
 </script>
-<script src="/static/js/intelBoard.js?v=1780998020"></script>
+<script src="/static/js/intelBoard.js?v=1780998021"></script>
 <script>
 const board = new IntelBoard();
 board.mount('intel-board');

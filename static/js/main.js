@@ -67,14 +67,20 @@ async function init() {
   // S8 UI.1：Commander Desk 壳（案卷台；工作台区块由后续阶段注册）
   desk = new CommanderDesk();
   desk.mount('commander-desk');
-  desk.registerSection('COMMS', { mount: el => { el.innerHTML =
-    '<p class="desk-placeholder">COMMS 收报室（UI.2 迁入）——收报室摘要见右栏与电文灯</p>'; } });
+  if (window.CommsDesk) {
+    const comms = new CommsDesk();
+    desk.registerSection('COMMS', {
+      mount: el => comms.mount(el),
+      unmount: () => {},
+    });
+  }
   desk.registerSection('INTEL', { mount: el => { el.innerHTML =
     '<p class="desk-placeholder">INTEL 情报工作台（UI.3 迁入）——当前情报板见右栏</p>'; } });
   desk.registerSection('STAFF', { mount: el => { el.innerHTML =
     '<p class="desk-placeholder">STAFF 参谋工作台（UI.4 迁入）——当前对话见右栏</p>'; } });
   desk.registerSection('LOG', { mount: el => { el.innerHTML =
     '<p class="desk-placeholder">LOG 时间线与复盘（UI.5 迁入）</p>'; } });
+  window.__desk = desk;
   desk.onSectionChange = (section) => {
     activeSection = section || 'CHART';
     renderShell();
