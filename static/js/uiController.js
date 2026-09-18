@@ -15,6 +15,16 @@ function tabLabel(npc) {
   return NPC_TAB_ABBR[key] || (npc.name || '').slice(0, 8).toUpperCase();
 }
 
+// S8 UI.1：五工作台一级导航（M8.1.1）——替代旧 NPC 页签的全局导航职责；
+// NPC 选择下沉 STAFF 工作台（NPC_TAB_ABBR 保留供名册标签使用）
+const WORKBENCHES = [
+  { id: 'CHART', label: 'CHART', hint: '海图态势' },
+  { id: 'COMMS', label: 'COMMS', hint: '收报室' },
+  { id: 'INTEL', label: 'INTEL', hint: '情报工作台' },
+  { id: 'STAFF', label: 'STAFF', hint: '参谋' },
+  { id: 'LOG', label: 'LOG', hint: '记录与复盘' },
+];
+
 // 机密消息判定（Phase 8d）：消息数据无密级字段，按内容关键词判定 →
 // 暗色情报卡（.msg-classified）+ SECRET 印章（.msg-stamp）
 const CLASSIFIED_MSG_RE = /机密|secret|密级/i;
@@ -64,7 +74,62 @@ class UIController {
   }
 
   // ═══════════════════════════════════════════════════════
-  // NPC Tabs
+  // S8 UI.1 · 五工作台导航 + 值班栏（M8.1.1 / M8.7.2）
+  // ═══════════════════════════════════════════════════════
+  renderWorkbenchNav(activeSection, counters, onSwitch) {
+    const container = document.getElementById('workbench-nav');
+    if (!container) return;
+    container.innerHTML = '';
+    WORKBENCHES.forEach(wb => {
+      const btn = document.createElement('button');
+      btn.className = 'wb-tab' + (wb.id === activeSection ? ' active' : '');
+      btn.dataset.workbench = wb.id;
+      btn.title = wb.hint;
+      const unread = (counters && counters[wb.id]) || 0;
+      btn.innerHTML = `${wb.label}` +
+        (unread > 0 ? `<span class="wb-badge" data-badge="${wb.id}">${unread}</span>` : '');
+      btn.addEventListener('click', () => onSwitch(wb.id));
+      container.appendChild(btn);
+    });
+  }
+
+  // 值班栏（L1）：当前工作台/未读/最高优先级/最近判断或电报/打开案卷台
+  renderDutySummary({ section, notifications, latest, onOpenDesk, onOpenItem }) {
+    const container = document.getElementById('duty-summary');
+    if (!container) return;
+    const top = notifications ? notifications.topPriority() : null;
+    const unreadTotal = notifications
+      ? Object.values(notifications.counters).reduce((s, v) => s + v, 0) : 0;
+    const esc = window.escapeHtml || escapeHtml;
+    const topHtml = top
+      ? `<button class="duty-item duty-top" data-notify-id="${esc(top.id)}">
+           <span class="duty-level level-${esc(top.level.toLowerCase())}">${esc(top.level)}</span>
+           ${esc(top.text)}</button>`
+      : '<p class="duty-item duty-empty">无待处理事项（ALL CLEAR）</p>';
+    const latestHtml = latest
+      ? `<p class="duty-item duty-latest"><span class="duty-kw">${esc(latest.kind)}</span> ${esc(latest.text)}</p>`
+      : '<p class="duty-item duty-latest duty-empty">暂无判断与电报</p>';
+    container.innerHTML = `
+      <p class="duty-kw">CURRENT SECTION</p>
+      <p class="duty-section">${esc(section || 'CHART')}</p>
+      <p class="duty-kw">PENDING <span class="wb-badge-inline">${unreadTotal}</span></p>
+      ${topHtml}
+      ${latestHtml}
+      <button class="btn btn-execute duty-open-desk" id="btn-open-desk">打开案卷台</button>`;
+    const openBtn = container.querySelector('#btn-open-desk');
+    if (openBtn) openBtn.addEventListener('click', () => onOpenDesk());
+    const topBtn = container.querySelector('.duty-top');
+    if (topBtn && onOpenItem) topBtn.addEventListener('click', () => onOpenItem(top));
+  }
+
+  // ISSUE ORDER 弹层（全局唯一正式命令入口，M8.7.6）
+  toggleIssueOrder(open) {
+    const modal = document.getElementById('issue-order-modal');
+    if (modal) modal.hidden = !open;
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // NPC Tabs（STAFF 工作台名册沿用；不再作为全局导航）
   // ═══════════════════════════════════════════════════════
   renderNpcTabs(activeNpc, onSwitch) {
     const container = document.getElementById('npc-tabs');
