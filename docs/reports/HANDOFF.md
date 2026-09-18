@@ -176,8 +176,8 @@ curl -X POST localhost:8000/game/new -H "Content-Type: application/json" -d '{"t
 ## 八、给下一位的开工建议（顺序）
 
 1. 先跑 `pytest tests/ -q`（应 352 passed）与 `uvicorn server:app`，浏览器打开确认中途岛/珊瑚海都能进——**确认基线可信再动手**。
-2. 想动玩法 → 从**第七节 A 方向的①立场账本**起步（最小：per-NPC 结构化态度数据 + 注入 prompt），这是所有后续的地基。
-3. 想补 UI 收尾 → 第五节 A 级项（触发一局真实数据补 A5/A8/A10 实拍）成本低收益直观。
+2. 想动玩法 → 以 `docs/plans/gameplay-system-roadmap.md` 为长期路线图；S2 已完成，当前主攻 **S3 参谋认知与判断系统**，执行 `docs/plans/s3-staff-cognition-system-plan.md`；先完成珊瑚海判断纵切，不要同时铺开完整关系层。
+3. 想补 UI → 以 `docs/plans/s8-ui-ux-system-plan.md` 为现行跨系统 UI/UX 契约；先做五工作台与 Commander Desk 壳，再迁移 COMMS / INTEL / STAFF / LOG。
 4. 任何阶段改动前，读 `docs/reports/product-compare/sdd-ledger-final.md`——**所有历史裁定都在那**，避免重蹈。
 
 ---

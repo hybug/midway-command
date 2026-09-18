@@ -1,6 +1,6 @@
 # S2 感知与情报系统实施计划（s2-intelligence-system-plan）
 
-> 状态：**现行专项实施计划（执行中）**
+> 状态：**已执行完成（Phase S2.0–S2.8，2026-09-18）**
 > 创建日期：2026-09-14
 > 上级路线图：`docs/plans/gameplay-system-roadmap.md`
 > 当前阶段：S2 感知与情报系统
