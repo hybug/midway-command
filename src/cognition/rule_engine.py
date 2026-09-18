@@ -184,7 +184,8 @@ class RuleJudgmentEngine:
             conflict_high=any(c.severity >= 0.5 for c in context.conflicts),
         )
 
-        # 7. JudgmentResult 落档（此后 LLM 只渲染不改写）
+        # 7. JudgmentResult 落档（此后 LLM 只渲染不改写；建议域随 chosen 转移）
+        chosen_h = by_id.get(chosen)
         result = JudgmentResult(
             id=intel.next_id(state, "JR"),
             task_id=task.id,
@@ -195,7 +196,9 @@ class RuleJudgmentEngine:
             error_type=error_type,
             error_severity=error_severity,
             confidence_band=conf,
-            assumptions=list(by_id[chosen].assumptions) if chosen else [],
+            recommendation=chosen_h.recommendation if chosen_h else None,
+            assumptions=list(chosen_h.assumptions) if chosen_h else [],
+            change_my_mind=list(chosen_h.change_my_mind) if chosen_h else [],
             formula_version=FORMULA_VERSION,
             created_at=now,
         )
@@ -218,7 +221,7 @@ class RuleJudgmentEngine:
         )
         state.judgment_memories.append(memory)
 
-        # 9. JudgmentAuditRecord（M3.9：可回放归因）
+        # 9. JudgmentAuditRecord（M3.9：可回放归因；候选快照供事后事实误差比对）
         state.judgment_audits.append(JudgmentAuditRecord(
             id=intel.next_id(state, "JA"),
             task_id=task.id,
@@ -226,6 +229,7 @@ class RuleJudgmentEngine:
             actor_id=actor.actor_id,
             formula_version=FORMULA_VERSION,
             attribute_snapshot=dict(actor.attributes),
+            hypotheses=[h.model_dump() for h in hypotheses],
             candidate_scores=dict(scores),
             plausible_set=list(plausible),
             dice_record_id=check_rec.check_id,

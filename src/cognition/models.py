@@ -92,6 +92,10 @@ class Hypothesis(BaseModel):
     predicted_speed_range: Optional[tuple[float, float]] = None  # 节
     supporting_evidence_ids: list[str] = Field(default_factory=list)
     assumptions: list[str] = Field(default_factory=list)
+    # v0 扩展（M3.8）：随候选产生的建议与反证条件——结果层由 chosen 转移，
+    # 人物化渲染（S3.5）不得改写
+    recommendation: Optional[str] = None
+    change_my_mind: list[str] = Field(default_factory=list)
     aggressiveness: float = Field(default=0.0, ge=-1.0, le=1.0)  # 规则可计算
     novelty: float = Field(default=0.0, ge=0.0, le=1.0)          # 规则可计算
 
@@ -172,13 +176,17 @@ class JudgmentMemory(BaseModel):
 
 
 class JudgmentAuditRecord(BaseModel):
-    """判断审计（§6.7，M3.9）：同种子同输入可回放（D9/验收 13）。"""
+    """判断审计（§6.7，M3.9）：同种子同输入可回放（D9/验收 13）。
+
+    hypotheses 为规范化候选快照（复盘可重建判断内容、支撑事后事实误差比对）。
+    """
     id: str = ""
     task_id: str
     result_id: str = ""
     actor_id: str
     formula_version: str = ""
     attribute_snapshot: dict[str, float] = Field(default_factory=dict)
+    hypotheses: list[dict] = Field(default_factory=list)
     candidate_scores: dict[str, float] = Field(default_factory=dict)
     plausible_set: list[str] = Field(default_factory=list)
     dice_record_id: str = ""
