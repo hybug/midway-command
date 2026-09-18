@@ -1177,5 +1177,33 @@ button.duty-item { cursor: pointer; text-decoration: underline; }
 .staff-row.staff-dot-active::after {
   content: "●"; color: var(--color-enemy-red); margin-left: 4px; font-size: 9px;
 }
+/* ── S8 UI.7 · 可读性 / 响应式 / 键盘（M8.8）── */
+/* 焦点可见性：键盘操作全程可见（.btn 已有 focus-visible，补工作台与案卷台控件） */
+.wb-tab:focus-visible, .desk-tab:focus-visible, .comms-chan:focus-visible,
+.log-tab:focus-visible, .intel-tab:focus-visible, .staff-row:focus-visible {
+  outline: 2px dashed var(--color-secret-red);
+  outline-offset: 2px;
+}
+/* 案卷区滚动隔离：滚轮不劫持页面滚动（desk-body 内部滚动） */
+#desk-body { overscroll-behavior: contain; }
+#log-body, #intel-desk-body, .staff-judgments, .staff-chat, .comms-list {
+  overscroll-behavior: contain;
+}
+/* 1280×720 降级：案卷台三栏收窄、SITREP 网格两列、COMMS 频道列收窄 */
+@media (max-width: 1360px) {
+  .comms-wrap { grid-template-columns: 120px 1fr 1.4fr; }
+  .staff-wrap { grid-template-columns: 180px 1fr 200px; }
+}
+@media (max-width: 1280px) {
+  #app { grid-template-columns: 1fr 280px; }
+  .desk-panel { margin: 4px; }
+  .desk-body { padding: 8px 10px; }
+  .comms-wrap { grid-template-columns: 104px 1fr; }
+  .comms-detail { grid-column: 1 / -1; }
+  .staff-wrap { grid-template-columns: 150px 1fr; }
+  .staff-dossier { grid-column: 1 / -1; border-left: none; border-top: 1px dashed rgba(42, 34, 24, 0.35); padding-left: 0; padding-top: 8px; }
+  .intel-sit-grid { grid-template-columns: repeat(2, 1fr); }
+  .log-event { flex-wrap: wrap; }
+}
 
 

@@ -60,11 +60,17 @@ class LogDesk {
       body.innerHTML = '<p class="staff-empty">本局暂无记录</p>';
       return;
     }
+    // 性能（M8.8）：长局增量渲染保护——时间线只渲染最近 RENDER_CAP 条
+    const RENDER_CAP = 200;
+    const shown = events.slice(-RENDER_CAP);
+    const capNote = events.length > RENDER_CAP
+      ? `<p class="aa-meta">共 ${events.length} 条，仅渲染最近 ${RENDER_CAP} 条（完整记录在案，可回放）。</p>`
+      : '';
     const KIND_CN = {
       message: '电报', judgment: '判断', plot_decision: '标图决议',
       commander_feedback: '指挥官反馈', otc_change: '指挥权变化',
     };
-    body.innerHTML = `<ol class="log-timeline">${events.map(e => `
+    body.innerHTML = `${capNote}<ol class="log-timeline">${shown.map(e => `
       <li class="log-event log-event-${e.kind}">
         <span class="log-time">${window.escapeHtml((e.at || '').slice(11, 16))}Z</span>
         <span class="log-kind">${KIND_CN[e.kind] || window.escapeHtml(e.kind)}</span>

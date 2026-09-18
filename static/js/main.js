@@ -383,12 +383,18 @@ function bindEvents() {
   const sitrepBtn = document.getElementById('btn-sitrep');
   if (sitrepBtn) sitrepBtn.addEventListener('click', sitrep);
 
-  // ESC：关闭案卷台 / ISSUE ORDER（M8.1.6）
+  // ESC：关闭案卷台 / ISSUE ORDER（M8.1.6）；Alt+1..5 直达工作台（M8.8 键盘操作）
   window.addEventListener('keydown', e => {
-    if (e.key !== 'Escape') return;
-    const io = document.getElementById('issue-order-modal');
-    if (io && !io.hidden) { ui.toggleIssueOrder(false); return; }
-    if (desk && desk.isOpen()) desk.close();
+    if (e.key === 'Escape') {
+      const io = document.getElementById('issue-order-modal');
+      if (io && !io.hidden) { ui.toggleIssueOrder(false); return; }
+      if (desk && desk.isOpen()) desk.close();
+      return;
+    }
+    if (e.altKey && e.key >= '1' && e.key <= '5') {
+      const sections = ['CHART', 'COMMS', 'INTEL', 'STAFF', 'LOG'];
+      switchWorkbench(sections[parseInt(e.key, 10) - 1]);
+    }
   });
 
   window.addEventListener('resize', () => { /* 动画循环会自动处理 */ });
