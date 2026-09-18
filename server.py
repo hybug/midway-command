@@ -442,6 +442,101 @@ async def intel_inbox():
     }
 
 
+# ── S8 UI.3 INTEL 情报工作台（M8.4：SITREP/EVIDENCE 白名单视图）──
+
+
+@app.get("/intel/sitrep")
+async def intel_sitrep():
+    """SITREP 态势摘要（M8.4.1）：已批准接触/最近更新/未决冲突/待处理简报。
+
+    全部由玩家可读对象派生（ApprovedPlot/冲突登记/已呈报简报）——
+    不含规则侧真值。
+    """
+    from src.intel.contracts import ApprovalStatus
+    active_plots = [p for p in game_state.approved_plots if p.state == "active"]
+    latest_approved = max(
+        (p.approved_at for p in active_plots if p.approved_at), default=None)
+    open_conflicts = [
+        {"id": c.id, "kind": c.kind, "note": c.note, "severity": c.severity}
+        for c in game_state.evidence_conflicts if c.status == "open"
+    ]
+    pending_briefs = [
+        b for b in game_state.intel_briefs
+        if b.status in (ApprovalStatus.PROPOSED.value,
+                        ApprovalStatus.REVISION_REQUESTED.value,
+                        ApprovalStatus.PARTIALLY_APPROVED.value)
+    ]
+    return {
+        "approved_contacts": len(active_plots),
+        "latest_approved_at": _iso(latest_approved),
+        "open_conflicts": open_conflicts,
+        "pending_briefs": len(pending_briefs),
+        "latest_brief": next(
+            ({"id": b.id, "author": b.author_actor_id,
+              "narrative": b.narrative,
+              "at": _iso(b.created_at)}
+             for b in sorted(game_state.intel_briefs,
+                             key=lambda x: x.created_at or NOW_FALLBACK(),
+                             reverse=True)
+             if b.status != "draft"),
+            None),
+    }
+
+
+def NOW_FALLBACK():
+    return game_state.clock.game_time
+
+
+@app.get("/intel/evidence")
+async def intel_evidence():
+    """EVIDENCE 已呈报证据链（M8.4.4）：只显示已呈报（简报/已批准标图）引用的证据。
+
+    玩家权限语义与 cognition.context 的 briefed/approved 装配一致；
+    附使用该证据的判断（跳转数据），不含未呈报证据与规则侧真值。
+    """
+    from src.intel.contracts import ApprovalStatus
+    briefed: set[str] = set()
+    for b in game_state.intel_briefs:
+        if b.status == ApprovalStatus.DRAFT.value:
+            continue
+        briefed.update(b.new_evidence_ids)
+        for a in game_state.assessments:
+            if a.id in b.changed_judgments:
+                briefed.update(a.based_on_evidence_ids)
+    approved_plot_ev: set[str] = set()
+    approved_plot_ids = {p.plot_id for p in game_state.approved_plots}
+    for p in game_state.plot_proposals:
+        if p.plot_id in approved_plot_ids:
+            approved_plot_ev.update(p.based_on_evidence_ids)
+    visible_ids = briefed | approved_plot_ev
+    used_by: dict[str, list[str]] = {}
+    for a in game_state.assessments:
+        for ev_id in a.based_on_evidence_ids:
+            used_by.setdefault(ev_id, []).append(a.id)
+    in_plots: dict[str, list[str]] = {}
+    for p in game_state.plot_proposals:
+        for ev_id in p.based_on_evidence_ids:
+            in_plots.setdefault(ev_id, []).append(p.plot_id)
+    out = []
+    for e in game_state.evidence:
+        if e.id not in visible_ids:
+            continue
+        out.append({
+            "id": e.id,
+            "source": e.source_id,
+            "source_type": e.source_type.value,
+            "received_at": _iso(e.received_at),
+            "observed_at": _iso(e.observed_at),
+            "summary": e.summary,
+            "status": e.status.value,
+            "corroboration": list(e.corroboration),
+            "supersedes_evidence_id": e.supersedes_evidence_id,
+            "used_by_assessment_ids": sorted(set(used_by.get(e.id, []))),
+            "used_in_plot_ids": sorted(set(in_plots.get(e.id, []))),
+        })
+    return {"evidence": out}
+
+
 # ── S8 UI.2 COMMS 收报室（M8.3：频道分区/发报草稿确认）──
 
 

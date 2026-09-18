@@ -62,5 +62,6 @@ def test_server_comms_endpoints_whitelist():
 
 
 def test_cache_bumped_for_comms():
+    """COMMS 阶段引入 821；UI.3 起全链已随阶段递增（守卫见 test_s8_intel）。"""
     versions = set(re.findall(r"\?v=(\d+)", INDEX.read_text()))
-    assert versions == {"1780998021"}, f"COMMS 阶段缓存号应全链为 1780998021: {versions}"
+    assert int(min(versions)) >= 1780998021, f"缓存号不得回退: {versions}"

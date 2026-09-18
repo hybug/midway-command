@@ -21,14 +21,18 @@ def test_index_has_intel_containers():
 def test_index_cache_version_bumped_and_consistent():
     html = INDEX.read_text()
     versions = set(re.findall(r"\?v=(\d+)", html))
-    assert versions == {"1780998021"}, f"index.html 缓存号应为 1780998021: {versions}"
+    assert versions == {"1780998022"}, f"index.html 缓存号应为 1780998022: {versions}"
 
 
 def test_intel_board_consumes_whitelist_endpoints():
+    """S8 UI.3 起：INTEL 案卷台四视图（INBOX 迁 COMMS 工作台 /comms/channels）。"""
     js = BOARD.read_text()
-    for ep in ("/intel/inbox", "/intel/briefs", "/intel/plots",
-               "/intel/work-items", "/intel/after-action"):
+    for ep in ("/intel/sitrep", "/intel/briefs", "/intel/plots",
+               "/intel/evidence", "/intel/after-action"):
         assert ep in js, f"intelBoard 未接入 {ep}"
+    for view in ("renderSitrep", "renderBriefs", "renderPlots", "renderEvidence",
+                 "mountDesk", "compareVersions"):
+        assert view in js, f"intelBoard 缺 {view}"
     # 审批四动作
     for act in ("approve", "reject", "defer", "request-revision"):
         assert act in js
@@ -68,7 +72,7 @@ def test_intel_fixture_page_marked_and_wired():
     """定妆页必须带 FIXTURE 标识（HANDOFF 纪律），且走真实 intelBoard.js。"""
     fx = (ROOT / "static" / "dev" / "intel-fixture.html").read_text()
     assert "FIXTURE — 非游戏画面" in fx
-    assert "intelBoard.js?v=1780998021" in fx
+    assert "intelBoard.js?v=1780998022" in fx
     assert "window.fetch = " in fx      # 数据为桩，不触真实接口
 
 

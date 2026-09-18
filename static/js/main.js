@@ -74,8 +74,12 @@ async function init() {
       unmount: () => {},
     });
   }
-  desk.registerSection('INTEL', { mount: el => { el.innerHTML =
-    '<p class="desk-placeholder">INTEL 情报工作台（UI.3 迁入）——当前情报板见右栏</p>'; } });
+  if (intelBoard) {
+    desk.registerSection('INTEL', {
+      mount: el => intelBoard.mountDesk(el),
+      unmount: () => { intelBoard.deskEl = null; },
+    });
+  }
   desk.registerSection('STAFF', { mount: el => { el.innerHTML =
     '<p class="desk-placeholder">STAFF 参谋工作台（UI.4 迁入）——当前对话见右栏</p>'; } });
   desk.registerSection('LOG', { mount: el => { el.innerHTML =

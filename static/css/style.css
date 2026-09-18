@@ -1067,3 +1067,23 @@ button.duty-item { cursor: pointer; text-decoration: underline; }
   color: var(--color-ink-main); padding: 5px 8px; resize: vertical;
 }
 .comms-compose button { margin-top: 5px; }
+/* ── S8 UI.3 · INTEL 案卷台四视图（M8.4）+ 右栏迷你摘要 ── */
+.intel-desk-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  border-bottom: 1px solid rgba(42, 34, 24, 0.4); padding-bottom: 6px; margin-bottom: 8px;
+}
+.intel-desk-head .intel-title { font-size: 12px; }
+.intel-desk-body .intel-tab.active { background: var(--color-ink-main); color: var(--color-paper-base); }
+.intel-desk-body .intel-card { max-width: 860px; }
+.intel-brief-narrative { font-size: 13px; line-height: 1.65; }  /* 案卷正文可读字号（M8.8） */
+.intel-kw { font-size: 10px; font-weight: bold; letter-spacing: 1px; color: var(--color-ink-main); margin: 10px 0 4px; }
+.intel-sit-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 8px; max-width: 640px; }
+.intel-sit-cell { border: 1px solid rgba(42, 34, 24, 0.35); padding: 8px 10px; background: rgba(245, 237, 214, 0.6); }
+.intel-sit-val { font-size: 20px; font-weight: bold; color: var(--color-ink-main); }
+.intel-compare-table { border-collapse: collapse; font-size: 11px; color: var(--color-ink-main); margin: 4px 0 8px; }
+.intel-compare-table td { border: 1px solid rgba(42, 34, 24, 0.3); padding: 3px 8px; }
+.intel-compare { margin-top: 6px; }
+.intel-ev-link { font-size: 9px; padding: 1px 6px; margin: 0 2px; }
+#intel-board .intel-mini { padding: 5px 6px; }
+.intel-mini-brief { font-size: 10px; color: var(--color-ink-main); line-height: 1.45; margin: 0; }
+
