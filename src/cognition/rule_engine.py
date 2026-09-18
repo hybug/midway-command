@@ -25,6 +25,11 @@ from src.cognition.formula import (
     score_candidates,
     select_chosen,
 )
+from src.cognition.memory import (
+    anchor_bonus_for,
+    apply_anchor,
+    recall_relevant_memories,
+)
 from src.cognition.models import (
     ActorProfile,
     Hypothesis,
@@ -155,11 +160,21 @@ class RuleJudgmentEngine:
         }
         plausible = plausible_set(fits, ambiguity_band=band)
 
-        # 5. 偏差预算 + 公式选择
+        # 5. 偏差预算 + 公式选择（含记忆锚定：坚持旧判断，M3.6.3）
         budget = compute_deviation_budget(
             dice.level, actor.attributes.get("competence", 5))
         scores = score_candidates(hypotheses, fits, actor,
                                   deviation_budget=budget)
+        memories = context.memories or recall_relevant_memories(
+            state, actor.actor_id, evidence_ids=task.evidence_ids)
+        candidate_ids = {h.id for h in hypotheses}
+        anchor = next((m for m in memories
+                       if m.status == "open"
+                       and m.selected_hypothesis in candidate_ids), None)
+        bonus = 0.0
+        if anchor is not None:
+            bonus = anchor_bonus_for(anchor)
+            scores = apply_anchor(scores, anchor.selected_hypothesis, bonus)
         chosen = select_chosen(scores)
         chosen_in_plausible = chosen in plausible
 
@@ -204,7 +219,18 @@ class RuleJudgmentEngine:
         )
         state.judgment_results.append(result)
 
-        # 8. JudgmentMemory（D8：按 actor 隔离；D10：由自身判断创建）
+        # 8. JudgmentMemory（D8：按 actor 隔离；D10：由自身判断创建；
+        #    修订链 supersedes：旧记忆只翻状态，M3.6.6）
+        superseded = None
+        if task.supersedes_task_id:
+            old_task_ids = {task.supersedes_task_id}
+            old_result_ids = {r.id for r in state.judgment_results
+                              if r.task_id in old_task_ids and r.id != result.id}
+            for m in state.judgment_memories:
+                if (m.actor_id == actor.actor_id and m.status == "open"
+                        and m.result_id in old_result_ids):
+                    m.status = "revised"
+                    superseded = m
         memory = JudgmentMemory(
             id=intel.next_id(state, "JM"),
             actor_id=actor.actor_id,
@@ -218,6 +244,8 @@ class RuleJudgmentEngine:
             assumptions=result.assumptions,
             change_my_mind=list(result.change_my_mind),
             created_at=now,
+            supersedes_id=superseded.id if superseded else None,
+            revision_reason=task.revision_reason,
         )
         state.judgment_memories.append(memory)
 
@@ -234,6 +262,8 @@ class RuleJudgmentEngine:
             plausible_set=list(plausible),
             dice_record_id=check_rec.check_id,
             memory_ids=[memory.id],
+            anchor_memory_id=anchor.id if anchor is not None else None,
+            anchor_bonus=bonus,
             context_version=task.context_version,
             random_seed=check_rec.random_seed,
             created_at=now,

@@ -59,11 +59,12 @@ class JudgmentTask(BaseModel):
     question_normalized: str = ""
     evidence_ids: list[str] = Field(default_factory=list)
     context_version: int = 1
-    source: str = "commander"            # commander / work_item / self_initiated
+    source: str = "commander"            # commander / work_item / self_initiated / revision
     created_at: Optional[datetime] = None
     priority: str = "routine"
     stable_key: str = ""
     supersedes_task_id: Optional[str] = None
+    revision_reason: Optional[str] = None   # 修订引用（新证据/反馈，M3.6.4）
 
     @model_validator(mode="after")
     def _derive(self):
@@ -171,6 +172,7 @@ class JudgmentMemory(BaseModel):
     created_at: Optional[datetime] = None
     status: str = "open"                           # MemoryStatus 值
     supersedes_id: Optional[str] = None
+    revision_reason: Optional[str] = None          # 修订引用（M3.6.4）
     commander_decision: Optional[str] = None       # approve/reject/defer/request_revision
     observable_outcome_ids: list[str] = Field(default_factory=list)
 
@@ -191,6 +193,8 @@ class JudgmentAuditRecord(BaseModel):
     plausible_set: list[str] = Field(default_factory=list)
     dice_record_id: str = ""
     memory_ids: list[str] = Field(default_factory=list)
+    anchor_memory_id: Optional[str] = None         # 锚定记忆（M3.6.3 坚持，可回放）
+    anchor_bonus: float = 0.0
     context_version: int = 1
     random_seed: str = ""
     created_at: Optional[datetime] = None
