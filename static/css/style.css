@@ -1058,7 +1058,7 @@ button.duty-item { cursor: pointer; text-decoration: underline; }
   white-space: pre-wrap;           /* 原文只读呈现 */
 }
 .comms-links { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
-.comms-links .btn { font-size: 9px; padding: 2px 7px; }
+.comms-links button { font-size: 9px; padding: 2px 7px; }
 .comms-compose { margin-top: 10px; border-top: 1px dashed rgba(42, 34, 24, 0.35); padding-top: 8px; }
 .comms-kw { font-size: 10px; font-weight: bold; letter-spacing: 1px; margin-bottom: 4px; }
 .comms-compose textarea {
@@ -1066,4 +1066,4 @@ button.duty-item { cursor: pointer; text-decoration: underline; }
   border: 1px solid var(--color-ink-faint); background: var(--color-paper-base);
   color: var(--color-ink-main); padding: 5px 8px; resize: vertical;
 }
-.comms-compose .btn { margin-top: 5px; }
+.comms-compose button { margin-top: 5px; }
