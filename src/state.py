@@ -28,6 +28,12 @@ from src.intel.models import (
 )
 from src.intel.rng import CheckRecord
 from src.intel.reasoning import ToolCallRecord
+from src.cognition.models import (
+    JudgmentAuditRecord,
+    JudgmentMemory,
+    JudgmentResult,
+    JudgmentTask,
+)
 from src.routes import PendingRoute, Route
 
 
@@ -311,3 +317,8 @@ class GameState(BaseModel):
     evidence_conflicts: list[EvidenceConflict] = Field(default_factory=list)
     # ── S2.7 推理工具调用审计（复盘可查参谋是否用过工具）──
     tool_calls: list[ToolCallRecord] = Field(default_factory=list)
+    # ── S3.0 参谋认知（判断任务/结果/记忆/审计；记忆按 actor 隔离，D7/D8）──
+    judgment_tasks: list[JudgmentTask] = Field(default_factory=list)
+    judgment_results: list[JudgmentResult] = Field(default_factory=list)
+    judgment_memories: list[JudgmentMemory] = Field(default_factory=list)
+    judgment_audits: list[JudgmentAuditRecord] = Field(default_factory=list)
