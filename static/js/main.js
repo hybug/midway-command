@@ -164,7 +164,7 @@ function renderShell() {
       desk.open(item.workbench, { via: 'notification', detail: item.id });
     },
   });
-  if (desk.isOpen()) desk.switchSection(desk.section); // 案卷台打开时保持区块刷新
+  // 案卷台内容刷新由各区块自节流拉取；此处回流 switchSection 会与 onSectionChange 互相递归
 }
 
 function latestActivity() {

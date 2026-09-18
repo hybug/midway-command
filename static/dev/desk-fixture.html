@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <title>COMMANDER DESK FIXTURE — 非游戏画面</title>
+  <link rel="stylesheet" href="/static/css/style.css?v=1780998028">
+  <style>
+    body { overflow: auto; height: auto; }
+    .fixture-banner {
+      position: sticky; top: 0; z-index: 99; background: #c0392b; color: #fff;
+      font-family: 'Special Elite', monospace; letter-spacing: 2px; font-size: 12px;
+      padding: 6px 12px; text-align: center;
+    }
+    .fixture-topbar { height: 56px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px; background: #f5edd6; border-bottom: 1px solid #2a2218; }
+  </style>
+</head>
+<body>
+  <div class="fixture-banner">FIXTURE — 非游戏画面 · S8 UI 定妆与截图验收专用（真实样式，桩数据）</div>
+  <div class="fixture-topbar">
+    <span style="font-family:'Special Elite',monospace;letter-spacing:3px;">中途岛指挥官 · COMMANDER DESK 定妆</span>
+    <span style="font-size:11px;color:#6b5d4a;">07 MAY 1942 · Z+11 &nbsp;|&nbsp; AP 3/3 &nbsp;|&nbsp; <button class="btn btn-issue-order">ISSUE ORDER</button></span>
+  </div>
+
+  <div id="commander-desk" style="position:static;">
+    <div class="desk-panel">
+      <header class="desk-head">
+        <span class="desk-stamp">SECRET</span>
+        <h2 class="desk-title">COMMANDER DESK — 旗舰案卷台</h2>
+        <nav class="desk-tabs">
+          <button class="desk-tab">COMMS</button>
+          <button class="desk-tab active">INTEL</button>
+          <button class="desk-tab">STAFF</button>
+          <button class="desk-tab">LOG</button>
+        </nav>
+        <button class="btn" id="desk-close">返回海图（ESC）</button>
+      </header>
+      <div class="desk-body" id="desk-body">
+
+        <!-- INTEL · BRIEFS（长判断书 + 事实/判断/推测三色 + 未决冲突） -->
+        <header class="intel-desk-head">
+          <span class="intel-title">INTELLIGENCE — 情报工作台</span>
+          <nav class="intel-tabs">
+            <button class="intel-tab">SITREP</button>
+            <button class="intel-tab active">BRIEFS <span class="intel-count">2</span></button>
+            <button class="intel-tab">PLOTS <span class="intel-count">1</span></button>
+            <button class="intel-tab">EVIDENCE <span class="intel-count">3</span></button>
+          </nav>
+        </header>
+        <article class="intel-card brief-card">
+          <header class="intel-card-head">
+            <span class="intel-stamp-word">SECRET</span>
+            <span class="intel-card-subtitle">– INTELLIGENCE BRIEF · tf17_intel · 06:54Z –</span>
+          </header>
+          <div class="intel-card-body">
+            <p class="intel-line intel-brief-narrative">【事实】VS-5-2B 电文报告米西马岛以北「两艘航母四艘巡洋舰」，方位 315、距离 200 海里，识别精度中等；该机返舰后已拍发勘误电报，承认 contact pad 使用错误、无法确认航母。【判断】原始报告可靠性显著下降，当前证据不足以支持立即放飞全力攻击；米西马方向存在一个未被确认的航母级编队的可能性仍然成立。【推测】不排除该机实际看到的是掩护群或非航母大型编队；也正因如此，陆军飞机随后在米西马近海报告的一艘航母编队更具打击价值。</p>
+            <p class="intel-meta">证据：EV-000001（已替代）· EV-000002（勘误）· EV-000003（陆军）</p>
+            <p class="intel-anno intel-anno-object">冲突 CFL-000001（position）：位置差 78 海里（VS-5-2B vs ARMY-RECON）</p>
+            <p class="intel-anno intel-anno-concern">未决：接触 EV-000001 已陈旧/失联，需新证据确认</p>
+          </div>
+        </article>
+        <article class="intel-card plot-card pending">
+          <header class="intel-card-head">
+            <span class="intel-stamp-word">SECRET</span>
+            <span class="intel-card-subtitle">– PLOT PROPOSAL v2 –</span>
+          </header>
+          <div class="intel-card-body">
+            <p class="intel-line">依据勘误与陆军报告修订 v1 标图：接触点移向米西马近海，不确定半径放宽</p>
+            <p class="intel-meta">POS 10.9°S 152.8°W · 331nm · BRG 330° · bearing_distance</p>
+            <p class="intel-meta">置信度：position 62% · identity 55%（参谋判断）· 证据：EV-000002, EV-000003</p>
+            <p class="intel-anno intel-anno-endorse">批注（browning）：同意呈报，建议以陆军报告为准重新标图</p>
+          </div>
+          <footer class="intel-actions">
+            <button class="btn btn-execute">批准上图</button>
+            <button class="btn btn-revise">驳回</button>
+            <button class="btn">要求修订</button>
+            <button class="btn">暂缓</button>
+            <button class="btn">版本比较</button>
+          </footer>
+        </article>
+
+        <!-- STAFF · 正式判断卡（置信度/备选解释/反馈/转述） -->
+        <p class="intel-kw">STAFF 判断卡样式</p>
+        <article class="staff-judgment-card">
+          <header class="staff-judgment-head">
+            <span class="intel-stamp-word">SECRET</span>
+            <span class="staff-judgment-title">正式判断 JR-000007 · 06:58Z</span>
+            <span class="staff-conf high">high</span>
+          </header>
+          <p class="staff-chosen">【判断】敌编队已修正至真方位 028、175 海里，航向 006、航速 15 节；攻击窗口就在上午，应立即放飞。</p>
+          <p class="staff-recommendation">建议：立即组织最大编队攻击，护航机同步起飞。</p>
+          <p class="staff-meta">关键假设：观测单位识别可靠；航向航速报告准确</p>
+          <p class="staff-meta">改变判断的条件：敌位置修正超出攻击半径时改判</p>
+          <p class="staff-meta">备选解释：报告基于单一观测，方位基准此前已出过错。</p>
+          <p class="staff-report">【判断】Fitch 认为攻击窗口在上午，主张最大编队出击。</p>
+          <div class="staff-judgment-actions">
+            <span class="staff-kw">指挥官反馈：</span>
+            <button class="btn">采纳</button><button class="btn">驳回</button><button class="btn">暂缓</button>
+            <span class="staff-kw">转述给：</span>
+            <button class="btn">TF17 情报参谋</button>
+          </div>
+        </article>
+
+        <!-- COMMS · 长电报 + 勘误链 -->
+        <p class="intel-kw">COMMS 电文样式（长电报 + 勘误链）</p>
+        <article class="comms-card">
+          <header class="comms-card-head">
+            <span class="comms-stamp">SECRET</span>
+            <span class="comms-card-title">VS-5-2B · MSG-000004</span>
+            <span class="comms-cond">complete · corrected</span>
+          </header>
+          <p class="comms-meta">观测 00:14Z · 拍发 00:16Z · 收报 00:41Z · 优先级 flash · 已路由：intel_officer</p>
+          <p class="comms-meta">勘误对象：MSG-000001（原文保留，只追加更正）· 已收勘误：MSG-000004, MSG-000009</p>
+          <pre class="comms-raw">TWO CARRIERS FOUR CRUISERS BEARING 315 DIST 200 NM POSITION NORTH OF MISIMA. AM UNABLE TO CONFIRM TYPE AT THIS RANGE, IDENT STANDARD. REQUEST INSTRUCTION. FUEL STATE ADEQUATE FOR RECALL. WILL HOLD PRESENT STATION UNTIL FURTHER ORDER, VISIBILITY REDUCED BY SQUALLS TO THE NORTHWARD AND SEARCHLIGHT OF MOON OBSCURED.</pre>
+        </article>
+
+        <!-- LOG · 时间线 + 认知/事实误差分离 -->
+        <p class="intel-kw">LOG 时间线与复盘样式</p>
+        <ol class="log-timeline">
+          <li class="log-event log-event-message"><span class="log-time">00:41Z</span><span class="log-kind">电报</span><span class="log-text">VS-5-2B：TWO CARRIERS FOUR CRUISERS BEARING 315…</span><button class="btn log-jump">查看</button></li>
+          <li class="log-event log-event-judgment"><span class="log-time">06:52Z</span><span class="log-kind">判断</span><span class="log-text">tf17_intel：正式判断（medium）</span><button class="btn log-jump">查看</button></li>
+          <li class="log-event log-event-plot_decision"><span class="log-time">06:56Z</span><span class="log-kind">标图决议</span><span class="log-text">标图 PLOT-000001 · approve · 按此标图</span><button class="btn log-jump">查看</button></li>
+          <li class="log-event log-event-otc_change"><span class="log-time">09:08Z</span><span class="log-kind">指挥权变化</span><span class="log-text">Fitch 于 09:08 被指定为战术指挥官（OTC）</span><button class="btn log-jump">查看</button></li>
+        </ol>
+        <p class="intel-kw">认知错误 vs 事实误差（复盘分离，D12）</p>
+        <table class="log-error-table">
+          <thead><tr><th>参谋</th><th>认知错误（相对证据）</th><th>事实误差（相对结果）</th></tr></thead>
+          <tbody>
+            <tr><td>tf17_intel</td><td>none</td><td>count (0.52)</td></tr>
+            <tr><td>fitch</td><td>none</td><td>count (0.52)</td></tr>
+            <tr><td>tf17_ops</td><td>none</td><td>position (0.31)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
