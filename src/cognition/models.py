@@ -196,3 +196,5 @@ class JudgmentContext(BaseModel):
     now: Optional[datetime] = None
     pressure: dict[str, float] = Field(default_factory=dict)  # 时间压力等（v0 登记）
     duty_boundary: list[str] = Field(default_factory=list)    # 职责边界说明
+    conflicts: list = Field(default_factory=list)  # Sequence[EvidenceConflict]（S2.5 登记，只减分不裁决）
+    scenario: dict = Field(default_factory=dict)   # scenario 覆盖（如 ambiguity_band）
