@@ -498,3 +498,31 @@ def test_orders_api_cancel_and_too_late():
     assert cancelled.status_code == 200
     again = client.post(f"/orders/{oid}/cancel")
     assert again.status_code == 400                        # 重复取消拒绝
+
+
+def test_same_seed_order_delivery_replay():
+    """同种子回放：同一局面+同一种子 ⇒ 相同通信检定序列与相同的命令生命周期。"""
+    from pathlib import Path
+    from src.initial_state import build_initial_state
+
+    def run_once():
+        s = build_initial_state(Path("theaters/coral-sea/scenario.json"))
+        s.clock.game_time = datetime(1942, 5, 8, 6, 0)
+        roster = _roster()
+        o = _course_draft(s, course=125)
+        orders.issue_order(s, roster, o.id)
+        trace = [(o.status.value, o.reported_status)]
+        for _ in range(4):
+            _tick(s, roster=roster)
+            trace.append((o.status.value, o.reported_status))
+        checks = [(c.check_type, c.random_seed, c.final_roll, c.degree)
+                  for c in s.check_records
+                  if c.check_type == "COMMUNICATION_CHECK"]
+        return trace, checks, s.task_forces[0].course
+
+    t1, c1, course1 = run_once()
+    t2, c2, course2 = run_once()
+    assert t1 == t2, "同种子下命令生命周期应逐 tick 一致"
+    assert c1 == c2, "同种子下通信检定序列应逐字段一致（CheckRecord 可回放）"
+    assert course1 == course2
+    assert course1 == 125

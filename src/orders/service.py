@@ -247,7 +247,7 @@ def _on_delivery(state, order: Order, roster) -> list[str]:
         intel.lose_message(state, msg, by="TBS 通信链",
                            reason="通信检定大失败——命令电文丢失")
         order.delivery_eta = None   # 传达终局：无自动重发（玩家可手动重发=新 Order）
-        return [f"⚠ 命令 {order.id} 电文丢失（未送达）"]
+        return []   # D16：丢失事实不直出通知（玩家见 Order 停在 ISSUED，可自行决定重发）
     if msg.status.value not in ("in_transit", "filed"):
         order.delivery_eta = None
         return []
@@ -259,7 +259,7 @@ def _on_delivery(state, order: Order, roster) -> list[str]:
            order.responsible_actor_id or "", source_ref=msg.id)
     if order.authority_mode == AuthorityMode.EXACT:
         activate_order(state, order)
-        return [f"命令 {order.id} 已送达并生效"]
+        return []   # D16：生效为内部执行事实，经 S2 报告成为指挥官已知
     # INTENT：责任参谋生成执行方案，待指挥官批准
     order.status = OrderStatus.PENDING_APPROVAL
     order.reported_status = "pending_approval"
@@ -268,7 +268,7 @@ def _on_delivery(state, order: Order, roster) -> list[str]:
         _event(state, order, OrderEventType.ORDER_ALTERNATIVE_PROPOSED,
                order.responsible_actor_id or "",
                summary=f"执行方案：{order.plan}")
-    return [f"命令 {order.id} 已送达，待批准"]
+    return []
 
 
 def activate_order(state, order: Order) -> None:
@@ -344,8 +344,8 @@ def _execute_active(state, order: Order) -> list[str]:
                 applied += 1
         if not applied:
             return _fail_order(state, order, f"目标 {order.target_refs} 不存在")
-        return [_complete_order(state, order, "success",
-                                f"航向已调整为 {course:03d}°")]
+        _complete_order(state, order, "success", f"航向已调整为 {course:03d}°")
+        return []   # D16：执行完成经报告回传，不直出通知
     if order.order_type == OrderType.LAUNCH_SCOUT:
         if order.authority_mode == AuthorityMode.INTENT and order.plan is None:
             return []   # 未批准不执行（理论不可达：INTENT 未到 ACTIVE）
@@ -360,8 +360,8 @@ def _execute_active(state, order: Order) -> list[str]:
             return _fail_order(state, order, result)
         outcome = "partial" if plan.get("shortfall") else "success"
         deviations = ["可用机不足，方案缩减编队"] if plan.get("shortfall") else []
-        return [_complete_order(state, order, outcome, result,
-                                deviations=deviations)]
+        _complete_order(state, order, outcome, result, deviations=deviations)
+        return []   # D16：执行完成经报告回传，不直出通知
     return []
 
 
@@ -372,7 +372,7 @@ def _fail_order(state, order: Order, reason: str) -> list[str]:
     _event(state, order, OrderEventType.ORDER_FAILED,
            order.responsible_actor_id or "", summary=reason[:80])
     _file_order_report(state, order)
-    return [f"命令 {order.id} 执行失败：{reason[:40]}"]
+    return []   # D16：失败经报告回传
 
 
 def _complete_order(state, order: Order, outcome: str, summary: str,
