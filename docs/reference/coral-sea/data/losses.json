@@ -1,0 +1,98 @@
+{
+  "registry_version": "1.0",
+  "note": "战损与人员损失。强度对照 ships.json/air_group_complements；损失不得超过强度（校验器强制）。来源侧 Claims 与日方记录冲突处标 CONFLICTED。",
+  "losses": [
+    {
+      "loss_id": "LOSS-SHOHO",
+      "target": "SHIP-SHOHO",
+      "kind": "ship_sunk",
+      "at": "1942-05-07",
+      "detail": "中弹中雷多枚（双方合计报称 13 枚 1000lb 弹 + 7 条鱼雷，PROBABLE），约数分钟内沉没",
+      "crew": {"aboard": 837, "killed": 634, "survived": 203, "confidence": "PROBABLE", "note": "TF17 估计 2,000 人损失（严重高估）；日方/后世考订约 634 亡、203 获救；aboard 为亡+获救合计口径重建（ESTIMATED，与 785 定员口径不同——珊瑚海实际超员）"},
+      "source_ids": ["SRC-TF17", "SRC-LUNDSTROM", "SRC-TULLY"],
+      "confidence": "CONFIRMED"
+    },
+    {
+      "loss_id": "LOSS-SIMS",
+      "target": "SHIP-SIMS",
+      "kind": "ship_sunk",
+      "at": "1942-05-07",
+      "detail": "遭舰爆/舰攻反复命中，快速沉没",
+      "crew": {"aboard": 251, "killed": 237, "survived": 14, "confidence": "PROBABLE", "note": "TF17 估计 200 人；实际幸存极少数（约 14 人，二级一致）；aboard 为亡+获救合计口径重建（ESTIMATED）"},
+      "source_ids": ["SRC-TF17", "SRC-DANFS", "SRC-LUNDSTROM"],
+      "confidence": "CONFIRMED"
+    },
+    {
+      "loss_id": "LOSS-NEOSHO",
+      "target": "SHIP-NEOSHO",
+      "kind": "ship_damaged_then_scuttled",
+      "at": "1942-05-07",
+      "detail": "7 中弹重创漂流；11 Henley 救起幸存者后凿沉",
+      "crew": {"aboard": 253, "killed": 138, "survived": 110, "confidence": "PROBABLE", "note": "遇难/获救细分诸说（获救约 110 人，其中含获救后亡者），ESTIMATED"},
+      "source_ids": ["SRC-TF17", "SRC-DANFS"],
+      "confidence": "CONFIRMED"
+    },
+    {
+      "loss_id": "LOSS-LEXINGTON",
+      "target": "SHIP-LEXINGTON",
+      "kind": "ship_sunk",
+      "at": "1942-05-08",
+      "detail": "中 2 雷 + 2 弹后油气回燃连环爆炸，弃舰，Phelps 鱼雷处分",
+      "crew": {"aboard": 2951, "killed": 216, "survived": 2735, "confidence": "CONFIRMED", "note": "官方史公认口径；TF17 报告的 238 为当时估计值（CONFLICTED，存疑不作运行值）"},
+      "aircraft_lost_with_ship": 35,
+      "source_ids": ["SRC-TF17", "SRC-NHHC"],
+      "confidence": "CONFIRMED"
+    },
+    {
+      "loss_id": "LOSS-YORKTOWN-DAMAGE",
+      "target": "SHIP-YORKTOWN",
+      "kind": "ship_damaged",
+      "at": "1942-05-08",
+      "detail": "中 1 弹（约 800lb 半穿甲，命中部框架 106-108）；配电/雷达受损，航速未低于 24 节",
+      "crew": {"killed": 43, "wounded": 66, "confidence": "CONFIRMED", "note": "当日死亡 40 + 重伤后不治 3；重伤 26、轻伤 40（SRC-CV5 医疗附录）"},
+      "source_ids": ["SRC-CV5"],
+      "confidence": "CONFIRMED"
+    },
+    {
+      "loss_id": "LOSS-SHOKAKU-DAMAGE",
+      "target": "SHIP-SHOKAKU",
+      "kind": "ship_damaged",
+      "at": "1942-05-08",
+      "detail": "中弹起火（美方报 6 中 5 可能；日方记录 3 弹——弹数 CONFLICTED）；飞行甲板与舰首重损，退回特鲁克",
+      "crew": {"killed": 109, "wounded": 114, "confidence": "PROBABLE", "note": "日方考订约数"},
+      "aircraft_lost": 43,
+      "source_ids": ["SRC-TF17", "SRC-CV5", "SRC-DULL", "SRC-LUNDSTROM"],
+      "confidence": "CONFIRMED"
+    },
+    {
+      "loss_id": "LOSS-IJN-AIRCRAFT-BATTLE",
+      "target": "CARDIV5",
+      "kind": "aircraft_total",
+      "at": "1942-05-07",
+      "detail": "全役日机损失：TF17 报称 144 架（严重高估）；现代考订约 66-97 架（当日 43 架上下一说与两日累计 69-97 并存，CONFLICTED）",
+      "crew": {"killed": null, "confidence": "UNKNOWN", "note": "日军空勤亡数无可靠单一来源"},
+      "source_ids": ["SRC-TF17", "SRC-LUNDSTROM"],
+      "confidence": "CONFLICTED"
+    },
+    {
+      "loss_id": "LOSS-US-AIRCRAFT",
+      "target": "TG17.5",
+      "kind": "aircraft_total",
+      "at": "1942-05-08",
+      "detail": "美机全役损失 66 架（含随列克星敦沉没 35 架）：约克城各队损失 VB 3 / VF 6 / VS 5 / VT 1（SRC-CV5 附表 CONFIRMED）；列克星敦队损失细分 UNKNOWN",
+      "crew": {"killed": 21, "wounded": 13, "missing": 13, "confidence": "PROBABLE", "note": "约克城航空队阵亡 6 飞行员 + 6 侦察员，伤 4+3；列克星敦空勤伤亡数 UNKNOWN"},
+      "source_ids": ["SRC-TF17", "SRC-CV5"],
+      "confidence": "CONFIRMED"
+    },
+    {
+      "loss_id": "LOSS-KIKUZUKI",
+      "target": "SHIP-KIKUZUKI",
+      "kind": "ship_damaged_total_loss",
+      "at": "1942-05-04",
+      "detail": "图拉吉空袭中重创坐底，后报废",
+      "crew": {"killed": null, "confidence": "UNKNOWN", "note": "阵亡数无可靠来源"},
+      "source_ids": ["SRC-TF17", "SRC-DULL"],
+      "confidence": "CONFIRMED"
+    }
+  ]
+}

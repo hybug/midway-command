@@ -1,0 +1,350 @@
+{
+  "registry_version": "1.0",
+  "timezone_rules": {
+    "note": "SRC-TF17：『5月7日17:00（当地）之前所有时间为 Z−11:30，此后为 Z−11』。zulu_time = local_time + 11:30 或 + 11。战区民用时（莫尔兹比/悉尼）为 Z+10，仅作地理参考，不用于舰队叙事。",
+    "fleet_zone_before": "-11:30",
+    "fleet_zone_from": "1942-05-07T17:00:00-11:00",
+    "fleet_zone_after": "-11:00",
+    "civil_zone": "+10:00",
+    "source_ids": ["SRC-TF17"],
+    "confidence": "CONFIRMED"
+  },
+  "events": [
+    {
+      "event_id": "EVT-0501-0615", "date": "1942-05-01",
+      "local_time": "1942-05-01T06:15:00-11:30", "zulu_time": "1942-05-01T17:45:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:30",
+      "actor": "CTF-17 / CTF-11", "location": {"name": "16°16′S 162°20′E", "lat": -16.27, "lon": 162.33},
+      "description": "TF17 与 TF11 会合；TF44（Crace）奉命 5/4 于 15°00′S 157°00′E 会合。",
+      "source_ids": ["SRC-TF17"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0502-1545", "date": "1942-05-02",
+      "local_time": "1942-05-02T15:45:00-11:30", "zulu_time": "1942-05-03T03:15:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:30",
+      "actor": "约克城侦察机", "location": {"name": "16°04′S 162°18′E", "lat": -16.07, "lon": 162.30},
+      "description": "约克城单机发现潜艇，深弹攻击报称『可能击沉』（无法证实）。",
+      "source_ids": ["SRC-TF17"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0503-TULAGI-LAND", "date": "1942-05-03",
+      "local_time": "1942-05-03T00:00:00-11:30", "zulu_time": "1942-05-03T11:30:00Z",
+      "time_exact": false, "source_time_zone": "local date only",
+      "actor": "图拉吉攻略部队（Shima）", "location": {"name": "图拉吉", "lat": -9.10, "lon": 160.15},
+      "description": "日军在图拉吉登陆（登陆时刻 UNKNOWN，按日计）。",
+      "source_ids": ["SRC-TF17", "SRC-DULL"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0503-2030", "date": "1942-05-03",
+      "local_time": "1942-05-03T20:30:00-11:30", "zulu_time": "1942-05-04T08:00:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:30",
+      "actor": "CTF-17", "location": {"name": "珊瑚海北部", "lat": -14.5, "lon": 161.0},
+      "description": "接岸基/海岸瞭望报告后，Fletcher 决心北上，航速 24 节转 27 节，驰往瓜岛方向寻歼图拉吉方面日军。",
+      "source_ids": ["SRC-TF17"], "confidence": "CONFIRMED", "decision": true
+    },
+    {
+      "event_id": "EVT-0504-0701", "date": "1942-05-04",
+      "local_time": "1942-05-04T07:01:00-11:30", "zulu_time": "1942-05-04T18:31:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:30",
+      "actor": "约克城航空队", "location": {"name": "图拉吉近海", "lat": -9.5, "lon": 160.0},
+      "description": "约克城放飞 CAP 与第一攻击波，随后全天三波空袭图拉吉（VF-42/VB-5/VS-5/VT-5 参战；TF11/TF44 当日在南面加油未参与）。",
+      "source_ids": ["SRC-TF17", "SRC-CV5"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0504-1702", "date": "1942-05-04",
+      "local_time": "1942-05-04T17:02:00-11:30", "zulu_time": "1942-05-05T04:32:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:30",
+      "actor": "约克城航空队", "location": {"name": "约克城", "lat": -15.0, "lon": 159.5},
+      "description": "末次攻击波着舰。全日战果：驱逐舰菊月重创坐底、扫海艇等小型舰被击沉/损毁；自损 TBD 1 架、F4F 2 架（油尽/迫降，飞行员由 Hammann 救回）。",
+      "source_ids": ["SRC-TF17", "SRC-CV5", "SRC-DULL"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0505-0825", "date": "1942-05-05",
+      "local_time": "1942-05-05T08:25:00-11:30", "zulu_time": "1942-05-05T19:55:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:30",
+      "actor": "VF-42 CAP", "location": {"name": "TF17 上空", "lat": -15.5, "lon": 158.0},
+      "description": "4 架 F4F 截击并击落日军四发飞行艇（H6K 类）1 架。",
+      "source_ids": ["SRC-TF17", "SRC-CV5"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0505-0846", "date": "1942-05-05",
+      "local_time": "1942-05-05T08:46:00-11:30", "zulu_time": "1942-05-05T20:16:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:30",
+      "actor": "CTF-17 / CTF-11 / TF44", "location": {"name": "瓜岛以南会合点", "lat": -16.0, "lon": 160.5},
+      "description": "TF17、TF11 与 TF44 会合，统一编入 TF17 序列（Fletcher 统一指挥）。",
+      "source_ids": ["SRC-TF17"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0506-0730", "date": "1942-05-06",
+      "local_time": "1942-05-06T07:30:00-11:30", "zulu_time": "1942-05-06T19:00:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:30",
+      "actor": "CTF-17", "location": {"name": "珊瑚海", "lat": -15.6, "lon": 156.5},
+      "description": "作战命令 2-42（Op Order 2-42）生效：TF17 重组为攻击群（Crace）+支援群（Kinkaid）+航母群（Fitch），航母幕含四驱逐舰。",
+      "source_ids": ["SRC-TF17"], "confidence": "CONFIRMED", "decision": true
+    },
+    {
+      "event_id": "EVT-0506-FUEL-BREAK", "date": "1942-05-06",
+      "local_time": "1942-05-06T14:00:00-11:30", "zulu_time": "1942-05-07T01:30:00Z",
+      "time_exact": false, "source_time_zone": "fleet -11:30（约）",
+      "actor": "CTF-17", "location": {"name": "珊瑚海", "lat": -15.6, "lon": 155.8},
+      "description": "午后中止加油，转向西进抢占 5/7 拂晓阵位；Neosho 与 Sims 脱离主力南行。",
+      "source_ids": ["SRC-TF17"], "confidence": "CONFIRMED", "decision": true
+    },
+    {
+      "event_id": "EVT-0507-DETACH-CRACE", "date": "1942-05-07",
+      "local_time": "1942-05-07T06:30:00-11:30", "zulu_time": "1942-05-07T18:00:00Z",
+      "time_exact": false, "source_time_zone": "fleet -11:30（约拂晓）",
+      "actor": "CTF-17 / Crace", "location": {"name": "路易西亚德群岛方向", "lat": -15.0, "lon": 154.5},
+      "description": "拂晓，Crace 率 TG17.3（澳/美 6 舰，含拨入的 Farragut）脱离主力，封锁乔马德水道方向。",
+      "source_ids": ["SRC-TF17"], "confidence": "CONFIRMED", "decision": true
+    },
+    {
+      "event_id": "EVT-0507-MISIMA-CONTACT", "date": "1942-05-07",
+      "local_time": "1942-05-07T08:15:00-11:30", "zulu_time": "1942-05-07T19:45:00Z",
+      "time_exact": false, "source_time_zone": "fleet -11:30（约）",
+      "actor": "约克城侦察机（职务名：PER-CV5-REPORTED）", "location": {"name": "米西马岛以北", "lat": -10.6, "lon": 152.9},
+      "description": "向西北搜索的单机报告『米西马岛以北：两艘航母、四艘巡洋舰』。风暴致当日东北东向计划搜索未完成。",
+      "source_ids": ["SRC-TF17"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0507-LAUNCH-STRIKES", "date": "1942-05-07",
+      "local_time": "1942-05-07T09:30:00-11:30", "zulu_time": "1942-05-07T21:00:00Z",
+      "time_exact": false, "source_time_zone": "fleet -11:30（约）",
+      "actor": "TG17.5", "location": {"name": "TF17 阵位", "lat": -15.2, "lon": 154.3},
+      "description": "据误判接触放飞攻击群（约克城 37 机 CONFIRMED；列克星敦机数一手未载，PROBABLE 约 90）。起飞后获知 contact pad 使用错误——该飞行员并未亲见航母。",
+      "source_ids": ["SRC-TF17"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0507-B17-REPORT", "date": "1942-05-07",
+      "local_time": "1942-05-07T10:15:00-11:30", "zulu_time": "1942-05-07T21:45:00Z",
+      "time_exact": false, "source_time_zone": "fleet -11:30（约）",
+      "actor": "美陆军轰炸机", "location": {"name": "米西马附近", "lat": -10.7, "lon": 152.8},
+      "description": "陆军飞机报告米西马近海有『航母群』——攻击群转向该目标（实为祥凤）。",
+      "source_ids": ["SRC-TF17"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0507-SHOHO-SUNK", "date": "1942-05-07",
+      "local_time": "1942-05-07T11:45:00-11:30", "zulu_time": "1942-05-07T23:15:00Z",
+      "time_exact": false, "source_time_zone": "fleet -11:30（约，正午前后）",
+      "actor": "TG17.5 攻击群（VS-2 Dixon 等）", "location": {"name": "10°29′S 152°53′E", "lat": -10.48, "lon": 152.88},
+      "description": "祥凤被约克城/列克星敦两攻击群反复命中后约数分钟内沉没；同队轻巡 UNKNOWN（报告称有一轻巡同沉——日方记录否定，CONFLICTED）。TF17 报告误记舰名为 Ryukaku。Dixon 中队的『Scratch one flattop!』电文出此战（二级一致）。",
+      "source_ids": ["SRC-TF17", "SRC-LUNDSTROM"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0507-1338-RETURN", "date": "1942-05-07",
+      "local_time": "1942-05-07T13:38:00-11:30", "zulu_time": "1942-05-08T01:08:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:30",
+      "actor": "TG17.5 攻击群", "location": {"name": "TF17 阵位", "lat": -15.2, "lon": 154.3},
+      "description": "攻击群全部返回母舰（当日下午未再放飞——决定依托岸基机续侦）。",
+      "source_ids": ["SRC-TF17"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0507-1051-NEOSHO", "date": "1942-05-07",
+      "local_time": "1942-05-07T10:51:00-11:30", "zulu_time": "1942-05-07T22:21:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:30",
+      "actor": "Neosho", "location": {"name": "16°50′S 159°08′E", "lat": -16.83, "lon": 159.13},
+      "description": "收 Neosho 被炸电文（日机将其误报为『航母+巡洋舰』，高木放出 78 架大编队——日方兵力 PROBABLE）。",
+      "source_ids": ["SRC-TF17", "SRC-LUNDSTROM"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0507-SIMS-SUNK", "date": "1942-05-07",
+      "local_time": "1942-05-07T12:10:00-11:30", "zulu_time": "1942-05-07T23:40:00Z",
+      "time_exact": false, "source_time_zone": "fleet -11:30（约）",
+      "actor": "MO 机动部队攻击队", "location": {"name": "16°38′S 158°28′E 附近", "lat": -16.63, "lon": 158.47},
+      "description": "Sims 被炸沉（几乎全员殉舰）；Neosho 重创起火漂流。日方攻击队亦损失多架，误报已击沉『航母』。",
+      "source_ids": ["SRC-TF17", "SRC-LUNDSTROM"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0507-1600-NEOSHO", "date": "1942-05-07",
+      "local_time": "1942-05-07T16:00:00-11:30", "zulu_time": "1942-05-08T03:30:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:30",
+      "actor": "Neosho", "location": {"name": "16°38′S 158°28′E", "lat": -16.63, "lon": 158.47},
+      "description": "Neosho 发出『正在下沉』电文（实际漂流至 5/11）。Monaghan 受派夜航搜寻幸存者。",
+      "source_ids": ["SRC-TF17"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0507-1556-CRACE-DESPT", "date": "1942-05-07",
+      "local_time": "1942-05-07T15:56:00-11:30", "zulu_time": "1942-05-08T03:26:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:30",
+      "actor": "Crace / CTF-17", "location": {"name": "TG17.3 阵位", "lat": -15.0, "lon": 152.5},
+      "description": "收 Crace 电文：TG17.3 遭 8 架双发雷击机与 19 架轻型轰炸机（舰爆类）攻击，编队机动规避未受损伤，报称击落 3 架。攻击时刻早于本电文（约 11:00-11:30，approx）。",
+      "source_ids": ["SRC-TF17"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0507-1659-SEAPLANE", "date": "1942-05-07",
+      "local_time": "1942-05-07T16:59:00-11:30", "zulu_time": "1942-05-08T04:29:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:30",
+      "actor": "日军水上侦察机", "location": {"name": "TF17 上空", "lat": -15.2, "lon": 154.3},
+      "description": "敌水上机接近本队，随即被驱离（接敌暴露前兆）。",
+      "source_ids": ["SRC-TF17"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0507-1700-CLOCK", "date": "1942-05-07",
+      "local_time": "1942-05-07T17:00:00-11:00", "zulu_time": "1942-05-08T04:30:00Z",
+      "time_exact": false, "source_time_zone": "fleet -11:00（换区）",
+      "actor": "TF17", "location": {"name": "—", "lat": null, "lon": null},
+      "description": "舰队时区由 Z−11:30 改为 Z−11（SRC-TF17 注记）。换区瞬间钟面跳变：Zulu 04:30Z 前钟面读 −11:30，之后读 −11（绝对时刻连续，钟面无回退意义上的 16:30-17:00 段）。",
+      "source_ids": ["SRC-TF17"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0507-1747-NIGHT-RAID", "date": "1942-05-07",
+      "local_time": "1942-05-07T17:47:00-11:00", "zulu_time": "1942-05-08T04:47:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:00",
+      "actor": "五航战夜袭队 / TF17 CAP", "location": {"name": "TF17 东南", "lat": -15.6, "lon": 154.8},
+      "description": "雷达报警后 CAP 拦截黄昏来袭编队（雷击机为主，机数一手未载、二级称约 27 架 PROBABLE）；日方报称损失 15-20 架，己方损失 3 架 F4F。",
+      "source_ids": ["SRC-TF17"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0507-1930-RADARPLOT", "date": "1942-05-07",
+      "local_time": "1942-05-07T19:30:00-11:00", "zulu_time": "1942-05-08T06:30:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:00",
+      "actor": "列克星敦雷达席 / ComAir", "location": {"name": "TF17", "lat": -15.4, "lon": 154.5},
+      "description": "列克星敦雷达在方位 090、约 30 海里处录得移动群（22:00 电文通报）——Fletcher 决定不进行夜间水面接敌，向西集结待黎明。",
+      "source_ids": ["SRC-TF17"], "confidence": "CONFIRMED", "decision": true
+    },
+    {
+      "event_id": "EVT-0508-0545-GQ", "date": "1942-05-08",
+      "local_time": "1942-05-08T05:45:00-11:00", "zulu_time": "1942-05-08T16:45:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:00",
+      "actor": "TF17", "location": {"name": "TF17", "lat": -14.8, "lon": 154.6},
+      "description": "战斗警报；黎明 360° 搜索开始（5/7 岸基机未找到翔鹤/瑞鹤）。",
+      "source_ids": ["SRC-TF17", "SRC-CV5"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0508-0625-SEARCH", "date": "1942-05-08",
+      "local_time": "1942-05-08T06:25:00-11:00", "zulu_time": "1942-05-08T17:25:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:00",
+      "actor": "列克星敦航空队", "location": {"name": "TF17", "lat": -14.7, "lon": 154.6},
+      "description": "列克星敦放飞搜索群（约克城随后放出己方搜索机）。",
+      "source_ids": ["SRC-CV5", "SRC-TF17"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0508-0655-SUNRISE", "date": "1942-05-08",
+      "local_time": "1942-05-08T06:55:00-11:00", "zulu_time": "1942-05-08T17:55:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:00",
+      "actor": "—", "location": {"name": "TF17 阵位", "lat": -14.4, "lon": 154.5},
+      "description": "日出。当日阵位风 112°/19kn、海面平滑、能见度约 30 海里（SRC-CV5 气象）。",
+      "source_ids": ["SRC-CV5"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0508-0724-CAP", "date": "1942-05-08",
+      "local_time": "1942-05-08T07:24:00-11:00", "zulu_time": "1942-05-08T18:24:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:00",
+      "actor": "约克城", "location": {"name": "14°25′S 154°31′E 方向", "lat": -14.42, "lon": 154.52},
+      "description": "0724-0732 放飞首批 CAP（8 架 F4F）与 8 架 VS 反雷击巡逻；本队航向 125°、14 节。0800 本队位置 14°25′S 154°31′E。",
+      "source_ids": ["SRC-CV5"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0508-0828-CONTACT", "date": "1942-05-08",
+      "local_time": "1942-05-08T08:28:00-11:00", "zulu_time": "1942-05-08T19:28:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:00",
+      "actor": "列克星敦搜索机", "location": {"name": "敌主力方向", "lat": -11.85, "lon": 156.07},
+      "description": "搜索机报告『两航母、四重巡、多驱逐』；初报以基准点 Zed 计 120 海里/方位 006°，随后列克星敦修正为真方位 028°、175 海里（即 11°51′S 156°04′E）。日方电台截收证实其 0822 已目视接触。",
+      "source_ids": ["SRC-TF17"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0508-0847-LAUNCH", "date": "1942-05-08",
+      "local_time": "1942-05-08T08:47:00-11:00", "zulu_time": "1942-05-08T19:47:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:00",
+      "actor": "ComAir（Fitch）", "location": {"name": "TF17", "lat": -14.4, "lon": 154.5},
+      "description": "下令放飞全部攻击群。0900-0915 约克城放出 6 VF + 17 VB + 7 VS + 9 VT；列克星敦攻击群机数一手未载（PROBABLE 约 40）。",
+      "source_ids": ["SRC-CV5", "SRC-TF17"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0508-0907-OTC", "date": "1942-05-08",
+      "local_time": "1942-05-08T09:07:00-11:00", "zulu_time": "1942-05-08T20:07:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:00",
+      "actor": "CTF-17 → CTG 17.5（Fitch）", "location": {"name": "TF17", "lat": -14.4, "lon": 154.5},
+      "description": "Fitch 接任 OTC（战术指挥官）。TF17 报告作 0907、CV5 报告作 0908（LWT）——1 分钟级 CONFLICTED。",
+      "source_ids": ["SRC-TF17", "SRC-CV5"], "confidence": "CONFIRMED", "decision": true
+    },
+    {
+      "event_id": "EVT-0508-1039-SIGHTING", "date": "1942-05-08",
+      "local_time": "1942-05-08T10:39:00-11:00", "zulu_time": "1942-05-08T21:39:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:00",
+      "actor": "约克城攻击群", "location": {"name": "翔鹤编队上空", "lat": -11.9, "lon": 156.1},
+      "description": "约克城攻击群目视敌航母（航向 020°），并辨明队形中另有战列舰型 1、航母 2、巡洋舰/驱逐舰多艘。",
+      "source_ids": ["SRC-CV5"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0508-1058-ATTACK", "date": "1942-05-08",
+      "local_time": "1942-05-08T10:58:00-11:00", "zulu_time": "1942-05-08T21:58:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:00",
+      "actor": "约克城攻击群（先到）/ 列克星敦攻击群（继至）", "location": {"name": "敌航母编队", "lat": -11.9, "lon": 156.1},
+      "description": "约克城队 10:49 进入目标上空、10:58 协同攻击开始，自 17,000ft 俯冲：报称 6 枚 1000lb 确中 + 5 可能；VT-5 放 9 雷，报称 3-4 中。列克星敦队随后攻击另一目标。日方记录：翔鹤中弹起火（弹数 CONFLICTED），瑞鹤未中弹但防空战损失大。",
+      "source_ids": ["SRC-CV5", "SRC-TF17", "SRC-DULL"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0508-1055-RADAR", "date": "1942-05-08",
+      "local_time": "1942-05-08T10:55:00-11:00", "zulu_time": "1942-05-08T21:55:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:00",
+      "actor": "TF17 雷达", "location": {"name": "TF17", "lat": -14.4, "lon": 154.5},
+      "description": "雷达捕捉来袭机群：方位 020°、距离 68 海里。",
+      "source_ids": ["SRC-CV5", "SRC-TF17"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0508-1113-ENEMY-ATTACK", "date": "1942-05-08",
+      "local_time": "1942-05-08T11:13:00-11:00", "zulu_time": "1942-05-08T22:13:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:00",
+      "actor": "五航战攻击队", "location": {"name": "TF17 上空", "lat": -14.4, "lon": 154.5},
+      "description": "11:18 防空开火、11:13 转进 30 节规避；敌机 11:24 起俯冲/雷击。列克星敦中 2 雷 + 2 弹；约克城 11:27 中 1 弹（命中部框架 106-108，约 800lb 半穿甲，损毁配电与雷达）。1124-1140 攻击结束。",
+      "source_ids": ["SRC-CV5", "SRC-TF17"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0508-1422-EXTRAINTEL", "date": "1942-05-08",
+      "local_time": "1942-05-08T14:22:00-11:00", "zulu_time": "1942-05-09T01:22:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:00",
+      "actor": "ComAir / 情报渠道", "location": {"name": "TF17", "lat": -14.7, "lon": 154.8},
+      "description": "ComAir 通报：无线电迹象显示敌另有航母加入（实为瑞鹤未损——影响后续决策的情报噪声）。",
+      "source_ids": ["SRC-TF17"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0508-1445-LEX-EXPLOSION", "date": "1942-05-08",
+      "local_time": "1942-05-08T14:45:00-11:00", "zulu_time": "1942-05-09T01:45:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:00",
+      "actor": "列克星敦", "location": {"name": "15°05′S 155°16′E 方向", "lat": -15.08, "lon": 155.27},
+      "description": "列克星敦舰内油气被引燃，发生剧烈内爆，火势失控（1210 附近已有限度损管，1445 起连锁爆炸）。",
+      "source_ids": ["SRC-TF17"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0508-1510-RESUME", "date": "1942-05-08",
+      "local_time": "1942-05-08T15:10:00-11:00", "zulu_time": "1942-05-09T02:10:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:00",
+      "actor": "CTF-17（Fletcher）", "location": {"name": "TF17", "lat": -15.0, "lon": 155.2},
+      "description": "Fletcher 收回战术指挥（OTC 回到 CTF）。此时约克城仅余 8 VF/12 VB/8 VT 可用，本队决定向南脱离、不追击。",
+      "source_ids": ["SRC-TF17", "SRC-CV5"], "confidence": "CONFIRMED", "decision": true
+    },
+    {
+      "event_id": "EVT-0508-1710-ABANDON", "date": "1942-05-08",
+      "local_time": "1942-05-08T17:10:00-11:00", "zulu_time": "1942-05-09T04:10:00Z",
+      "time_exact": true, "source_time_zone": "fleet -11:00",
+      "actor": "列克星敦", "location": {"name": "15°05′S 155°16′E", "lat": -15.08, "lon": 155.27},
+      "description": "16:10 下层甲板弃离、16:57 全舰失电、17:10 全员弃舰；1523-1536 约克城已收容列克星敦 6 VF + 10 SBD。",
+      "source_ids": ["SRC-TF17", "SRC-CV5"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0508-1952-LEX-SINKS", "date": "1942-05-08",
+      "local_time": "1942-05-08T19:52:00-11:00", "zulu_time": "1942-05-09T06:52:00Z",
+      "time_exact": false, "source_time_zone": "fleet -11:00（约）",
+      "actor": "Phelps / 列克星敦", "location": {"name": "15°05′S 155°16′E", "lat": -15.08, "lon": 155.27},
+      "description": "Phelps 以鱼雷处分列克星敦（时刻约 19:52，一手报告未载精确分秒，二级一致）。Kinkaid 指挥六舰救起 2,735 名幸存者。",
+      "source_ids": ["SRC-TF17", "SRC-MORISON"], "confidence": "CONFIRMED"
+    },
+    {
+      "event_id": "EVT-0509-MO-POSTPONE", "date": "1942-05-08",
+      "local_time": "1942-05-08T20:00:00+10:00", "zulu_time": "1942-05-08T10:00:00Z",
+      "time_exact": false, "source_time_zone": "civil +10（约）",
+      "actor": "第四舰队（井上）", "location": {"name": "拉包尔", "lat": -4.22, "lon": 152.18},
+      "description": "拉包尔时间 5/8 夜（civil+10，早于珊瑚海战区钟面——注意日方日历日领先），因航母战果不明（误报两艘美军航母重创但祥凤沉没、翔鹤重损），井上下令 MO 攻略延期，联合舰队次日确认——莫尔兹比港正面登陆就此搁置。",
+      "source_ids": ["SRC-DULL", "SRC-SENSHI"], "confidence": "CONFIRMED", "decision": true
+    },
+    {
+      "event_id": "EVT-0511-NEOSHO-RESCUE", "date": "1942-05-11",
+      "local_time": "1942-05-11T00:00:00-11:00", "zulu_time": "1942-05-11T11:00:00Z",
+      "time_exact": false, "source_time_zone": "local date only",
+      "actor": "USS Henley / Neosho", "location": {"name": "16°24′S 158°41′E 附近", "lat": -16.40, "lon": 158.68},
+      "description": "Henley 找到漂流中的 Neosho 并救起幸存者，随后将其凿沉（获救/殉舰人数见 losses.md）。",
+      "source_ids": ["SRC-TF17", "SRC-DANFS"], "confidence": "CONFIRMED"
+    }
+  ]
+}
