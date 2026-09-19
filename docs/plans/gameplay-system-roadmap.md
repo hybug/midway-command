@@ -34,7 +34,7 @@
 | S1 | 世界与战役模拟系统 | 骨架可用 | 7 |
 | S2 | 感知与情报系统 | Phase S2.0–S2.8 已实施 | 1（已完成） |
 | S3 | 参谋认知与判断系统 | S2 接口已留，专项计划已建立 | 2（当前） |
-| S4 | 参谋班子与关系系统 | 基本空白 | 3 |
+| S4 | 参谋班子与关系系统 | 前端契约桩已就位，待正式实施 | 3（当前） |
 | S5 | 指挥、授权与执行系统 | 部分可用 | 4 |
 | S6 | 行动、战斗与后果系统 | 部分可用 | 5 |
 | S7 | 叙事、胜负与复盘系统 | 骨架 | 6 |
@@ -61,7 +61,7 @@
 | 模块 | 内容 | 优先级 |
 |---|---|---|
 | M1.1 状态模型与版本迁移 | GameState schema、兼容升级、数据边界 | P0 |
-| M1.2 游戏时钟、回合与 AP | 时间推进、回合类型、行动预算 | P1 |
+| M1.2 游戏时钟、回合与 AP | 时间推进、回合类型、行动经济；专题见 `docs/plans/ap-system-plan.md` | P1 |
 | M1.3 实体、空间与移动 | 舰队、飞机、位置、航速、空间索引 | P1 |
 | M1.4 战区、地理与场景包 | theater/scenario/geography 与校验 | P0 |
 | M1.5 资源、燃料、弹药与补给 | 消耗、补充、短缺与后勤约束 | P1 |
@@ -110,14 +110,14 @@
 
 | 模块 | 内容 | 优先级 |
 |---|---|---|
-| M4.1 per-NPC 立场账本 | 对玩家、己方、敌方、其他 NPC 的结构化立场 | P0 |
-| M4.2 信任、尊重与摩擦 | 态度如何随采纳、结果和言行变化 | P1 |
-| M4.3 主动上门与定时报告 | 参谋主动发起对话或提交报告 | P1 |
-| M4.4 转述与信息中介 | NPC 间信息必须经玩家或明确通信路径传播 | P1 |
-| M4.5 跨 NPC 评价与预测 | NPC 对其他参谋的判断和可信度评价 | P2 |
-| M4.6 冲突升级与派系 | 分歧、结盟、共同施压与内部矛盾 | P2 |
-| M4.7 抗命、独走与责任追溯 | 自主行动、越权、事后追责 | P2 |
-| M4.8 关系变化可视化 | 玩家能看见关系状态及其原因 | P1 |
+| M4.1 参谋编制与沟通名单 | 史实决定核心参谋、可直接沟通人员和通信渠道，数量不预设 | P0 |
+| M4.2 指挥链上呈 | 下级报告按职务和指挥关系逐级送达，保留来源与批注 | P0 |
+| M4.3 名单内人员主动提醒 | 确定性触发、按主题去重、冷却和优先级 | P0 |
+| M4.4 极简参谋档案 | 身份、状态、当前关注和最近两次互动 | P0 |
+| M4.5 跨 NPC 评价 | 延期；除非 v0 试玩证明必要 | P2 |
+| M4.6 冲突与派系 | 延期；不属于 v0 | P2 |
+| M4.7 抗命与独走 | 延期；与 S5 共同处理 | P2 |
+| M4.8 关系可视化 | 延期；v0 不显示关系数值或网络 | P2 |
 
 ## S5 指挥、授权与执行系统
 
@@ -238,25 +238,37 @@
 - 验收：SBD 发现目标 → 电文送达 → 情报参谋研判 → 简报呈报 → 指挥官批准 → 正式标图 → 新证据修订，全链路成立。
 - 实施收口：`docs/reports/s2-intel/VERIFY.md`，474 tests passed。
 
-### 阶段 2：S3 参谋认知与判断（当前）
+### 阶段 2：S3 参谋认知与判断（已完成）
 
 - 主攻：M3.1–M3.9，详见 `docs/plans/s3-staff-cognition-system-plan.md`。
 - 薄切片：S2 证据、S5 授权接口、S7 复盘、S8 判断 UI、S10 行为评估。
 - 首批场景：珊瑚海 1942-05-07 米西马方向错误接触与攻击决心。
 - 验收：候选判断 → evidence_fit → 单次判断检定 → 人物化建议 → 新证据修订 → 认知错误和事实错误分离复盘。
 
-### 阶段 3：S4 参谋班子与关系
+### 阶段 3：S4 参谋班子与关系（当前）
 
-- 主攻：M4.1、M4.2、M4.3、M4.4、M4.8。
+- 主攻：M4.1、M4.2、M4.3、M4.4。
+- 专项计划：`docs/plans/s4-staff-relations-system-plan.md`。
+- 史实资料计划：`docs/plans/coral-sea-historical-research-plan.md`；S4.0 是其指挥链与人员名单的第一批产物。
+- 前置整改：`docs/plans/action-semantics-remediation-plan.md` 的 Phase AS.0–AS.1。
 - 验收：同一事件产生不同态度，立场变化有明确原因，参谋可以主动汇报。
+
+### 阶段 3A：AP 行动经济专项（S4 后、S5 前）
+
+- 专题计划：`docs/plans/ap-system-plan.md`。
+- 先审计现有 AP 使用，比较无 AP、行动点、注意力预算、通信带宽和参谋负载模型。
+- 验收：明确 AP 的目的、成本对象、重置规则和试玩效果，再决定保留或替换。
 
 ### 阶段 4：S5 指挥、授权与执行
 
-- 主攻：M5.1–M5.5、M5.8。
+- 前置：AP.0–AP.4 完成。
+- 专项计划：`docs/plans/s5-command-execution-system-plan.md`。
+- 主攻：M5.1–M5.5、M5.8，v0 只做 SET_COURSE 与 LAUNCH_SCOUT 两条纵切。
 - 验收：命令、解释、授权、拒绝与执行都可审计，LLM 不越权改状态。
 
 ### 阶段 5：S6 行动、战斗与后果
 
+- 前置资料：`docs/plans/coral-sea-historical-research-plan.md` 的 P0 数据完成。
 - 主攻：M6.1–M6.7、M6.9。
 - 验收：决策产生延迟但有意义的战果，敌方会主动行动，乌龟玩法有压力。
 
@@ -298,18 +310,22 @@
 
 ## 六、当前下一步
 
-当前展开 **S3 参谋认知与判断系统**。
+当前进入 **S4 参谋班子与关系系统**。
 
-专项实施计划：`docs/plans/s3-staff-cognition-system-plan.md`。
+S3 执行收口：`docs/plans/s3-staff-cognition-system-plan.md`、`docs/design/S3_COGNITION_SYSTEM.md`。
 
-跨系统 UI 契约：`docs/plans/s8-ui-ux-system-plan.md`。
+S8 UI 契约：`docs/plans/s8-ui-ux-system-plan.md`。
 
-首先执行 `Phase S3.0`：
+专项实施计划：`docs/plans/s4-staff-relations-system-plan.md`。
 
-- ActorProfile / JudgmentTask / Hypothesis / JudgmentResult / JudgmentMemory 契约。
-- 珊瑚海角色名册与角色证据权限。
-- 通用 JudgmentEngine 接口。
-- 珊瑚海一手史料登记。
-- 与 S2 JudgmentPolicy 的迁移方案。
+前置交互整改：`docs/plans/action-semantics-remediation-plan.md`，先执行 Phase AS.0–AS.1。
 
-在 S3 判断纵切成立前，不同时铺开 S4、S5、S6 的完整实现。
+S4 首先完成：
+
+- 取消独立关系状态，改为事件历史 + 主动行为触发器。
+- 主动行为限定为 REQUEST_MEETING / SUBMIT_NOTE / REQUEST_CLARIFICATION / REGISTER_DISSENT。
+- StaffCommunication 固定 intent，替换模糊的玩家转述。
+- 接真实事件源，激活 STAFF_VISIT / CONFLICT / DossierSummary。
+- S4.0 先完成珊瑚海指挥链与人员名单；完整史实采集按 `docs/plans/coral-sea-historical-research-plan.md` 并行推进。
+- S4 完成后先执行 AP 行动经济专项，再执行 `docs/plans/s5-command-execution-system-plan.md`。
+- 在 S4 主动行为和 AP 专项成立前，不同时铺开 S5、S6 的完整实现。

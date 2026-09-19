@@ -175,11 +175,14 @@ curl -X POST localhost:8000/game/new -H "Content-Type: application/json" -d '{"t
 
 ## 八、给下一位的开工建议（顺序）
 
-1. 先跑 `pytest tests/ -q`（应 352 passed）与 `uvicorn server:app`，浏览器打开确认中途岛/珊瑚海都能进——**确认基线可信再动手**。
-2. 想动玩法 → 以 `docs/plans/gameplay-system-roadmap.md` 为长期路线图；S2 感知与情报、**S3 参谋认知与判断（Phase S3.0–S3.7，珊瑚海 5/7 与 5/8 纵切全通）均已执行完成**（规格 `docs/design/S3_COGNITION_SYSTEM.md`，代码 `src/cognition/`）；下一步按路线图是 **S4 参谋班子与关系系统**（前端契约桩已就位：`static/js/s4Adapter.js`，落地后只需接真实事件源）。
-3. 想补 UI → S8 五工作台重构已执行完成（Phase UI.0–UI.7，规格 `docs/design/S8_INTERFACE.md`：CHART/COMMS/INTEL/STAFF/LOG + Commander Desk + NotificationCenter + ISSUE ORDER）；收尾项见 `docs/plans/s8-ui-ux-system-plan.md` 执行记录。
-4. S3.8 收尾项：真实 LLM 接入后跑人物行为评估（Browning 风格/谨慎情报官/航空指挥官三类）并冻结五维权重（当前权重全部标注 v0，集中于 `src/cognition/formula.py` 与 `src/cognition/evidence_fit.py`）。
-4. 任何阶段改动前，读 `docs/reports/product-compare/sdd-ledger-final.md`——**所有历史裁定都在那**，避免重蹈。
+1. 先跑 `pytest tests/ -q`（当前基线应 626 passed）与 `uvicorn server:app`，浏览器打开确认中途岛/珊瑚海都能进——**确认基线可信再动手**。
+2. 想动玩法 → 以 `docs/plans/gameplay-system-roadmap.md` 为长期路线图；S2 感知与情报、**S3 参谋认知与判断（Phase S3.0–S3.7，珊瑚海 5/7 与 5/8 纵切全通）均已执行完成**（规格 `docs/design/S3_COGNITION_SYSTEM.md`，代码 `src/cognition/`）；下一步按路线图是 **S4 参谋班子与关系系统**（专项计划 `docs/plans/s4-staff-relations-system-plan.md`；Phase S4.0 先完成珊瑚海高级军官史实考证并输出 `docs/reference/CORAL_SEA_COMMAND_ROSTER.md`，未证实姓名只使用职务名；完整史实采集计划见 `docs/plans/coral-sea-historical-research-plan.md`）。
+3. 想改交互语义 → 先执行 `docs/plans/action-semantics-remediation-plan.md` 的 Phase AS.0–AS.1，移除聊天写状态、confirm-contact 旁路与自由文本正式动作。
+4. AP 机制是独立专题：S4 后、S5 前执行 `docs/plans/ap-system-plan.md`；在结论确定前，新功能不得自行新增 AP 扣减。
+5. S5 计划已建立：`docs/plans/s5-command-execution-system-plan.md`，等待 AP 专项后执行。
+6. 想补 UI → S8 五工作台重构已执行完成（Phase UI.0–UI.7，规格 `docs/design/S8_INTERFACE.md`：CHART/COMMS/INTEL/STAFF/LOG + Commander Desk + NotificationCenter + ISSUE ORDER）；收尾项见 `docs/plans/s8-ui-ux-system-plan.md` 执行记录。
+7. S3.8 收尾项：真实 LLM 接入后跑人物行为评估（Browning 风格/谨慎情报官/航空指挥官三类）并冻结五维权重（当前权重全部标注 v0，集中于 `src/cognition/formula.py` 与 `src/cognition/evidence_fit.py`）。
+8. 任何阶段改动前，读 `docs/reports/product-compare/sdd-ledger-final.md`——**所有历史裁定都在那**，避免重蹈。
 
 ---
 

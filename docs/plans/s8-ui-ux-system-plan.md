@@ -5,6 +5,8 @@
 > 上级路线图：`docs/plans/gameplay-system-roadmap.md`
 > 关联系统：S2 / S3 / S4 / S5 / S7
 > 目标：把 S2 的文书链与 S4 的参谋班子行为转化为可读、可操作、可追溯的指挥官体验
+>
+> **S4 v0 简化补充（2026-09-19）**：参谋转述、互评、复核和 ConflictDossier 延期。S4 v0 只提供少量核心参谋直接沟通、下级报告沿指挥链上呈、名单内人员主动提醒和极简档案。S8 现有 relay/review/conflict 桩不作为 v0 验收要求。
 
 ---
 
@@ -529,14 +531,19 @@ CONFLICT
 - change_my_mind。
 - JudgmentMemory 修订链。
 
-### 来自 S4
+### 来自 S4 v0
 
-- 参谋当前状态。
-- 主动来访。
-- 极简档案摘要。
-- 转述链。
-- 分歧案卷。
-- commander 反馈事件。
+- CommanderContactChannel：由史实配置、可直接与 commander 沟通的联系人。
+- ChainReport：下级报告沿指挥链上呈。
+- CommanderNotice：名单内人员主动提醒。
+- DossierSummary：身份、状态、当前关注和最近互动。
+- commander 对提醒的处理状态。
+
+延期接口：
+
+- 跨参谋转述或自由通信。
+- ReviewNote / 正式复核。
+- ConflictDossier、派系和互评。
 
 ### 原则
 
@@ -746,9 +753,9 @@ static/js/theaterLoader.js
 ### 任务
 
 - 接入 S3 候选判断、信心与建议展示。
-- 接入 S4 主动来访、极简关系和分歧。
-- 接入玩家转述。
-- 接入 commander 反馈。
+- 接入 S4 核心参谋频道和指挥链报告。
+- 接入名单内人员主动提醒。
+- 接入 commander 反馈与提醒处理。
 
 ### 验收
 
@@ -824,7 +831,7 @@ static/js/theaterLoader.js
 6. INTEL 能完整展示 S2 的证据、简报和标图链。
 7. STAFF 档案保持极简。
 8. S3 判断与普通聊天有清楚区别。
-9. S4 主动来访和分歧不造成弹窗轰炸。
+9. 名单内人员主动提醒不造成弹窗轰炸。
 10. LOG 能回溯证据、判断、决定和结果。
 11. 案卷文字达到可持续阅读的字号和对比度。
 12. 现有 S2 UI 功能不回归。
