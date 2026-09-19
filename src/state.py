@@ -36,6 +36,7 @@ from src.cognition.models import (
 )
 from src.routes import PendingRoute, Route
 from src.staff.models import ChainReport, CommanderNotice
+from src.orders.models import Order, OrderEvent
 
 
 class GamePhase(str, Enum):
@@ -329,3 +330,6 @@ class GameState(BaseModel):
     #    运行态：主动提醒 + 指挥链上呈报告）──
     staff_notices: list[CommanderNotice] = Field(default_factory=list)
     staff_chain_reports: list[ChainReport] = Field(default_factory=list)
+    # ── S5.0 统一命令（Order/生命周期事件；追加保存，可回放）──
+    orders: list[Order] = Field(default_factory=list)
+    order_events: list[OrderEvent] = Field(default_factory=list)

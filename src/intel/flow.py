@@ -220,6 +220,8 @@ def process_intel(state, minutes: int = 15) -> list[str]:
             continue
         if msg.condition == CommCondition.UNREADABLE or msg.status == MessageStatus.LOST:
             continue
+        if msg.message_kind in ("order", "report"):
+            continue   # S5 命令/执行报告通道——由 process_orders 步骤经 S2 服务送达
         try:
             notes.extend(_receive_report(state, msg))
         except ValueError as e:

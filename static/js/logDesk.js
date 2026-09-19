@@ -107,10 +107,19 @@ class LogDesk {
         text: `外发电报：${m.raw_text.slice(0, 50)}`,
       }));
     } catch (e) { /* 维持空态 */ }
+    // S5.6：统一 Order 列表（玩家可见状态；真实状态在战后审计）
+    let orders = [];
+    try {
+      const od = await fetch('/orders').then(r => r.json());
+      orders = (od.orders || []).map(o => ({
+        at: o.created_at, actor: 'fletcher',
+        text: `ORDER ${o.order_id} ${o.order_type} — ${String(o.status_visible).toUpperCase()}（意图：${(o.intent || '').slice(0, 30)}）`,
+      }));
+    } catch (e) { /* 维持空态 */ }
     const otc = (((this.data || {}).events) || [])
       .filter(e => e.kind === 'otc_change')
       .map(e => ({ at: e.at, actor: e.actor, text: e.text }));
-    const rows = decisions.concat(outgoing, otc)
+    const rows = decisions.concat(outgoing, otc, orders)
       .sort((a, b) => String(a.at || '').localeCompare(String(b.at || '')));
     body.innerHTML = rows.length ? `<ol class="log-timeline">${rows.map(r => `
       <li class="log-event log-event-order">

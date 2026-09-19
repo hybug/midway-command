@@ -1221,3 +1221,28 @@ button.duty-item { cursor: pointer; text-decoration: underline; }
 .staff-notice-topic { flex: 1; min-width: 120px; }
 .staff-notice-state { font-size: 11px; color: var(--color-ink-fade, #6b5d3f); }
 .staff-notice-actions { display: flex; gap: 4px; }
+
+/* ── S5.6 ISSUE ORDER 类型化命令面板（ordersDesk）── */
+.io-section-title { font-size: 10px; font-weight: bold; letter-spacing: 2px;
+  color: var(--color-ink-fade, #6b5d3f); margin: 10px 0 6px; }
+.io-form { display: flex; flex-direction: column; gap: 8px; }
+.io-form label, .io-nl label { display: flex; flex-direction: column; gap: 3px;
+  font-size: 11px; color: var(--color-ink-fade, #6b5d3f); }
+.io-form input, .io-form select, .io-form textarea,
+.io-nl textarea { background: rgba(255, 252, 240, 0.8); border: 1px solid #b9a779;
+  padding: 4px 6px; font: inherit; font-size: 12px; color: #241c10; }
+.io-nl { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.io-draft { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  border: 1px dashed #8f7a4e; padding: 4px 8px; margin: 4px 0; font-size: 12px; }
+.io-orders { list-style: none; margin: 0; padding: 0; max-height: 160px; overflow: auto; }
+.io-order { display: flex; gap: 8px; align-items: center; font-size: 12px;
+  border-bottom: 1px dotted #b9a779; padding: 3px 2px; }
+.io-order-id { font-weight: bold; }
+.io-order-type { color: #6b5d3f; }
+.io-order-status { font-size: 10px; letter-spacing: 1px; padding: 0 4px;
+  border: 1px solid #b9a779; }
+.io-order-completed .io-order-status, .io-order-cancelled .io-order-status { opacity: 0.6; }
+.io-order-intent { flex: 1; min-width: 100px; color: #4a3f2a;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.io-conflict { border: 1px solid #8f2b1e; background: rgba(143, 43, 30, 0.06);
+  padding: 6px 8px; margin: 6px 0; }

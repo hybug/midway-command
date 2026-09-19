@@ -1607,6 +1607,173 @@ async def new_game(req: NewGameRequest):
     }
 
 
+# ── S5 命令系统（统一 Order；命令端点不直接修改舰队状态——Pipeline 生效）──
+
+
+class OrderCreateRequest(BaseModel):
+    order_type: str
+    target_refs: list[str] = []
+    parameters: dict = {}
+    commander_intent_text: str
+    authority_mode: str = "exact"
+    priority: str = "routine"
+    source_refs: list[str] = []
+
+
+class OrderIssueRequest(BaseModel):
+    supersede_ids: list[str] = []
+
+
+class OrderUpdateRequest(BaseModel):
+    parameters: dict | None = None
+    commander_intent_text: str | None = None
+    target_refs: list[str] | None = None
+    priority: str | None = None
+
+
+class OrderDraftRequest(BaseModel):
+    text: str
+
+
+@app.get("/orders/catalog")
+async def orders_catalog():
+    """可用命令目录（AS.0 AvailableAction：UI 不硬编码动作，从后端获取）。"""
+    from src.actions.contracts import ActionType, AvailableAction
+    catalog = [
+        AvailableAction(
+            action_type=ActionType.SET_COURSE, label="改变航向（EXACT）",
+            required_options=["course"],
+            requires_confirmation=True),
+        AvailableAction(
+            action_type=ActionType.LAUNCH_SCOUT, label="放飞侦察（INTENT）",
+            required_options=["search_objective", "search_area",
+                              "max_range_nm", "time_window"],
+            requires_confirmation=True),
+    ]
+    return {"actions": [a.model_dump() for a in catalog]}
+
+
+@app.post("/orders/draft")
+async def orders_nl_draft(req: OrderDraftRequest):
+    """自然语言 → 可编辑草稿（S5.2）：只能生成草稿，绝不签发或执行。"""
+    from src.orders import service as orders_service
+    drafts = orders_service.draft_from_text(game_state, req.text)
+    return {
+        "drafts": [_order_public(d) for d in drafts],
+        "note": "草稿需逐条确认签发；文本与参数冲突时请修改后再签发。",
+    }
+
+
+@app.post("/orders")
+async def create_order(req: OrderCreateRequest):
+    """创建 Order 草稿（表单优先路径）。"""
+    from src.orders import service as orders_service
+    try:
+        order = orders_service.create_draft(
+            game_state, order_type=req.order_type, target_refs=req.target_refs,
+            parameters=req.parameters,
+            commander_intent_text=req.commander_intent_text,
+            authority_mode=req.authority_mode, priority=req.priority,
+            source_refs=req.source_refs)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"order": _order_public(order)}
+
+
+def _order_public(o):
+    return {
+        "id": o.id,
+        "order_type": o.order_type.value,
+        "target_refs": list(o.target_refs),
+        "parameters": dict(o.parameters),
+        "commander_intent_text": o.commander_intent_text,
+        "authority_mode": o.authority_mode.value,
+        "priority": o.priority,
+        "status": o.status.value,
+        "reported_status": o.reported_status,
+        "responsible_role": o.responsible_role,
+        "plan": o.plan,
+        "result_summary": (o.result or {}).get("summary"),
+    }
+
+
+@app.get("/orders")
+async def list_orders():
+    """玩家视图：reported_status 与内部 status 分离（§十一）。"""
+    from src.orders import service as orders_service
+    return {"orders": list(orders_service.player_view(game_state).values())}
+
+
+@app.get("/orders/{order_id}/audit")
+async def order_audit(order_id: str):
+    """审计视图（LOG/战后复盘）：真实状态 + 事件链 + 传达链。"""
+    from src.orders import service as orders_service
+    try:
+        return orders_service.order_audit(game_state, order_id)
+    except KeyError:
+        raise HTTPException(404, "Order 不存在。")
+
+
+@app.post("/orders/{order_id}")
+async def update_order(order_id: str, req: OrderUpdateRequest):
+    from src.orders import service as orders_service
+    try:
+        order = orders_service.update_draft(
+            game_state, order_id, parameters=req.parameters,
+            commander_intent_text=req.commander_intent_text,
+            target_refs=req.target_refs, priority=req.priority)
+    except KeyError:
+        raise HTTPException(404, "Order 不存在。")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"order": _order_public(order)}
+
+
+@app.post("/orders/{order_id}/issue")
+async def issue_order(order_id: str, req: OrderIssueRequest | None = None):
+    """签发：岗位路由 + 冲突检查 + S2 发报。不直接修改舰队状态。"""
+    from src.orders import service as orders_service
+    supersede = req.supersede_ids if req else []
+    try:
+        order = orders_service.issue_order(
+            game_state, staff_roster, order_id, supersede_ids=supersede)
+    except orders_service.OrderConflict as e:
+        raise HTTPException(409, {
+            "message": str(e),
+            "active_order": _order_public(e.active_order),
+        })
+    except KeyError:
+        raise HTTPException(404, "Order 不存在。")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"order": _order_public(order), "result": "已签发（经 S2 传达）"}
+
+
+@app.post("/orders/{order_id}/cancel")
+async def cancel_order(order_id: str):
+    from src.orders import service as orders_service
+    try:
+        orders_service.cancel_order(game_state, orders_service.get_order(game_state, order_id))
+    except KeyError:
+        raise HTTPException(404, "Order 不存在。")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"result": "已取消（历史保留）"}
+
+
+@app.post("/orders/{order_id}/approve")
+async def approve_order(order_id: str):
+    """批准 INTENT 方案（PENDING_APPROVAL → ACTIVE）。"""
+    from src.orders import service as orders_service
+    try:
+        orders_service.approve_order(game_state, orders_service.get_order(game_state, order_id))
+    except KeyError:
+        raise HTTPException(404, "Order 不存在。")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"result": "已批准，命令生效（执行经 Pipeline）"}
+
+
 # ── Chart routes (CHART_SYSTEM.md §5.1：三类航线 planned/mission/track) ──
 
 

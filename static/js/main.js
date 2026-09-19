@@ -356,7 +356,17 @@ function bindEvents() {
   // S8 UI.1：全局聊天输入已移除（交谈限 STAFF 工作台）；
   // ISSUE ORDER = 全局唯一正式命令入口
   const issueBtn = document.getElementById('btn-issue-order');
-  if (issueBtn) issueBtn.addEventListener('click', () => ui.toggleIssueOrder(true));
+  if (issueBtn) issueBtn.addEventListener('click', () => {
+    ui.toggleIssueOrder(true);
+    // S5.6：类型化命令面板（目录来自后端；NL 只产草稿）
+    if (window.OrdersDesk) {
+      if (!window.__ordersDesk) {
+        window.__ordersDesk = new OrdersDesk();
+        window.__ordersDesk.mount('orders-panel');
+      }
+      window.__ordersDesk.refresh(true);
+    }
+  });
 
   const ioClose = document.getElementById('io-close');
   if (ioClose) ioClose.addEventListener('click', () => ui.toggleIssueOrder(false));
