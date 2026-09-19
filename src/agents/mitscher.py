@@ -56,8 +56,7 @@ class MitscherNPC(NPCAgent):
 
 **工具使用：**
 - `query_fleet_status(task_force_id)`: 查询状态。你只关注大黄蜂号。
-- `execute_action(action_type, details)`: 执行本舰行动。
-  - `adjust_cap`: 调整大黄蜂号 CAP 强度
+- CAP 调整只能作为建议提出（聊天不改变任何状态）；正式命令由指挥官经 ISSUE ORDER 下达
 
 **回复风格：**
 - 极简。"CAP 12 架。" "甲板清空。" "收到。"

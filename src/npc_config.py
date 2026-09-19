@@ -49,9 +49,7 @@ NPC_REGISTRY: dict[str, NPCConfig] = {
             "fleet_global", "air_groups", "known_enemy",
             "active_scouts", "pending_reports",
         ],
-        allowed_tools=[
-            "query_fleet_status", "execute_action", "propose_recon",
-        ],
+        allowed_tools=["query_fleet_status", "propose_recon"],
     ),
     "murray": NPCConfig(
         name="George Murray",
@@ -61,7 +59,7 @@ NPC_REGISTRY: dict[str, NPCConfig] = {
         initiative=5,
         competence=7,
         info_scope=["own_carrier", "air_groups"],
-        allowed_tools=["query_fleet_status", "execute_action"],
+        allowed_tools=["query_fleet_status"],
         carrier_filter="Enterprise",
     ),
     "mitscher": NPCConfig(
@@ -72,7 +70,7 @@ NPC_REGISTRY: dict[str, NPCConfig] = {
         initiative=5,
         competence=7,
         info_scope=["own_carrier", "air_groups"],
-        allowed_tools=["query_fleet_status", "execute_action"],
+        allowed_tools=["query_fleet_status"],
         carrier_filter="Hornet",
     ),
     "radio_officer": NPCConfig(

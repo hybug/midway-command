@@ -61,34 +61,10 @@ TOOLS_SCHEMA = [
             },
         },
     },
-    {
-        "type": "function",
-        "function": {
-            "name": "execute_action",
-            "description": (
-                "Execute a fleet action immediately. As Chief of Staff, you have the authority "
-                "to adjust course and CAP strength directly. You do NOT need commander confirmation "
-                "for these actions — execute first, report after. "
-                "Use this when the commander gives an order or when you believe action is needed."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "action_type": {
-                        "type": "string",
-                        "enum": ["set_course", "adjust_cap", "set_speed"],
-                        "description": "Type of action to execute.",
-                    },
-                    "details": {
-                        "type": "object",
-                        "description": "Action-specific parameters, e.g. {'course': 220} or {'carrier': 'Enterprise', 'count': 16}",
-                    },
-                },
-                "required": ["action_type", "details"],
-            },
-        },
-    },
 ]
+# AS.1/R1：execute_action 已从聊天工具集移除——NPC 不能在聊天中改写游戏状态。
+# handle_execute_action 仅保留给玩家确认过的建议执行路径（/suggestion/{index}/approve）
+# 与规则侧调用；正式命令入口是 ISSUE ORDER（S5 Order）。
 
 
 # ---------------------------------------------------------------------------

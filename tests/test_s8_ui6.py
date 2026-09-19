@@ -18,20 +18,20 @@ SERVER = ROOT / "server.py"
 
 
 def test_judgment_feedback_and_relay_endpoints():
+    """AS.1/R3：转述端点降级为 410 拒绝；反馈端点保留。"""
     server = SERVER.read_text()
-    assert "/staff/relay" in server and "/staff/relays" in server
     assert "/judgment/results/{result_id}/feedback" in server
-    assert "player_relay" in server
-    # 转述记录转述者/被转述者/来源判断（来源链在案）
-    for field in ("from_actor", "to_actor", "from_result_id"):
-        assert field in server
+    assert '@app.post("/staff/relay")' in server and "410" in server
+    assert '@app.get("/staff/relays")' in server
+    # 转述不再产生 player_relay 审计动作（写路径已删，timeline 只保留旧数据渲染）
+    assert 'action="player_relay"' not in server
 
 
-def test_staff_ui_shows_alternatives_feedback_relay():
+def test_staff_ui_shows_alternatives_feedback_without_relay():
     staff = STAFF.read_text()
     assert "备选解释" in staff                        # S3 plausible 展示
     assert "/judgment/results/" in staff and "/feedback" in staff
-    assert "/staff/relay" in staff
+    assert "/staff/relay" not in staff                # 转述入口已移除
     assert "采纳" in staff and "驳回" in staff and "暂缓" in staff
 
 

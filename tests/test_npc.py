@@ -126,14 +126,15 @@ class TestToolFiltering:
         npc = BrowningNPC()
         tool_names = {t["function"]["name"] for t in npc.tools}
         assert "query_fleet_status" in tool_names
-        assert "execute_action" in tool_names
+        # AS.1/R1：聊天工具集不再含写工具 execute_action
+        assert "execute_action" not in tool_names
         assert "propose_recon" in tool_names
 
     def test_murray_has_limited_tools(self):
         npc = MurrayNPC()
         tool_names = {t["function"]["name"] for t in npc.tools}
         assert "query_fleet_status" in tool_names
-        assert "execute_action" in tool_names
+        assert "execute_action" not in tool_names
         assert "propose_recon" not in tool_names
 
     def test_radio_officer_has_no_tools(self):

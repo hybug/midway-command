@@ -374,15 +374,13 @@ async def recall_endpoint(group_id: str):
 
 @app.post("/confirm-contact/{index}")
 async def confirm_contact(index: int):
-    """确认待确认的敌军标记（海图圈出确认）。
+    """DEPRECATED（AS.1/R2）：地图点击确认敌情的公共旁路已关闭。
 
-    将 pending_reports 中的指定报告转为 known_enemy。
+    正式接触只能经 PlotProposal → CommanderDecision → ApprovedPlot（INTEL 审图）；
+    旧调用一律拒绝，不迁移数据。
     """
-    from src.render.chart import confirm_contact as chart_confirm
-    success = chart_confirm(game_state, index)
-    if not success:
-        raise HTTPException(404, "报告不存在或已确认。")
-    return {"success": True, "message": "敌情已确认"}
+    raise HTTPException(
+        410, "confirm-contact 旁路已关闭（AS.1/R2）：接触确认走 PlotProposal → INTEL 审图。")
 
 
 # ── S2 情报接口（计划 §十：玩家查询；白名单序列化，无规则侧真值）──
@@ -817,67 +815,27 @@ async def reconsider_judgment(npc_id: str, result_id: str,
     }
 
 
-# ── S8 UI.6 S3/S4 联动（玩家转述链 / 指挥官反馈端点）──
+# ── S8 UI.6 S3/S4 联动（指挥官反馈端点保留；玩家转述链已按 AS.1/R3 移除）──
 
 
 class RelayRequest(BaseModel):
-    from_result_id: str
-    to_actor_id: str
-    note: str = ""
+    pass
 
 
 @app.post("/staff/relay")
 async def staff_relay(req: RelayRequest):
-    """玩家转述（M8.5.6/M4.4）：把某参谋的判断摘要转告另一名参谋。
+    """DEPRECATED（AS.1/R3）：玩家转述的公开入口已删除。
 
-    只记录转述链（谁的话→转告谁），被转述者不获得任何越权数据；
-    是否影响其后续判断由该参谋自己的判断过程决定（S4 引擎落地前不自动注入）。
+    v0 下级信息只按指挥链自动上呈（S4 ChainReport）；跨参谋自由通信、互评、
+    复核与分歧均延期。未来若恢复，必须使用固定 intent 与明确权限。
     """
-    from src.cognition.roster import get_actor
-    from src.cognition import roster as roster_mod
-    result = next((r for r in game_state.judgment_results
-                   if r.id == req.from_result_id), None)
-    if result is None:
-        raise HTTPException(404, "要转述的判断不存在。")
-    try:
-        target = get_actor(req.to_actor_id)
-    except KeyError:
-        raise HTTPException(404, f"被转述参谋 '{req.to_actor_id}' 不在名册中。")
-    if target.actor_id == result.actor_id:
-        raise HTTPException(400, "不能转述给判断者本人。")
-    entry = {
-        "at": _iso(game_state.clock.game_time),
-        "from_actor": result.actor_id,
-        "to_actor": target.actor_id,
-        "from_result_id": result.id,
-        "note": req.note[:120],
-    }
-    game_state.intel_audit.append(__import__(
-        "src.intel.models", fromlist=["IntelAuditEntry"]).IntelAuditEntry(
-        id=__import__("src.intel", fromlist=["service"]).service.next_id(
-            game_state, "AUD"),
-        at=game_state.clock.game_time, actor_id="fletcher",
-        action="player_relay", target_id=target.actor_id,
-        reason=req.note[:80] or f"转述 {result.actor_id} 的判断 {result.id}",
-        details=dict(entry),
-    ))
-    return {"relay": entry, "result": "已转述（记录在案）"}
+    raise HTTPException(410, "玩家转述入口已移除（AS.1/R3）：下级信息按指挥链上呈（S4）。")
 
 
 @app.get("/staff/relays")
 async def staff_relays():
-    """转述记录（追加制，M8.5.6）。"""
-    return {"relays": [
-        {
-            "at": entry.details.get("at", _iso(entry.at)),
-            "from_actor": entry.details.get("from_actor", ""),
-            "to_actor": entry.details.get("to_actor", entry.target_id),
-            "from_result_id": entry.details.get("from_result_id", ""),
-            "note": entry.details.get("note", ""),
-        }
-        for entry in game_state.intel_audit
-        if entry.action == "player_relay"
-    ]}
+    """DEPRECATED（AS.1/R3）。"""
+    raise HTTPException(410, "玩家转述入口已移除（AS.1/R3）。")
 
 
 class FeedbackRequest(BaseModel):

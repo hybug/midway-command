@@ -100,24 +100,8 @@ async function init() {
     renderShell();
   };
 
-  // 设置确认敌情回调
-  mapRenderer.onConfirmContact(async (index) => {
-    try {
-      const data = await api(`/confirm-contact/${index}`, { method: 'POST' });
-      if (data.success) {
-        // 触发画圈动画
-        const pending = gameState.pending_suggestions || [];
-        if (index < pending.length) {
-          // 计算动画位置（简化：使用屏幕中心附近）
-          mapRenderer.triggerConfirmAnimation(mapRenderer.centerX, mapRenderer.centerY);
-        }
-        ui.showNotification('✅ 敌情已确认，更新到海图');
-        await loadState();
-      }
-    } catch (e) {
-      ui.showNotification('❌ 确认失败: ' + e.message);
-    }
-  });
+  // AS.1/R2：地图点击确认敌情旁路已移除——接触确认只走 INTEL 审图
+  // （PlotProposal → CommanderDecision → ApprovedPlot）；海图敌标点击=一键反查标图链（onEnemyContact）。
 
   ui.renderWorkbenchNav(activeSection, notifications.counters, switchWorkbench);
   await loadState();

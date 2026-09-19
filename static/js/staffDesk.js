@@ -195,21 +195,7 @@ class StaffDesk {
         }
       });
     });
-    box.querySelectorAll('[data-relay]').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        try {
-          const res = await fetch('/staff/relay', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ from_result_id: btn.dataset.rid,
-                                   to_actor_id: btn.dataset.relay }),
-          });
-          if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || '失败');
-          if (window.ui) window.ui.showNotification(`已转述给 ${btn.dataset.relay}（记录在案）`);
-        } catch (e) {
-          if (window.ui) window.ui.showNotification('❌ ' + e.message);
-        }
-      });
-    });
+    // AS.1/R3：玩家转述入口已移除——下级信息按指挥链上呈（S4 ChainReport）
   }
 
   async loadJudgments(s, preloaded) {
@@ -238,16 +224,13 @@ class StaffDesk {
       const alts = (j.hypotheses || []).filter(h => h.id !== r.chosen_hypothesis_id);
       const altsHtml = alts.length
         ? `<p class="staff-meta">备选解释：${alts.map(h => esc(h.text)).join('；')}</p>` : '';
-      // S8 UI.6：指挥官反馈 + 玩家转述（正式结果只读，反馈进记忆）
+      // S8 UI.6：指挥官反馈（正式结果只读，反馈进记忆）；转述已按 AS.1/R3 移除
       const actions = `
         <div class="staff-judgment-actions">
           <span class="staff-kw">指挥官反馈：</span>
           <button class="btn" data-feedback="approve" data-rid="${esc(r.id)}">采纳</button>
           <button class="btn" data-feedback="reject" data-rid="${esc(r.id)}">驳回</button>
           <button class="btn" data-feedback="defer" data-rid="${esc(r.id)}">暂缓</button>
-          <span class="staff-kw">转述给：</span>
-          ${this.staff.filter(o => o.actor_id !== s.actor_id && o.source === 'judgment')
-            .map(o => `<button class="btn" data-relay="${esc(o.actor_id)}" data-rid="${esc(r.id)}">${esc(o.display_name)}</button>`).join(' ')}
         </div>`;
       const hypo = chosen
         ? `<p class="staff-chosen">【判断】${esc(chosen.text)}</p>` : '';

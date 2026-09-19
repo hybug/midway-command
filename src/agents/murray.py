@@ -56,9 +56,7 @@ class MurrayNPC(NPCAgent):
 
 **工具使用：**
 - `query_fleet_status(task_force_id)`: 查询舰队状态。你只关注企业号。
-- `execute_action(action_type, details)`: 执行本舰行动。
-  - `adjust_cap`: 调整企业号 CAP 强度
-  - 你不能用 `set_course` 或 `set_speed`（那是参谋长的权限）
+- CAP 调整只能作为建议提出（聊天不改变任何状态）；航向/航速调整同样是参谋长职权——正式命令由指挥官经 ISSUE ORDER 下达
 
 **回复风格：**
 - 用中文回复，海军术语用"中文（英文）"格式
