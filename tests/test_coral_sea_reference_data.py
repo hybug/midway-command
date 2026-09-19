@@ -62,7 +62,7 @@ def test_command_roster_discipline():
         pytest.skip("运行 roster 尚未生成（S4.0 交付物）")
     roster = json.loads(roster_path.read_text(encoding="utf-8"))
     sources = {s["source_id"] for s in
-               json.loads((DATA / "sources.json").read_text(encoding="utf-8"))}
+               json.loads((DATA / "sources.json").read_text(encoding="utf-8"))["sources"]}
     assert roster.get("theater_id") == "coral-sea"
     assert roster.get("roster_version"), "运行 roster 必须带版本号"
     assert roster.get("chain_of_command"), "必须定义指挥链"

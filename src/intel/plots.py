@@ -206,6 +206,12 @@ def decide(state, proposal: PlotProposal, *, action: str, by: str = "player",
         intel._audit(state, actor_id=by, action="plot_approve",
                      target_id=proposal.id, reason=comment,
                      details={"decision": decision.id, "version": proposal.version})
+        # S4 确定性触发：批准上图 → 航空指挥官 OPPORTUNITY 提醒
+        from src.staff.roster import get_active_roster
+        from src.staff import hooks as staff_hooks
+        _s4_roster = get_active_roster()
+        if _s4_roster is not None:
+            staff_hooks.on_plot_approved(state, _s4_roster, proposal)
 
     elif action == "reject":
         require_transition(approval_transitions(), status, ApprovalStatus.REJECTED)

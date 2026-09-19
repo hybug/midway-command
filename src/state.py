@@ -35,6 +35,7 @@ from src.cognition.models import (
     JudgmentTask,
 )
 from src.routes import PendingRoute, Route
+from src.staff.models import ChainReport, CommanderNotice
 
 
 class GamePhase(str, Enum):
@@ -324,3 +325,7 @@ class GameState(BaseModel):
     judgment_audits: list[JudgmentAuditRecord] = Field(default_factory=list)
     # ── S8 UI.4 人物化报告（result_id → 渲染文本；不改写结构化结果）──
     judgment_reports: dict[str, str] = Field(default_factory=dict)
+    # ── S4.0 参谋班子（直接沟通名单静态配置在 theaters/<id>/roster.json；
+    #    运行态：主动提醒 + 指挥链上呈报告）──
+    staff_notices: list[CommanderNotice] = Field(default_factory=list)
+    staff_chain_reports: list[ChainReport] = Field(default_factory=list)

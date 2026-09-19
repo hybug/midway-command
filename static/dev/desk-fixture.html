@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <title>COMMANDER DESK FIXTURE — 非游戏画面</title>
-  <link rel="stylesheet" href="/static/css/style.css?v=1780998029">
+  <link rel="stylesheet" href="/static/css/style.css?v=1780998030">
   <style>
     body { overflow: auto; height: auto; }
     .fixture-banner {
@@ -79,7 +79,30 @@
           </footer>
         </article>
 
-        <!-- STAFF · 正式判断卡（置信度/备选解释/反馈/转述） -->
+        <!-- STAFF · 主动提醒板（S4.3：固定动作 接见/暂缓/忽略/关闭） -->
+        <p class="intel-kw">STAFF 主动提醒板样式（S4）</p>
+        <div class="staff-notices">
+          <div class="staff-notice staff-notice-flash">
+            <span class="staff-notice-pri">FLASH</span>
+            <span class="staff-notice-topic">tf17_intel：新证据简报 BRF-000002</span>
+            <span class="staff-notice-state">未处理 · NEW_EVIDENCE</span>
+            <span class="staff-notice-actions">
+              <button class="btn">接见</button><button class="btn">暂缓</button>
+              <button class="btn">忽略</button><button class="btn">关闭</button>
+            </span>
+          </div>
+          <div class="staff-notice staff-notice-urgent">
+            <span class="staff-notice-pri">URGENT</span>
+            <span class="staff-notice-topic">fitch：已批准标图 PLOT-000001——攻击窗口评估</span>
+            <span class="staff-notice-state">未处理 · OPPORTUNITY</span>
+            <span class="staff-notice-actions">
+              <button class="btn">接见</button><button class="btn">暂缓</button>
+              <button class="btn">忽略</button><button class="btn">关闭</button>
+            </span>
+          </div>
+        </div>
+
+        <!-- STAFF · 正式判断卡（置信度/备选解释/反馈；转述已按 AS.1/R3 移除） -->
         <p class="intel-kw">STAFF 判断卡样式</p>
         <article class="staff-judgment-card">
           <header class="staff-judgment-head">
@@ -96,8 +119,6 @@
           <div class="staff-judgment-actions">
             <span class="staff-kw">指挥官反馈：</span>
             <button class="btn">采纳</button><button class="btn">驳回</button><button class="btn">暂缓</button>
-            <span class="staff-kw">转述给：</span>
-            <button class="btn">TF17 情报参谋</button>
           </div>
         </article>
 

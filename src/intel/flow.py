@@ -547,6 +547,7 @@ def run_intelligence_cycle(state, item: IntelWorkItem, *,
             "建议派第二来源印证）")
 
     # 简报产生标图提案（§7.1 步骤16；几何来自接触/证据，作者=情报参谋）
+    proposal = None
     if contact_id:
         from src.intel.plots import create_plot_proposal, latest_revision_base
         contact_obj = next(c for c in state.contacts if c.id == contact_id)
@@ -570,6 +571,15 @@ def run_intelligence_cycle(state, item: IntelWorkItem, *,
                 change_summary="初版接触标图（依据最新研判）",
             )
         brief.plot_proposal_ids.append(proposal.id)
+
+    # S4 确定性触发：简报呈报/标图待批 → 核心参谋主动提醒（roster 未激活时静默）
+    from src.staff.roster import get_active_roster
+    from src.staff import hooks as staff_hooks
+    _s4_roster = get_active_roster()
+    if _s4_roster is not None:
+        staff_hooks.on_brief_submitted(state, _s4_roster, brief)
+        if proposal is not None:
+            staff_hooks.on_plot_proposed(state, _s4_roster, proposal)
 
     item.status = WorkItemStatus.SUBMITTED.value
     item.submitted_at = state.clock.game_time

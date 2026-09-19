@@ -54,11 +54,19 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 game_state = build_initial_state()
 pipeline = build_default_pipeline()
 
+# ── S4 运行名册（theaters/<id>/roster.json；换战区热替换）──
+from src.staff.roster import MIDWAY_THEATER_ID, load_run_roster, set_active_roster
+
+staff_roster = load_run_roster(MIDWAY_THEATER_ID)
+set_active_roster(staff_roster)
+
 # ── Theater context (CHART_SYSTEM.md §三/§四/§九决议6：后端单一下发) ──
 from src.theater import load_theater
 
 # fail-fast：战区包损坏则拒绝启动
 theater_ctx = load_theater(BASE_DIR / "theaters" / "midway")
+
+from src.staff import service as staff_service
 
 npcs: dict = {
     "browning": BrowningNPC(),
@@ -666,6 +674,99 @@ async def staff_roster():
             },
         })
     return {"staff": staff}
+
+
+# ── S4 参谋班子（联络名单/主动提醒/指挥链报告；M8.5 数据源升级）──
+
+
+def _channel_public(ch):
+    return {
+        "actor_id": ch.actor_id,
+        "display_name": ch.display_name,
+        "rank": ch.rank,
+        "role": ch.role,
+        "flagship": ch.flagship,
+        "contact_permission": ch.contact_permission.value,
+        "can_be_summoned": ch.can_be_summoned,
+        "can_initiate": ch.can_initiate,
+        "evidence_grade": ch.evidence_grade,
+        "source_ids": list(ch.source_ids),
+        "note": ch.note,
+    }
+
+
+@app.get("/staff/channels")
+async def staff_channels():
+    """直接沟通名单（S4.1）：scenario roster 决定；含未处理通知 id。"""
+    open_by_actor = {n.actor_id: n.id for n in staff_service.open_notices(game_state)}
+    return {"channels": [
+        {**_channel_public(ch), "active_notice_id": open_by_actor.get(ch.actor_id)}
+        for ch in staff_roster.contact_channels
+    ]}
+
+
+@app.get("/staff/notices")
+async def staff_notices():
+    """主动提醒（S4.3）：全部非关闭通知（open/acknowledged/deferred）。"""
+    return {"notices": [
+        {
+            "id": n.id,
+            "actor_id": n.actor_id,
+            "topic": n.topic,
+            "priority": n.priority.value,
+            "reason": n.notice_reason.value,
+            "state": n.state.value,
+            "created_at": _iso(n.created_at),
+            "cooldown_until": _iso(n.cooldown_until),
+            "source_type": n.source_type,
+            "source_id": n.source_id,
+        }
+        for n in game_state.staff_notices
+        if n.state not in ("resolved", "expired")
+    ]}
+
+
+@app.post("/staff/notices/{notice_id}/{action}")
+async def staff_notice_action(notice_id: str, action: str):
+    """接见/暂缓/忽略/关闭（固定动作枚举，AS 语义）。"""
+    notice = next((n for n in game_state.staff_notices if n.id == notice_id), None)
+    if notice is None:
+        raise HTTPException(404, "通知不存在。")
+    try:
+        staff_service.dismiss_notice(game_state, staff_roster, notice,
+                                     action=action, by="fletcher")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"notice": {"id": notice.id, "state": notice.state.value,
+                       "cooldown_until": _iso(notice.cooldown_until)}}
+
+
+@app.get("/staff/visit-events")
+async def staff_visit_events():
+    """STAFF_VISIT 通知源（s4Adapter 消费；open 通知 → 事件形状）。"""
+    return {"visits": staff_service.visit_events(game_state)}
+
+
+@app.get("/staff/reports")
+async def staff_reports():
+    """指挥链报告（S4.2）：只显示已送达（未送达不暴露）。"""
+    return {"reports": [
+        {
+            "id": r.id,
+            "origin_actor_id": r.origin_actor_id,
+            "current_holder_id": r.current_holder_id,
+            "state": r.state.value,
+            "source_type": r.source_type,
+            "source_id": r.source_id,
+            "summary": r.summary,
+            "priority": r.priority,
+            "at": _iso(r.at),
+            "delivered_at": _iso(r.delivered_at),
+            "annotations": list(r.annotations),
+            "route": list(r.route),
+        }
+        for r in staff_service.delivered_reports(game_state)
+    ]}
 
 
 FEEDBACK_CN = {
@@ -1470,10 +1571,13 @@ async def new_game(req: NewGameRequest):
     if pack_dir is None:
         raise HTTPException(404, f"战区 '{req.theater_id}' 不存在。")
 
-    global game_state, theater_ctx
+    global game_state, theater_ctx, staff_roster
     theater_ctx = load_theater(pack_dir)  # 包校验失败抛 ValueError（fail-fast 同启动语义）
     # O.3：按所选包 scenario 重建（缺省 midway 走既有历史开局路径，多岛包走通用构建）
     game_state = build_initial_state(pack_dir / "scenario.json")
+    # S4：运行名册随战区热替换
+    staff_roster = load_run_roster(req.theater_id)
+    set_active_roster(staff_roster)
 
     for npc in npcs.values():
         npc.messages = []  # NPC 会话清空（每 NPC 独立 LLM 会话历史）

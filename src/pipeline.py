@@ -56,6 +56,13 @@ def process_intel_step(state: GameState, minutes: int) -> list[str]:
     return process_intel(state)
 
 
+def process_staff_step(state: GameState, minutes: int) -> list[str]:
+    """Step 55: S4 指挥链——链上报告逐跳上呈（送达触发可选提醒钩子）。"""
+    from src.staff import service as staff
+    from src.staff.roster import get_active_roster
+    return staff.process_staff_step(state, minutes, roster=get_active_roster())
+
+
 def fire_events(state: GameState, minutes: int) -> list[str]:
     """Step 60: fire due events (placeholder -- wired via EventScheduler)."""
     return []
@@ -147,6 +154,7 @@ def build_default_pipeline() -> Pipeline:
     p.register(TickStep("update_spatial_index",update_spatial_index,30))
     p.register(TickStep("process_scouting",    process_scouting,    40))
     p.register(TickStep("process_intel",       process_intel_step,  50))
+    p.register(TickStep("process_staff",       process_staff_step,  55))
     p.register(TickStep("fire_events",         fire_events,         60))
     p.register(TickStep("check_game_over",     check_game_over,     70))
     p.register(TickStep("reset_ap",            reset_ap,            80))

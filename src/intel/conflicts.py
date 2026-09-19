@@ -73,6 +73,12 @@ def detect_conflicts(state, evidence_ids: list[str], *, by: str,
             intel._audit(state, actor_id=by, action="conflict_detect",
                          target_id=conflict.id, reason=note,
                          evidence_ids=[a.id, b.id])
+            # S4 确定性触发：冲突登记 → 作战参谋 RISK_WARNING 提醒
+            from src.staff.roster import get_active_roster
+            from src.staff import hooks as staff_hooks
+            _s4_roster = get_active_roster()
+            if _s4_roster is not None:
+                staff_hooks.on_conflict_open(state, _s4_roster, conflict)
             conflicts.append(conflict)
     return conflicts
 

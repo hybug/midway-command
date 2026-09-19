@@ -9,6 +9,8 @@
 class StaffDesk {
   constructor() {
     this.staff = [];
+    this.channels = [];         // S4 直接沟通名单（/staff/channels）
+    this.notices = [];          // S4 主动提醒（/staff/notices）
     this.activeId = null;
     this.histories = {};        // actor_id → [{role, content}]（对话型）
     this.el = null;
@@ -29,6 +31,14 @@ class StaffDesk {
       const data = await fetch('/staff/roster').then(r => r.json());
       this.staff = data.staff || [];
     } catch (e) { this.staff = this.staff || []; }
+    try {
+      const [ch, no] = await Promise.all([
+        fetch('/staff/channels').then(r => r.json()).catch(() => null),
+        fetch('/staff/notices').then(r => r.json()).catch(() => null),
+      ]);
+      this.channels = (ch && ch.channels) || [];
+      this.notices = (no && no.notices) || [];
+    } catch (e) { /* S4 不可用时维持空 */ }
     if (!this.activeId && this.staff.length) {
       this.activeId = (this.staff.find(s => s.source === 'judgment')
         || this.staff[0]).actor_id;
@@ -48,11 +58,76 @@ class StaffDesk {
         <nav class="staff-roster">
           <p class="staff-kw">参谋名册</p>
           ${this.staff.map(s => this.rosterRow(s)).join('')}
+          ${this.channels.length ? this.channelList() : ''}
         </nav>
-        <section class="staff-center">${cur ? this.center(cur) : ''}</section>
+        <section class="staff-center">
+          ${this.notices.length ? this.noticeBoard() : ''}
+          ${cur ? this.center(cur) : ''}
+        </section>
         <aside class="staff-dossier">${cur ? this.dossier(cur) : ''}</aside>
       </div>`;
     this.bind(cur);
+    this.bindNotices();
+  }
+
+  // S4.1 直接沟通名单（史实配置；权限标签：当面/无线电/报告/链上/被动）
+  channelList() {
+    const esc = window.escapeHtml;
+    const PERM_CN = {
+      DIRECT_IN_PERSON: '当面', DIRECT_RADIO: '无线电', CHAIN_ONLY: '链上',
+      REPORT_ONLY: '报告', NO_INITIATIVE: '被动',
+    };
+    return `<p class="staff-kw">直接沟通名单（史实配置）</p>
+      ${this.channels.map(c => `
+        <button class="staff-row${c.actor_id === this.activeId ? ' active' : ''}"
+          data-staff="${esc(c.actor_id)}">
+          <span class="staff-row-name">${esc(c.display_name)}</span>
+          <span class="staff-row-role">${esc(PERM_CN[c.contact_permission] || c.contact_permission)}</span>
+        </button>`).join('')}`;
+  }
+
+  // S4.3 主动提醒板（固定动作：接见/暂缓/忽略/关闭；不改变舰队状态）
+  noticeBoard() {
+    const esc = window.escapeHtml;
+    const STATE_CN = { open: '未处理', acknowledged: '接见中', deferred: '暂缓' };
+    const PRIORITY_CN = { flash: 'FLASH', urgent: 'URGENT', routine: 'ROUTINE' };
+    return `
+      <div class="staff-notices" id="staff-notices">
+        <p class="staff-kw">主动提醒（${this.notices.length}）——同一事项只保留一条，可接见/暂缓/忽略</p>
+        ${this.notices.map(n => `
+          <div class="staff-notice staff-notice-${esc(n.priority)}">
+            <span class="staff-notice-pri">${esc(PRIORITY_CN[n.priority] || n.priority)}</span>
+            <span class="staff-notice-topic">${esc(n.actor_id)}：${esc(n.topic)}</span>
+            <span class="staff-notice-state">${esc(STATE_CN[n.state] || n.state)}${n.reason ? ' · ' + esc(n.reason) : ''}</span>
+            ${n.state === 'open' || n.state === 'acknowledged' ? `
+            <span class="staff-notice-actions">
+              <button class="btn" data-notice-action="acknowledge" data-notice-id="${esc(n.id)}">接见</button>
+              <button class="btn" data-notice-action="defer" data-notice-id="${esc(n.id)}">暂缓</button>
+              <button class="btn" data-notice-action="dismiss" data-notice-id="${esc(n.id)}">忽略</button>
+              <button class="btn" data-notice-action="close" data-notice-id="${esc(n.id)}">关闭</button>
+            </span>` : ''}
+          </div>`).join('')}
+      </div>`;
+  }
+
+  bindNotices() {
+    if (!this.el) return;
+    this.el.querySelectorAll('[data-notice-action]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const action = btn.dataset.noticeAction;
+        const id = btn.dataset.noticeId;
+        try {
+          const res = await fetch(`/staff/notices/${id}/${action}`, { method: 'POST' });
+          if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || '失败');
+          const labels = { acknowledge: '已接见', defer: '已暂缓（进入冷却）',
+                           dismiss: '已忽略', close: '已关闭' };
+          if (window.ui) window.ui.showNotification(labels[action] || action);
+        } catch (e) {
+          if (window.ui) window.ui.showNotification('❌ ' + e.message);
+        }
+        this.refresh(true);
+      });
+    });
   }
 
   rosterRow(s) {

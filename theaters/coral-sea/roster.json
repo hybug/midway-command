@@ -1,0 +1,126 @@
+{
+  "theater_id": "coral-sea",
+  "roster_version": "1.0",
+  "derived_from": "docs/reference/CORAL_SEA_COMMAND_ROSTER.md",
+  "active": true,
+  "commander_id": "fletcher",
+  "note": "运行名册由 S4.0 考证文档派生；未考证人物一律职务名（校验器强制）。任何变更先改考证文档再同步本文件。",
+  "contact_channels": [
+    {
+      "actor_id": "fitch",
+      "personnel_id": "PER-FITCH",
+      "display_name": "Aubrey W. Fitch",
+      "rank": "Rear Admiral",
+      "role": "CTG 17.5 航母群司令",
+      "flagship": "USS Lexington",
+      "contact_permission": "DIRECT_RADIO",
+      "can_be_summoned": false,
+      "can_initiate": true,
+      "evidence_grade": "CONFIRMED",
+      "source_ids": ["SRC-TF17", "SRC-CV5"],
+      "channel_note": "不同舰（列克星敦），仅 TBS/无线电直连——不能表现为走进旗舰舱室"
+    },
+    {
+      "actor_id": "tf17_intel",
+      "personnel_id": "PER-TF17-INTEL",
+      "display_name": "TF17 情报参谋（职务名）",
+      "rank": "UNKNOWN",
+      "role": "CTF-17 情报参谋",
+      "flagship": "USS Yorktown",
+      "contact_permission": "DIRECT_IN_PERSON",
+      "can_be_summoned": true,
+      "can_initiate": true,
+      "evidence_grade": "UNKNOWN",
+      "source_ids": ["SRC-TF17"],
+      "channel_note": "同舰参谋；姓名一手不载，运行只用职务名"
+    },
+    {
+      "actor_id": "tf17_ops",
+      "personnel_id": "PER-TF17-OPS",
+      "display_name": "TF17 作战参谋（职务名）",
+      "rank": "UNKNOWN",
+      "role": "CTF-17 作战参谋",
+      "flagship": "USS Yorktown",
+      "contact_permission": "DIRECT_IN_PERSON",
+      "can_be_summoned": true,
+      "can_initiate": true,
+      "evidence_grade": "UNKNOWN",
+      "source_ids": ["SRC-TF17"],
+      "channel_note": "同舰参谋；姓名一手不载"
+    },
+    {
+      "actor_id": "crace",
+      "personnel_id": "PER-CRACE",
+      "display_name": "John G. Crace",
+      "rank": "Rear Admiral, RN",
+      "role": "TG 17.3 攻击群司令",
+      "flagship": "HMAS Australia",
+      "contact_permission": "REPORT_ONLY",
+      "can_be_summoned": false,
+      "can_initiate": false,
+      "evidence_grade": "CONFIRMED",
+      "source_ids": ["SRC-TF17"],
+      "channel_note": "异群异舰，TF17 报告中全部为 despatch 书面通信"
+    },
+    {
+      "actor_id": "tf17_air_officer",
+      "personnel_id": "PER-ARNOLD-MURR",
+      "display_name": "Murr E. Arnold",
+      "rank": "Commander",
+      "role": "约克城航空长（Air Officer）",
+      "flagship": "USS Yorktown",
+      "contact_permission": "NO_INITIATIVE",
+      "can_be_summoned": true,
+      "can_initiate": false,
+      "evidence_grade": "CONFIRMED",
+      "source_ids": ["SRC-CV5"],
+      "channel_note": "执行岗；S5 AIR_OFFICER 责任岗位锚点"
+    },
+    {
+      "actor_id": "tf17_comms",
+      "personnel_id": "PER-RAY",
+      "display_name": "Clarence C. Ray",
+      "rank": "Lieutenant Commander",
+      "role": "约克城通信长",
+      "flagship": "USS Yorktown",
+      "contact_permission": "NO_INITIATIVE",
+      "can_be_summoned": true,
+      "can_initiate": false,
+      "evidence_grade": "CONFIRMED",
+      "source_ids": ["SRC-CV5"],
+      "channel_note": "通信官只收报与路由（S2 职责边界）"
+    }
+  ],
+  "chain_of_command": [
+    {"from_role": "CARRIER_CAPTAIN", "to_role": "CTG_AIR"},
+    {"from_role": "CTG_AIR", "to_role": "COMMANDER"},
+    {"from_role": "CTG_SURFACE", "to_role": "COMMANDER"},
+    {"from_role": "STAFF_INTEL", "to_role": "COMMANDER"},
+    {"from_role": "STAFF_OPS", "to_role": "COMMANDER"},
+    {"from_role": "AIR_OFFICER", "to_role": "COMMANDER"},
+    {"from_role": "COMMS_OFFICER", "to_role": "COMMANDER"}
+  ],
+  "role_bindings": {
+    "COMMANDER": "fletcher",
+    "CTG_AIR": "fitch",
+    "CTG_SURFACE": "crace",
+    "STAFF_INTEL": "tf17_intel",
+    "STAFF_OPS": "tf17_ops",
+    "AIR_OFFICER": "tf17_air_officer",
+    "COMMS_OFFICER": "tf17_comms",
+    "CARRIER_CAPTAIN": null
+  },
+  "role_of_actor": {
+    "fletcher": "COMMANDER",
+    "fitch": "CTG_AIR",
+    "crace": "CTG_SURFACE",
+    "tf17_intel": "STAFF_INTEL",
+    "tf17_ops": "STAFF_OPS",
+    "tf17_air_officer": "AIR_OFFICER",
+    "tf17_comms": "COMMS_OFFICER"
+  },
+  "order_routing": {
+    "NAVIGATOR": "STAFF_OPS",
+    "AIR_OFFICER": "CTG_AIR"
+  }
+}

@@ -1207,3 +1207,17 @@ button.duty-item { cursor: pointer; text-decoration: underline; }
 }
 
 
+
+/* ── S4.3 主动提醒板（staffDesk）── */
+.staff-notices { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.staff-notice { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  border: 1px solid var(--color-line, #b9a779); background: rgba(255, 252, 240, 0.65);
+  padding: 4px 8px; font-size: 12px; }
+.staff-notice-pri { font-weight: bold; letter-spacing: 1px; font-size: 10px;
+  color: var(--color-ink-fade, #6b5d3f); }
+.staff-notice-flash { border-color: #8f2b1e; }
+.staff-notice-flash .staff-notice-pri { color: #8f2b1e; }
+.staff-notice-urgent .staff-notice-pri { color: #7a4a12; }
+.staff-notice-topic { flex: 1; min-width: 120px; }
+.staff-notice-state { font-size: 11px; color: var(--color-ink-fade, #6b5d3f); }
+.staff-notice-actions { display: flex; gap: 4px; }
