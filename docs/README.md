@@ -38,12 +38,12 @@
 | `gameplay-system-roadmap.md` | **现行长期计划** — 一级系统、二级模块与玩法攻坚顺序（当前：S3 已完成，下一步 S4） |
 | `s2-intelligence-system-plan.md` | S2 感知与情报系统（Phase S2.0–S2.8 已执行） |
 | `s3-staff-cognition-system-plan.md` | S3 参谋认知与判断系统（Phase S3.0–S3.7 已执行，规格 `design/S3_COGNITION_SYSTEM.md`） |
-| `s4-staff-relations-system-plan.md` | **下一专项计划** — S4 史实参谋编制、可变沟通名单与指挥链上呈 |
-| `coral-sea-historical-research-plan.md` | **史实资料计划** — 珊瑚海时间线、编制、舰机参数、人员、地理与战损 |
+| `s4-staff-relations-system-plan.md` | S4 参谋班子与关系系统（Phase S4.0–S4.5 已执行，规格 `design/S4_STAFF_SYSTEM.md`） |
+| `coral-sea-historical-research-plan.md` | 珊瑚海史实资料计划（P0 已执行，资料包 `reference/coral-sea/`） |
 | `s8-ui-ux-system-plan.md` | S8 UI/UX 五工作台与 Commander Desk（Phase UI.0–UI.7 已执行，规格 `design/S8_INTERFACE.md`） |
-| `action-semantics-remediation-plan.md` | **前置整改计划** — 固定动作枚举、范围选项、聊天写状态与遗留入口清理 |
+| `action-semantics-remediation-plan.md` | 操作语义整改（AS.0–AS.1 已执行最小范围；AS.2+ 待执行） |
 | `ap-system-plan.md` | **待讨论专题** — AP 行动经济、时间与玩家操作成本 |
-| `s5-command-execution-system-plan.md` | **后续专项计划** — S5 Order、授权、路由与两条纵切（等待 AP 专项） |
+| `s5-command-execution-system-plan.md` | S5 指挥执行系统（Phase S5.0–S5.6 已执行，规格 `design/S5_ORDER_SYSTEM.md`；cost_policy 占位） |
 | `product-replica-plan.md` | 成品图复现工程（已执行完毕，历史存档） |
 | `ui-fidelity-fix-plan.md` | 保真度修正工程（已执行完毕，历史存档） |
 | `ui-replication-plan.md` | UI 复刻计划（已执行完毕，历史存档） |

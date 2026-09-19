@@ -1,6 +1,6 @@
 # S4 核心参谋沟通系统实施计划（s4-staff-relations-system-plan）
 
-> 状态：**待执行（前置整改完成后启动）**
+> 状态：**已执行（S4.0–S4.5 完成，2026-09-19）**
 > 创建日期：2026-09-19
 > 上级路线图：`docs/plans/gameplay-system-roadmap.md`
 > 前置计划：`docs/plans/action-semantics-remediation-plan.md` Phase AS.0–AS.1
@@ -458,3 +458,21 @@ CONFLICTED  来源冲突，不进入运行配置
 3. 评审 `CORAL_SEA_COMMAND_ROSTER.md`。
 4. 冻结参谋编制、直接沟通名单与通信权限。
 5. 再实现核心参谋频道、指挥链上呈和主动提醒。
+
+---
+
+## 十六、执行记录（2026-09-19）
+
+| Phase | 内容 | 状态（Commit） |
+|---|---|---|
+| S4.0 | 史实考证（CORAL_SEA_COMMAND_ROSTER.md）+ 运行 roster.json（校验器强制纪律） | ✅ caed964 / 2d43421 |
+| S4.1 | CommanderContactChannel + /staff/channels + STAFF 名单区 | ✅ 2d43421 |
+| S4.2 | ChainReport 逐级上呈（Pipeline process_staff 步骤；来源保留/批注追加/未送达不暴露） | ✅ 2d43421 |
+| S4.3 | CommanderNotice（六固定理由/去重/冷却60min/单次升级/四处置动作留档）+ STAFF_VISIT 接通 | ✅ 2d43421 |
+| S4.4 | DossierSummary 四字段极简档案 | ✅ 2d43421 |
+| S4.5 | 珊瑚海 5/7 场景验收：越级阻断/非核心不能建 notice/聊天不改状态/S3 不受扰/职务名纪律 | ✅ 2d43421 |
+
+规格：`docs/design/S4_STAFF_SYSTEM.md`；测试：`tests/test_staff_system.py`（21）+ 名册纪律测试；
+确定性业务钩子接入 S2 简报/标图/冲突流（roster.active 门控，midway 占位名册不启用）。
+截图：`docs/reports/s4-s5/s4-staff-desk-1440x900.png`。
+延期项（互评/复核/ConflictDossier/转述/派系）未实现；玩家转述入口已按 AS.1/R3 删除（410）。

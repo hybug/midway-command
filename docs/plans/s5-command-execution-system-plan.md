@@ -1,6 +1,6 @@
 # S5 指挥、授权与执行系统实施计划（s5-command-execution-system-plan）
 
-> 状态：**待执行（AP 专项完成后启动）**
+> 状态：**已执行（S5.0–S5.6 完成；按专项指令 AP 不在范围、cost_policy 仅占位，2026-09-19）**
 > 创建日期：2026-09-19
 > 上级路线图：`docs/plans/gameplay-system-roadmap.md`
 > 前置计划：`docs/plans/ap-system-plan.md`
@@ -577,3 +577,22 @@ summary
 3. 完成 SET_COURSE EXACT 纵切。
 4. 完成 LAUNCH_SCOUT INTENT 纵切。
 5. 再逐类迁移其他命令。
+
+---
+
+## 十九、执行记录（2026-09-19）
+
+| Phase | 内容 | 状态（Commit） |
+|---|---|---|
+| S5.0 | Order/OrderResult/OrderEvent 契约；七状态机；SET_COURSE/LAUNCH_SCOUT 参数表；旧流程迁移映射（其余命令保留旧路径） | ✅ 3247a56 |
+| S5.1 | 类型化参数校验；roster 岗位路由（无责任岗位不能签发）；冲突检查（不静默覆盖/FLASH 不可绕过/supersede） | ✅ 3247a56 |
+| S5.2 | 自然语言草稿（确定性解析；多动作拆分；字段不猜；绝不执行；LLM 接入点已留） | ✅ 3247a56 |
+| S5.3 | SET_COURSE EXACT 纵切（表单→签发→S2 传达→Pipeline 激活→执行→报告回传）；实况浏览器验证 | ✅ 3247a56 / 432d0f7 |
+| S5.4 | LAUNCH_SCOUT INTENT 纵切（送达→PENDING_APPROVAL+方案→批准→放飞；shortfall→partial） | ✅ 3247a56 |
+| S5.5 | 取消/取消太迟拒绝/superseded_by/旧单历史完整保留 | ✅ 3247a56 |
+| S5.6 | ISSUE ORDER 类型化面板（目录驱动/意图必填/二次确认/409 冲突处置）+ LOG 订单视图 + reported/status 分离 + D16 收口（执行事实不直出通知） | ✅ 3247a56 / 432d0f7 |
+
+规格：`docs/design/S5_ORDER_SYSTEM.md`；测试：`tests/test_orders_system.py`（25，含同种子回放）。
+边界实录：S2 独占传达（kind=order/report 电文绕过收报室，由 orders 步骤经 S2 服务送达）；
+丢包时 Order 停在 ISSUED 永不 ACTIVE；无自动重发；cost_policy 全程 None 占位，未新增任何 AP 扣减。
+截图：`docs/reports/s4-s5/s5-issue-order-1440x900.png`、`s5-coral-chart-1280x720.png`。

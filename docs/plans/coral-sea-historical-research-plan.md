@@ -1,6 +1,6 @@
 # 珊瑚海海战史实资料采集计划（coral-sea-historical-research-plan）
 
-> 状态：**待执行**
+> 状态：**已执行（P0 完整 + P1 骨干，2026-09-19）**
 > 创建日期：2026-09-19
 > 上级路线图：`docs/plans/gameplay-system-roadmap.md`
 > 主要服务系统：S4 指挥链、S6 行动与战斗、S9 内容生产
@@ -544,3 +544,24 @@ ESTIMATED   为游戏建模作出的非史实估计
 3. 先采集 P0 数据。
 4. 逐阶段运行交叉校验。
 5. 将确认数据交给 S4、S6 和 S9 使用。
+
+---
+
+## 十三、执行记录（2026-09-19）
+
+| Phase | 内容 | 状态（Commit） |
+|---|---|---|
+| R.0 | 来源清单 11 项（PRIMARY×2 逐句核对/OFFICIAL×5/SECONDARY×2/TERTIARY×2）+ sources.json | ✅ caed964 |
+| R.1 | 时间线 42 事件（当地/Zulu 双轨，Z−11:30→−11 区规则入档）+ timeline.json/events.json | ✅ caed964 |
+| R.2 | 双方 OOB 15 编队（含转隶登记/嵌套豁免）+ units.json | ✅ caed964 |
+| R.3 | 舰艇 44 艘参数（五航母详) + ships.json | ✅ caed964 |
+| R.4 | 飞机 17 型参数 + 航空队编制 + aircraft.json | ✅ caed964 |
+| R.5 | 人员 41 名（含 6 名职务名 UNKNOWN）+ personnel.json + CORAL_SEA_COMMAND_ROSTER.md | ✅ caed964 |
+| R.6 | 地理/环境（战区包坐标交叉核对） | ✅ caed964 |
+| R.7 | 通信/情报/决策（JN-25、七条接触报告链、12 决策点） | ✅ caed964 |
+| R.8 | 战损（舰/机/人员，Claims 与实中分记）+ losses.json | ✅ caed964 |
+| R.9 | 机器数据 8 件套 + `tools/validate_coral_sea_data.py`（schema/来源/坐标/时区/编队互斥/损失上限/名册纪律）+ pytest 包装 | ✅ caed964 |
+
+数据路径：`docs/reference/coral-sea/`（14 文档 + data/ 8 JSON）；S4 交付：`docs/reference/CORAL_SEA_COMMAND_ROSTER.md`。
+运行名册：`theaters/coral-sea/roster.json`（S4.0 派生，2d43421）。
+P2 未采项与全部 CONFLICTED/UNKNOWN 登记于 `uncertainties.md`。

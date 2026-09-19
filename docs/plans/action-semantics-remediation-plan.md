@@ -491,3 +491,15 @@ LLM 不可以直接：
 - 确认受影响的 S2/S3/S4/S5/S8 测试范围。
 
 在 AS.0 完成前，不修改运行时代码。
+
+---
+
+## 十六、执行记录（2026-09-19：AS.0–AS.1 按 S4/S5 必需最小范围完成）
+
+| Phase | 内容 | 状态（Commit） |
+|---|---|---|
+| AS.0 | ActionCommand/AvailableAction/AuditRecord 契约（src/actions/contracts.py）+ v0 动作目录 + 静态守卫清单（tests/test_action_semantics.py） | ✅ 373bf9d |
+| AS.1 | R1 聊天写工具 execute_action 移除（TOOLS_SCHEMA+npc_config+提示词）；R2 confirm-contact 端点 410+前端接线删除；R3 /staff/relay(+s) 410+UI 转述按钮删除；R4 提示词不再指示执行 | ✅ 373bf9d |
+
+AS.2（P1 文档通信整改）与 AS.3（P2 ISSUE ORDER 类型化）未在本轮范围——其中 ISSUE ORDER
+类型化已由 S5.6 提前落地（3247a56）；AS.2 各项保留待后续。

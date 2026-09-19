@@ -68,13 +68,13 @@ z-index 台账：chart/bottom/sidebar ≤10 < campaign-select 50 < commander-des
 - 人物化报告文本（persona 渲染产物）与结构化结论分离展示。
 - UI 不重算评分；STAFF 档案不显示 competence 等内部数值（极简档案四行）。
 
-### 来自 S4 v0（未实施——先做前端契约与适配器）
+### 来自 S4（已实施——`src/staff/`，规格 `S4_STAFF_SYSTEM.md`）
 - `CommanderContactChannel {actor_id, rank, role, flagship, contact_permission}`：史实配置的沟通名单直连 commander。
 - `ChainReport {origin_actor_id, current_holder_id, next_holder_id, priority, state}`：下级报告沿指挥链上呈。
 - `CommanderNotice {actor_id, topic, priority, state, reason}`：名单内人员主动提醒。
 - `DossierSummary {actor_id, status_line, current_focus, recent[]}`：极简档案形状。
 - `StaffVisitEvent {actor_id, topic, at}`：STAFF_VISIT 通知的 payload 形状（NotificationCenter 消费）。
-- 适配器 `static/js/s4Adapter.js`：读取上述形状的事件源；现无后端时返回空/桩，
+- 适配器 `static/js/s4Adapter.js`：来访事件接 `/staff/visit-events`（S4 开放通知）；
   UI 按「事件+自然语言摘要」渲染，不渲染关系数值。
 
 以下为延期接口，不属于 S4 v0：`RelayRecord / ReviewNote / ConflictDossier / 参谋互评 / 派系`。

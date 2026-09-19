@@ -34,8 +34,8 @@
 | S1 | 世界与战役模拟系统 | 骨架可用 | 7 |
 | S2 | 感知与情报系统 | Phase S2.0–S2.8 已实施 | 1（已完成） |
 | S3 | 参谋认知与判断系统 | S2 接口已留，专项计划已建立 | 2（当前） |
-| S4 | 参谋班子与关系系统 | 前端契约桩已就位，待正式实施 | 3（当前） |
-| S5 | 指挥、授权与执行系统 | 部分可用 | 4 |
+| S4 | 参谋班子与关系系统 | Phase S4.0–S4.5 已实施 | 3（已完成） |
+| S5 | 指挥、授权与执行系统 | Phase S5.0–S5.6 已实施（两纵切） | 4（已完成） |
 | S6 | 行动、战斗与后果系统 | 部分可用 | 5 |
 | S7 | 叙事、胜负与复盘系统 | 骨架 | 6 |
 | S8 | 交互与表现系统 | 视觉强、信息架构待重构；专项计划已建立 | 全程 |
@@ -245,26 +245,27 @@
 - 首批场景：珊瑚海 1942-05-07 米西马方向错误接触与攻击决心。
 - 验收：候选判断 → evidence_fit → 单次判断检定 → 人物化建议 → 新证据修订 → 认知错误和事实错误分离复盘。
 
-### 阶段 3：S4 参谋班子与关系（当前）
+### 阶段 3：S4 参谋班子与关系（已完成）
 
-- 主攻：M4.1、M4.2、M4.3、M4.4。
-- 专项计划：`docs/plans/s4-staff-relations-system-plan.md`。
-- 史实资料计划：`docs/plans/coral-sea-historical-research-plan.md`；S4.0 是其指挥链与人员名单的第一批产物。
-- 前置整改：`docs/plans/action-semantics-remediation-plan.md` 的 Phase AS.0–AS.1。
-- 验收：同一事件产生不同态度，立场变化有明确原因，参谋可以主动汇报。
+- 主攻：M4.1、M4.2、M4.3、M4.4（v0）。
+- 专项计划：`docs/plans/s4-staff-relations-system-plan.md`（执行记录在案）。
+- 史实资料：`docs/reference/coral-sea/`（P0 完整）+ `docs/reference/CORAL_SEA_COMMAND_ROSTER.md`；
+  运行名册 `theaters/coral-sea/roster.json`。
+- 前置整改：AS.0–AS.1 已完成（最小范围，373bf9d）。
+- 规格：`docs/design/S4_STAFF_SYSTEM.md`；验收：越级阻断/去重冷却/聊天不改状态全绿（2d43421）。
 
-### 阶段 3A：AP 行动经济专项（S4 后、S5 前）
+### 阶段 3A：AP 行动经济专项（仍待执行）
 
 - 专题计划：`docs/plans/ap-system-plan.md`。
-- 先审计现有 AP 使用，比较无 AP、行动点、注意力预算、通信带宽和参谋负载模型。
-- 验收：明确 AP 的目的、成本对象、重置规则和试玩效果，再决定保留或替换。
+- 注：按 2026-09-19 专项指令，S5 先于 AP 专项执行，S5 全程 cost_policy 占位、
+  未新增任何 AP 扣减；AP 专项结论前该纪律继续有效。
 
-### 阶段 4：S5 指挥、授权与执行
+### 阶段 4：S5 指挥、授权与执行（已完成 v0）
 
-- 前置：AP.0–AP.4 完成。
-- 专项计划：`docs/plans/s5-command-execution-system-plan.md`。
-- 主攻：M5.1–M5.5、M5.8，v0 只做 SET_COURSE 与 LAUNCH_SCOUT 两条纵切。
-- 验收：命令、解释、授权、拒绝与执行都可审计，LLM 不越权改状态。
+- 专项计划：`docs/plans/s5-command-execution-system-plan.md`（执行记录在案）。
+- 主攻：M5.1–M5.5、M5.8——SET_COURSE EXACT 与 LAUNCH_SCOUT INTENT 两条纵切全通。
+- 规格：`docs/design/S5_ORDER_SYSTEM.md`；其余命令类型保留旧实现，逐类迁移。
+- 验收：命令/冲突/取消/替代/丢失全审计可回放；LLM 不越权改状态（3247a56/432d0f7）。
 
 ### 阶段 5：S6 行动、战斗与后果
 
@@ -310,22 +311,14 @@
 
 ## 六、当前下一步
 
-当前进入 **S4 参谋班子与关系系统**。
+S4（2d43421）与 S5 v0（3247a56/432d0f7）均已执行完成；AP 行动经济专项（阶段 3A）仍待执行，
+且在结论确定前任何新功能不得新增 AP 扣减（S5 已遵守：cost_policy 仅占位）。
 
-S3 执行收口：`docs/plans/s3-staff-cognition-system-plan.md`、`docs/design/S3_COGNITION_SYSTEM.md`。
+下一优先级建议：
 
-S8 UI 契约：`docs/plans/s8-ui-ux-system-plan.md`。
-
-专项实施计划：`docs/plans/s4-staff-relations-system-plan.md`。
-
-前置交互整改：`docs/plans/action-semantics-remediation-plan.md`，先执行 Phase AS.0–AS.1。
-
-S4 首先完成：
-
-- 取消独立关系状态，改为事件历史 + 主动行为触发器。
-- 主动行为限定为 REQUEST_MEETING / SUBMIT_NOTE / REQUEST_CLARIFICATION / REGISTER_DISSENT。
-- StaffCommunication 固定 intent，替换模糊的玩家转述。
-- 接真实事件源，激活 STAFF_VISIT / CONFLICT / DossierSummary。
-- S4.0 先完成珊瑚海指挥链与人员名单；完整史实采集按 `docs/plans/coral-sea-historical-research-plan.md` 并行推进。
-- S4 完成后先执行 AP 行动经济专项，再执行 `docs/plans/s5-command-execution-system-plan.md`。
-- 在 S4 主动行为和 AP 专项成立前，不同时铺开 S5、S6 的完整实现。
+1. **AP 行动经济专项**（`docs/plans/ap-system-plan.md`）——S4 主动提醒与 S5 Order 的
+   成本对象（聊天/签发/推进）需要它定稿；S5 的 cost_policy 字段即为其预留。
+2. **S6 行动、战斗与后果**：珊瑚海 P0 史实数据已就绪（`docs/reference/coral-sea/`），
+   LAUNCH_SCOUT 已接 S6 侦察执行位，可沿两纵切继续加深（敌 AI 主动压力/损失结算）。
+3. **S3.8 收尾**：真实 LLM 接入后跑人物行为评估并冻结五维权重。
+4. 其余正式命令（SET_SPEED/PLAN_STRIKE 等）按 S5 迁移映射逐类 Order 化。
