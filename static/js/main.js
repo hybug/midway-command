@@ -233,6 +233,11 @@ async function startCampaign(theaterId, btn) {
     } catch (e) { /* 重拉失败保持当前战区底图，不阻断开局 */ }
     ui.renderWorkbenchNav(activeSection, notifications.counters, switchWorkbench);
     await loadState();
+    const advanceButton = document.getElementById('btn-advance');
+    if (advanceButton) {
+      advanceButton.disabled = false;
+      advanceButton.textContent = '推进时间 +15 分钟';
+    }
     await loadHistory(activeNpc);
     ui.renderChat(activeNpc, histories[activeNpc], gameState?.clock?.game_time);
     renderShell();
@@ -312,8 +317,18 @@ async function sendChatTo(npcId, msg) {
 // Actions
 // ═══════════════════════════════════════════════════════
 async function advance() {
+  const button = document.getElementById('btn-advance');
+  if (button?.disabled) return;
+  const label = button?.textContent;
+  let ended = false;
+  if (button) {
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    button.textContent = '时间推进中…';
+  }
   try {
     const data = await api('/advance', { method: 'POST', body: JSON.stringify({ minutes: 15 }) });
+    ended = Boolean(data.game_over);
     gameState.ap = data.ap;
     ui.renderDashboard(gameState);
     if (data.notifications && data.notifications.length > 0) {
@@ -321,7 +336,13 @@ async function advance() {
     }
     await loadState();
   } catch (e) {
-    alert('推进失败: ' + e.message);
+    ui.showNotification('推进失败: ' + e.message);
+  } finally {
+    if (button) {
+      button.disabled = ended;
+      button.removeAttribute('aria-busy');
+      button.textContent = ended ? '本局已结束' : label;
+    }
   }
 }
 
@@ -353,6 +374,9 @@ async function rejectSuggestion(idx) {
 // Events
 // ═══════════════════════════════════════════════════════
 function bindEvents() {
+  document.querySelectorAll('[data-open-workbench]').forEach(button => {
+    button.addEventListener('click', () => switchWorkbench(button.dataset.openWorkbench));
+  });
   // S8 UI.1：全局聊天输入已移除（交谈限 STAFF 工作台）；
   // ISSUE ORDER = 全局唯一正式命令入口
   const issueBtn = document.getElementById('btn-issue-order');
@@ -379,6 +403,14 @@ function bindEvents() {
 
   // ESC：关闭案卷台 / ISSUE ORDER（M8.1.6）；Alt+1..5 直达工作台（M8.8 键盘操作）
   window.addEventListener('keydown', e => {
+    const orderModal = document.getElementById('issue-order-modal');
+    if (e.key === 'Tab' && orderModal && !orderModal.hidden) {
+      const controls = [...orderModal.querySelectorAll('button, input, select, textarea, [tabindex="0"]')]
+        .filter(el => !el.disabled && el.getClientRects().length > 0);
+      const first = controls[0], last = controls[controls.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+    }
     if (e.key === 'Escape') {
       const io = document.getElementById('issue-order-modal');
       if (io && !io.hidden) { ui.toggleIssueOrder(false); return; }
@@ -386,6 +418,8 @@ function bindEvents() {
       return;
     }
     if (e.altKey && e.key >= '1' && e.key <= '5') {
+      if (orderModal && !orderModal.hidden) return;
+      e.preventDefault();
       const sections = ['CHART', 'COMMS', 'INTEL', 'STAFF', 'LOG'];
       switchWorkbench(sections[parseInt(e.key, 10) - 1]);
     }

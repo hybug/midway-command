@@ -206,7 +206,7 @@ def test_index_html_cache_version_consistent():
     html = (BASE / "static" / "index.html").read_text()
     versions = set(re.findall(r'\?v=(\d+)', html))
     assert len(versions) == 1, f"index.html 缓存号不一致: {versions}"
-    assert versions == {"1780998031"}, f"index.html 缓存号未递增到 1780998027: {versions}"
+    assert versions == {"2026111901"}, f"index.html 缓存号应为 2026111901: {versions}"
     # 防再漂移：svgLoader.js 内全部带 ?v= 的资源 URL，版本号必须与 index.html 现值一致
     # （历史漂移：paper_tex ?v=1780997995 与 index.html 1780997996 脱钩，见终审修复项 1）
     loader = (BASE / "static" / "js" / "svgLoader.js").read_text()

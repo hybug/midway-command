@@ -21,7 +21,7 @@ def test_index_has_intel_containers():
 def test_index_cache_version_bumped_and_consistent():
     html = INDEX.read_text()
     versions = set(re.findall(r"\?v=(\d+)", html))
-    assert versions == {"1780998031"}, f"index.html 缓存号应为 1780998031: {versions}"
+    assert versions == {"2026111901"}, f"index.html 缓存号应为 2026111901: {versions}"
 
 
 def test_intel_board_consumes_whitelist_endpoints():

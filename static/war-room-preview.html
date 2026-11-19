@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>珊瑚海作战桌 · Midway Command</title>
+    <link rel="stylesheet" href="/static/css/war-room-preview.css">
+    <script defer src="/static/js/war-room-preview.js"></script>
+</head>
+<body>
+    <main class="table" aria-label="珊瑚海作战桌">
+        <header class="table-head">
+            <div class="identity">
+                <span class="eyebrow">MIDWAY COMMAND / 作战室预览</span>
+                <h1>珊瑚海作战桌</h1>
+            </div>
+            <div class="clock" aria-label="场景时间">
+                <span class="clock-face" aria-hidden="true"></span>
+                <div><span class="eyebrow">1942 · 05 · 07</span><strong>07:45 <small>舰上时间</small></strong></div>
+            </div>
+        </header>
+
+        <div class="table-grid">
+            <section class="chart" aria-labelledby="chart-title">
+                <div class="chart-head">
+                    <div><span class="eyebrow">SOUTHWEST PACIFIC</span><h2 id="chart-title">珊瑚海海图</h2></div>
+                    <span class="chart-scale">北向上 <span aria-hidden="true">↑</span></span>
+                </div>
+                <div class="plot">
+                    <svg id="chart-plot" role="img" aria-label="珊瑚海示意海图与演示标图"></svg>
+                    <p id="chart-error" hidden>海图未能载入。你仍可以查阅桌边文件。</p>
+                    <button type="button" class="contact" id="chart-contact" data-open="telegram" hidden aria-label="打开不明接触来电">
+                        <span aria-hidden="true">?</span><span>不明接触<small>07:38 报告</small></span>
+                    </button>
+                </div>
+                <div class="chart-foot">
+                    <span><i class="legend-friendly" aria-hidden="true"></i> 我军</span>
+                    <span><i class="legend-contact" aria-hidden="true"></i> 未核实报告</span>
+                    <span id="chart-sketch-key" hidden><i class="legend-sketch" aria-hidden="true"></i> 侦察草案</span>
+                </div>
+            </section>
+
+            <aside class="desk-corner" aria-label="桌边文件">
+                <div class="in-tray">
+                    <button type="button" class="telegram-slip" data-open="telegram">
+                        <span class="paper-meta"><span>无线电来报</span><span id="mail-status">1 封未读</span></span>
+                        <strong>西北方向，不明舰影</strong>
+                        <span class="slip-detail">07:42 收报 · 巡逻机转呈</span>
+                        <span class="object-action">展开电报 <span aria-hidden="true">↗</span></span>
+                    </button>
+                </div>
+                <button type="button" class="staff-folder" data-open="staff">
+                    <span class="folder-tab">参谋呈报夹</span>
+                    <span class="folder-sheet">
+                        <span class="paper-meta">情报参谋 · 07:45</span>
+                        <strong>接触性质仍待核实</strong>
+                        <span class="object-action">翻阅判断 <span aria-hidden="true">↗</span></span>
+                    </span>
+                </button>
+                <button type="button" class="order-book" data-open="order">
+                    <span class="eyebrow">ORDERS</span>
+                    <strong>军令簿</strong>
+                    <span id="book-status">打开拟令页 <span aria-hidden="true">↗</span></span>
+                </button>
+            </aside>
+        </div>
+        <footer class="table-foot">
+            <span>演示态势 · 珊瑚海战区</span>
+            <span id="desk-status" role="status"></span>
+        </footer>
+    </main>
+
+    <dialog id="telegram" class="document telegram" aria-labelledby="telegram-title">
+        <div class="document-top">
+            <span class="eyebrow">接收电文 / INCOMING</span>
+            <button type="button" class="close-doc" data-close autofocus>放回收报盘 <span aria-hidden="true">×</span></button>
+        </div>
+        <h2 id="telegram-title">西北方向，不明舰影</h2>
+        <dl class="metadata">
+            <div><dt>发报时间</dt><dd>07:38</dd></div>
+            <div><dt>收报时间</dt><dd>07:42</dd></div>
+            <div><dt>来源</dt><dd>巡逻机 → 舰队通信席 → 作战室</dd></div>
+        </dl>
+        <div class="document-body">
+            <p>巡逻机沿云带东缘观察到两处疑似舰船的剪影，接触点位于南纬 12°40′、东经 153°20′ 附近，航向暂无法判断。飞行员在低云中失去目视接触，未能读出舰型标志。报告经舰队通信席转呈，暂未收到第二份独立目击。</p>
+            <p>由于观察时间短、能见度低，无法确认是作战舰艇、运输船，还是同一目标的重复目击。图上铅笔圈仅标记报告位置。</p>
+        </div>
+        <div class="document-actions">
+            <button type="button" class="paper-button" id="mark-read">标为已读</button>
+            <button type="button" class="paper-button primary" data-open="staff">查阅参谋判断 <span aria-hidden="true">→</span></button>
+        </div>
+    </dialog>
+
+    <dialog id="staff" class="document staff" aria-labelledby="staff-title">
+        <div class="document-top">
+            <span class="eyebrow">参谋呈报 / ASSESSMENT</span>
+            <button type="button" class="close-doc" data-close autofocus>收起呈报 <span aria-hidden="true">×</span></button>
+        </div>
+        <h2 id="staff-title">接触性质仍待核实</h2>
+        <dl class="metadata">
+            <div><dt>呈报</dt><dd>情报参谋</dd></div>
+            <div><dt>送达</dt><dd>07:45</dd></div>
+            <div><dt>依据</dt><dd>07:42 收到的巡逻来电</dd></div>
+        </dl>
+        <div class="document-body staff-note">
+            <div><h3>我的判断</h3><p>目前只有一次目击。接触方位值得复核，舰种和数量仍不确定。</p></div>
+            <div><h3>建议</h3><p>安排一次短程复核侦察，优先取得独立目击，保留其余航空力量。</p></div>
+            <div><h3>何时重估</h3><p>若第二份报告给出可核对的位置与航向，再重新判断该接触的性质。</p></div>
+        </div>
+        <div class="document-actions">
+            <button type="button" class="paper-button" data-open="telegram">查阅原电</button>
+            <button type="button" class="paper-button primary" id="draft-order" data-open="order">按建议拟令 <span aria-hidden="true">→</span></button>
+        </div>
+    </dialog>
+
+    <dialog id="order" class="document order" aria-labelledby="order-title">
+        <div class="document-top">
+            <span class="eyebrow" id="order-heading">作战命令 / DRAFT ORDER</span>
+            <button type="button" class="close-doc" data-close autofocus>收起军令簿 <span aria-hidden="true">×</span></button>
+        </div>
+        <h2 id="order-title">复核不明接触</h2>
+        <p class="order-source" id="order-source">侦察演示草稿</p>
+        <form id="order-form">
+            <div class="order-fields">
+                <label>受令单位
+                    <select name="unit"><option>TF 17 · 约克城号</option><option>TF 11 · 列克星敦号</option></select>
+                </label>
+                <label>搜索区域
+                    <input name="area" value="西北扇区 · 07:38 报告位置" required>
+                </label>
+                <label>任务意图
+                    <textarea name="intent" rows="2" required>复核接触位置与舰影数量，记录可见舰型与航向。</textarea>
+                </label>
+            </div>
+            <fieldset id="review-order" hidden>
+                <legend>签发前核对</legend>
+                <dl id="review-values"></dl>
+                <button type="button" class="paper-button" id="edit-order">返回修改</button>
+            </fieldset>
+            <div class="document-actions">
+                <span id="signed-stamp" role="status"></span>
+                <button type="submit" class="paper-button primary" id="order-submit">核对军令 <span aria-hidden="true">→</span></button>
+            </div>
+        </form>
+    </dialog>
+</body>
+</html>

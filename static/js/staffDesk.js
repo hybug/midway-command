@@ -157,19 +157,23 @@ class StaffDesk {
             <span class="staff-msg-sender">${m.role === 'user' ? '指挥官' : window.escapeHtml(s.display_name)}</span>
             <p>${window.escapeHtml(m.content)}</p>
           </div>`).join('')
-          : '<p class="staff-empty">暂无对话</p>'}
+          : `<section class="staff-welcome">
+              <div class="staff-welcome-label">STAFF CONVERSATION</div>
+              <h3>从一个问题开始。</h3>
+              <p>询问当前情况、追问情报依据，或讨论下一步行动。参谋的回答是建议；需要执行的行动，请通过「下达命令」签发。</p>
+            </section>`}
       </div>
       <div class="staff-input">
-        <input type="text" id="staff-chat-input" placeholder="交谈…" autocomplete="off">
+        <input type="text" id="staff-chat-input" aria-label="与参谋交谈" placeholder="例如：目前最值得关注的风险是什么？" autocomplete="off">
         <button class="btn btn-send" id="staff-chat-send">发送</button>
       </div>`;
   }
 
   judgmentPane(s) {
     return `
-      <p class="staff-kw">正式呈报（判断经规则引擎检定，普通交谈不可替代）</p>
+      <p class="staff-kw">要求正式判断 · 依据当前可见证据呈报，保留判断与修订记录</p>
       <div class="staff-ask">
-        <input type="text" id="staff-question" placeholder="要求正式判断：如「这份接触报告是否足以支持立即放飞全力攻击？」" autocomplete="off">
+        <input type="text" id="staff-question" aria-label="正式判断的问题" placeholder="你需要参谋判断什么？" autocomplete="off">
         <button class="btn btn-execute" id="staff-ask-judgment">要求正式判断</button>
       </div>
       <div class="staff-judgments" id="staff-judgments"><p class="staff-empty">载入中…</p></div>`;
@@ -324,7 +328,20 @@ class StaffDesk {
         ${j.report ? `<p class="staff-report">${esc(j.report)}</p>` : ''}
         ${actions}
       </article>`;
-    }).join('') : '<p class="staff-empty">尚无正式判断——用上方入口要求判断</p>';
+    }).join('') : `<section class="staff-welcome">
+      <div class="staff-welcome-label">JUDGMENT REQUEST / AWAITING QUESTION</div>
+      <h3>把不确定的事，交给参谋研判。</h3>
+      <p>说明你要判断的问题。参谋会依据自己掌握的证据，呈报判断、建议和改变判断的条件；证据不足时，也可能拒绝下结论。</p>
+      <button class="btn staff-draft-prompt" data-judgment-example>填入示例问题：现有情报还缺少什么？ ↗</button>
+    </section>`;
+    const example = box.querySelector('[data-judgment-example]');
+    if (example) example.addEventListener('click', () => {
+      const input = this.el.querySelector('#staff-question');
+      if (input) {
+        input.value = '现有情报存在哪些关键缺口，什么新证据会改变你的判断？';
+        input.focus();
+      }
+    });
     this.bindJudgmentActions(s);
   }
 }

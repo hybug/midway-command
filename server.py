@@ -127,6 +127,19 @@ async def root():
     return FileResponse(str(BASE_DIR / "static" / "index.html"))
 
 
+@app.get("/war-room-preview", include_in_schema=False)
+async def war_room_preview():
+    return FileResponse(BASE_DIR / "static" / "war-room-preview.html")
+
+
+@app.get("/war-room-preview/geography", include_in_schema=False)
+async def war_room_preview_geography():
+    return FileResponse(
+        BASE_DIR / "theaters" / "coral-sea" / "geography.geojson",
+        media_type="application/geo+json",
+    )
+
+
 @app.get("/state")
 async def get_state():
     """Return full game state as JSON."""

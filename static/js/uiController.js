@@ -18,11 +18,11 @@ function tabLabel(npc) {
 // S8 UI.1：五工作台一级导航（M8.1.1）——替代旧 NPC 页签的全局导航职责；
 // NPC 选择下沉 STAFF 工作台（NPC_TAB_ABBR 保留供名册标签使用）
 const WORKBENCHES = [
-  { id: 'CHART', label: 'CHART', hint: '海图态势' },
-  { id: 'COMMS', label: 'COMMS', hint: '收报室' },
-  { id: 'INTEL', label: 'INTEL', hint: '情报工作台' },
-  { id: 'STAFF', label: 'STAFF', hint: '参谋' },
-  { id: 'LOG', label: 'LOG', hint: '记录与复盘' },
+  { id: 'CHART', label: '作战海图', hint: '海图态势' },
+  { id: 'COMMS', label: '收报室', hint: '收报室' },
+  { id: 'INTEL', label: '情报', hint: '情报工作台' },
+  { id: 'STAFF', label: '参谋', hint: '参谋工作台' },
+  { id: 'LOG', label: '作战记录', hint: '记录与复盘' },
 ];
 
 // 机密消息判定（Phase 8d）：消息数据无密级字段，按内容关键词判定 →
@@ -79,17 +79,22 @@ class UIController {
   renderWorkbenchNav(activeSection, counters, onSwitch) {
     const container = document.getElementById('workbench-nav');
     if (!container) return;
+    const focusedSection = document.activeElement?.dataset?.workbench;
     container.innerHTML = '';
-    WORKBENCHES.forEach(wb => {
+    WORKBENCHES.forEach((wb, index) => {
       const btn = document.createElement('button');
       btn.className = 'wb-tab' + (wb.id === activeSection ? ' active' : '');
       btn.dataset.workbench = wb.id;
       btn.title = wb.hint;
       const unread = (counters && counters[wb.id]) || 0;
-      btn.innerHTML = `${wb.label}` +
+      btn.setAttribute('aria-current', wb.id === activeSection ? 'page' : 'false');
+      btn.setAttribute('aria-label', wb.hint + (unread > 0 ? `，${unread} 条未读` : ''));
+      btn.setAttribute('aria-keyshortcuts', `Alt+${index + 1}`);
+      btn.innerHTML = `<span class="wb-index">0${index + 1}</span><span class="wb-name">${wb.label}</span><span class="wb-code">${wb.id}</span>` +
         (unread > 0 ? `<span class="wb-badge" data-badge="${wb.id}">${unread}</span>` : '');
       btn.addEventListener('click', () => onSwitch(wb.id));
       container.appendChild(btn);
+      if (focusedSection === wb.id) btn.focus();
     });
   }
 
@@ -105,17 +110,17 @@ class UIController {
       ? `<button class="duty-item duty-top" data-notify-id="${esc(top.id)}">
            <span class="duty-level level-${esc(top.level.toLowerCase())}">${esc(top.level)}</span>
            ${esc(top.text)}</button>`
-      : '<p class="duty-item duty-empty">无待处理事项（ALL CLEAR）</p>';
+      : '<p class="duty-item duty-empty">暂无待处理事项</p>';
     const latestHtml = latest
       ? `<p class="duty-item duty-latest"><span class="duty-kw">${esc(latest.kind)}</span> ${esc(latest.text)}</p>`
-      : '<p class="duty-item duty-latest duty-empty">暂无判断与电报</p>';
+      : '<p class="duty-item duty-latest duty-empty">尚无已呈报情报。可前往收报室查看来报，或向参谋询问情况。</p>';
+    const current = WORKBENCHES.find(wb => wb.id === section) || WORKBENCHES[0];
     container.innerHTML = `
-      <p class="duty-kw">CURRENT SECTION</p>
-      <p class="duty-section">${esc(section || 'CHART')}</p>
-      <p class="duty-kw">PENDING <span class="wb-badge-inline">${unreadTotal}</span></p>
+      <div class="duty-heading"><p class="duty-kw">待办与来报</p><span class="wb-badge-inline">${unreadTotal}</span></div>
+      <p class="duty-section">${esc(current.label)}<span>${esc(current.id)}</span></p>
       ${topHtml}
       ${latestHtml}
-      <button class="btn btn-execute duty-open-desk" id="btn-open-desk">打开案卷台</button>`;
+      <button class="btn duty-open-desk" id="btn-open-desk">打开案卷台 <span aria-hidden="true">↗</span></button>`;
     const openBtn = container.querySelector('#btn-open-desk');
     if (openBtn) openBtn.addEventListener('click', () => onOpenDesk());
     const topBtn = container.querySelector('.duty-top');
@@ -125,7 +130,11 @@ class UIController {
   // ISSUE ORDER 弹层（全局唯一正式命令入口，M8.7.6）
   toggleIssueOrder(open) {
     const modal = document.getElementById('issue-order-modal');
-    if (modal) modal.hidden = !open;
+    if (!modal) return;
+    if (open && modal.hidden) this._orderReturnFocus = document.activeElement;
+    modal.hidden = !open;
+    if (open) modal.querySelector('#io-close')?.focus();
+    else if (this._orderReturnFocus?.isConnected) this._orderReturnFocus.focus();
   }
 
   // ═══════════════════════════════════════════════════════
@@ -325,6 +334,7 @@ class UIController {
     // O.3：顶栏日期/Z 时区/舰队题字随战区（state.theater 由 /state 下发；
     // fixture 桩态无 theater 键 → 保持静态 HTML 定妆）
     if (state.theater) {
+      this._setText('chart-theater-name', state.theater.name || '');
       const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
       const local = new Date(new Date(state.clock.game_time).getTime() + state.theater.timezone_offset * 3600 * 1000);
       const dateEl = document.querySelector('.topbar-date');
@@ -581,24 +591,25 @@ class UIController {
       ? `${escapeHtml(enemy.name)}（${(enemy.carriers || []).map(c => escapeHtml(c)).join(' / ')}）`
       : '—';
     const objective = victory.primary
-      ? `<p class="campaign-kw">OBJECTIVE</p><p class="campaign-line">${escapeHtml(victory.primary)}</p>`
+      ? `<p class="campaign-kw">作战目标 <span>OBJECTIVE</span></p><p class="campaign-line campaign-objective">${escapeHtml(victory.primary)}</p>`
       : '';
     return `
     <article class="campaign-card" data-theater="${escapeHtml(t.id)}">
       <header class="campaign-card-head">
-        <span class="campaign-card-stamp">SECRET</span>
+        <span class="campaign-card-stamp">作战档案</span>
         <h2 class="campaign-card-name">${escapeHtml(t.name)}</h2>
         <span class="campaign-card-date">${escapeHtml(t.date || '')}</span>
       </header>
       <div class="campaign-card-body">
-        <p class="campaign-kw">FRIENDLY FORCES</p>
+        <p class="campaign-kw">我方兵力 <span>FRIENDLY FORCES</span></p>
         <p class="campaign-line">${friendlyLine}</p>
-        <p class="campaign-kw">ENEMY FORCE</p>
+        <p class="campaign-kw">战役背景 <span>ENEMY FORCE</span></p>
         <p class="campaign-line">${enemyLine}</p>
         ${objective}
       </div>
       <footer class="campaign-card-foot">
-        <button class="btn btn-execute btn-campaign-start" data-theater="${escapeHtml(t.id)}">开始战役</button>
+        <span class="campaign-file-code">${escapeHtml(t.id).toUpperCase()} / 1942</span>
+        <button class="btn btn-execute btn-campaign-start" data-theater="${escapeHtml(t.id)}">进入指挥室 <span aria-hidden="true">↗</span></button>
       </footer>
     </article>`;
   }

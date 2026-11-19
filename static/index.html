@@ -8,22 +8,28 @@
   <title>中途岛指挥官</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Special+Elite&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=1780998031">
+  <link rel="stylesheet" href="/static/css/style.css?v=2026111901">
+  <link rel="stylesheet" href="/static/css/command-room.css?v=2026111901">
 </head>
-<body>
+<body class="command-room">
 
 <!-- ═══ 开局层：战役选择（O.1）— 默认显示，进游戏后由 main.js 置 hidden ═══ -->
 <div id="campaign-select">
   <div class="campaign-panel">
     <header class="campaign-head">
       <img class="campaign-stamp" src="/static/assets/ui/secret_stamp.svg" alt="">
+      <p class="campaign-eyebrow">PACIFIC THEATER · 1942</p>
       <h1 class="campaign-title">中途岛指挥官</h1>
-      <p class="campaign-subtitle">PACIFIC OCEAN AREAS · COMMANDER TASK FORCE — CAMPAIGN SELECT</p>
+      <p class="campaign-subtitle">MIDWAY COMMAND</p>
+      <p class="campaign-intro">情报从不完整。决定，必须由你作出。</p>
+      <p class="campaign-description">在参谋的判断、有限的兵力与流逝的时间之间，指挥你的特混舰队。</p>
     </header>
+    <div class="campaign-section"><span>选择作战档案</span><span>CAMPAIGN FILES</span></div>
     <div class="campaign-list" id="campaign-list">
       <p class="campaign-loading">SCANNING THEATER FILES ...</p>
     </div>
-    <p class="campaign-error" id="campaign-error"></p>
+    <p class="campaign-error" id="campaign-error" role="alert"></p>
+    <footer class="campaign-footer"><span>阅读情报 → 听取参谋判断 → 签发命令</span><span>事实有边界，判断有代价。</span></footer>
   </div>
 </div>
 
@@ -33,25 +39,32 @@
   <header id="topbar" class="paper-topbar">
     <div class="topbar-left">
       <img class="topbar-flag-img" src="/static/assets/ui/flag48.svg" alt="US">
-      <span class="topbar-title">中途岛指挥官</span>
-      <span class="topbar-subtitle">TASK FORCE 16</span>
+      <div class="brand-copy">
+        <span class="topbar-title">中途岛指挥官</span>
+        <span class="topbar-subtitle">TASK FORCE 16</span>
+      </div>
     </div>
     <div class="topbar-center">
       <span class="topbar-date">04 JUN 1942 · Z+12</span>
       <span class="topbar-clock" id="clock">04:00<span class="topbar-clock-suffix"> Z</span></span>
     </div>
     <div class="topbar-right">
-      <span class="topbar-ap">ACTION POINTS: <span class="topbar-ap-val" id="ap-current">3</span>/<span class="topbar-ap-val" id="ap-max">3</span></span>
-      <button class="btn btn-issue-order" id="btn-issue-order" title="全局唯一正式命令入口">ISSUE ORDER</button>
-      <img class="topbar-gear" src="/static/assets/ui/gear.svg" alt="" aria-hidden="true">
+      <span class="topbar-ap">行动点 <span class="topbar-ap-val" id="ap-current">3</span><span class="ap-divider"> / </span><span class="topbar-ap-val" id="ap-max">3</span></span>
+      <button class="btn btn-issue-order" id="btn-issue-order" title="拟定、审核并签发正式命令">下达命令 <span>ISSUE ORDER ↗</span></button>
     </div>
   </header>
 
+  <nav id="workbench-nav" aria-label="工作台导航"></nav>
   <!-- ═══ S8 UI.1 通知 toast 条（只有 FLASH/STAFF_VISIT 主动打断） ═══ -->
   <div id="notification-toasts" aria-live="polite"></div>
 
   <!-- ═══ Main Chart Area ═══ -->
   <main id="chart-area">
+    <header class="chart-heading">
+      <div><span class="chart-kicker">TACTICAL CHART</span><h1>作战海图 <span id="chart-theater-name"></span></h1></div>
+      <span class="chart-key"><i></i>己方舰队 <i class="chart-key-enemy"></i>已知接触</span>
+    </header>
+    <div class="chart-stage">
     <div class="chart-light" aria-hidden="true"></div>
     <div class="chart-scratches" aria-hidden="true"></div>
     <!-- 成品图复现 G4（设计审计 MISSING-6）：原左上海图字幕 div 已删除——
@@ -61,6 +74,7 @@
     <img class="desk-prop desk-ruler" src="/static/assets/ui/ruler_wood.svg" alt="" aria-hidden="true">
     <img class="desk-prop desk-pencil" src="/static/assets/ui/pencil.svg" alt="" aria-hidden="true">
     <img class="desk-prop desk-compass" src="/static/assets/ui/icons/compass_brass.png" alt="" aria-hidden="true">
+    </div>
   </main>
 
   <!-- ═══ Bottom Dashboard + Controls ═══ -->
@@ -76,15 +90,23 @@
       <div class="dash-item"><span class="dash-label">敌情</span><span class="dash-val" id="d-enemy">暂无</span></div>
     </div>
     <div id="controls">
-      <button class="btn" id="btn-advance">ADVANCE +15MIN</button>
-      <button class="btn" id="btn-sitrep">SITUATION REPORT</button>
+      <button class="btn" id="btn-advance">推进时间 +15 分钟</button>
+      <button class="btn" id="btn-sitrep">听取态势报告</button>
     </div>
   </div>
 
   <!-- ═══ Right Sidebar · L1 值班栏（S8 UI.1：只做摘要与入口） ═══ -->
   <aside id="sidebar">
-    <nav id="workbench-nav" aria-label="工作台导航"></nav>
+    <header class="sidebar-heading"><span>COMMAND WATCH</span><h2>指挥官值班台</h2><p>从已知情报，形成下一步决心。</p></header>
     <div id="duty-summary"></div>
+    <section class="command-guide" aria-labelledby="guide-title">
+      <p class="guide-kicker">作战流程 / FIELD GUIDE</p>
+      <h3 id="guide-title">先了解，再决断。</h3>
+      <button class="guide-step" data-open-workbench="COMMS"><span>01</span><div><strong>查看来报</strong><small>核对来源、观测时间与勘误</small></div><b aria-hidden="true">↗</b></button>
+      <button class="guide-step" data-open-workbench="STAFF"><span>02</span><div><strong>听取参谋判断</strong><small>追问依据，比较不同建议</small></div><b aria-hidden="true">↗</b></button>
+      <button class="guide-step" data-open-workbench="INTEL"><span>03</span><div><strong>审阅情报与标图</strong><small>批准的标图才进入正式海图</small></div><b aria-hidden="true">↗</b></button>
+      <p class="guide-note">准备就绪后，使用右上角「下达命令」。普通交谈不会直接执行命令。</p>
+    </section>
     <div id="sidebar-content">
       <div id="chat-log"></div>
       <div id="intel-board"></div>
@@ -94,12 +116,12 @@
 </div>
 
 <!-- ═══ S8 UI.1 · ISSUE ORDER 弹层（全局唯一正式命令入口；承载待批命令卡） ═══ -->
-<div id="issue-order-modal" hidden>
+<div id="issue-order-modal" role="dialog" aria-modal="true" aria-labelledby="issue-order-title" hidden>
   <div class="io-panel">
     <header class="io-head">
       <span class="io-stamp">SECRET</span>
-      <h2 class="io-title">ISSUE ORDER — 正式命令</h2>
-      <button class="btn" id="io-close">关闭</button>
+      <h2 class="io-title" id="issue-order-title">下达正式命令 <span>ISSUE ORDER</span></h2>
+      <button class="btn" id="io-close">关闭 ×</button>
     </header>
     <p class="io-note">普通交谈不构成命令。待执行的参谋建议与航线提案在此批准或驳回。</p>
     <div id="suggestions"></div>
@@ -112,12 +134,12 @@
   <div class="desk-panel">
     <header class="desk-head">
       <span class="desk-stamp">SECRET</span>
-      <h2 class="desk-title">COMMANDER DESK — 旗舰案卷台</h2>
+      <h2 class="desk-title">旗舰案卷台 <span>COMMANDER DESK</span></h2>
       <nav class="desk-tabs">
-        <button class="desk-tab" data-desk-tab="COMMS">COMMS</button>
-        <button class="desk-tab" data-desk-tab="INTEL">INTEL</button>
-        <button class="desk-tab" data-desk-tab="STAFF">STAFF</button>
-        <button class="desk-tab" data-desk-tab="LOG">LOG</button>
+        <button class="desk-tab" data-desk-tab="COMMS">收报室 <span>COMMS</span></button>
+        <button class="desk-tab" data-desk-tab="INTEL">情报 <span>INTEL</span></button>
+        <button class="desk-tab" data-desk-tab="STAFF">参谋 <span>STAFF</span></button>
+        <button class="desk-tab" data-desk-tab="LOG">记录 <span>LOG</span></button>
       </nav>
       <button class="btn" id="desk-close">返回海图（ESC）</button>
     </header>
@@ -140,19 +162,19 @@
 <div id="vignette-overlay" aria-hidden="true"></div>
 <div id="noise-overlay" aria-hidden="true"></div>
 
-<script src="/static/js/svgLoader.js?v=1780998031"></script>
-<script src="/static/js/theaterLoader.js?v=1780998031"></script>
-<script src="/static/js/chartRenderer.js?v=1780998031"></script>
-<script src="/static/js/mapRenderer.js?v=1780998031"></script>
-<script src="/static/js/s4Adapter.js?v=1780998031"></script>
-<script src="/static/js/notificationCenter.js?v=1780998031"></script>
-<script src="/static/js/commandDesk.js?v=1780998031"></script>
-<script src="/static/js/commsDesk.js?v=1780998031"></script>
-<script src="/static/js/staffDesk.js?v=1780998031"></script>
-<script src="/static/js/logDesk.js?v=1780998031"></script>
-<script src="/static/js/ordersDesk.js?v=1780998031"></script>
-<script src="/static/js/uiController.js?v=1780998031"></script>
-<script src="/static/js/intelBoard.js?v=1780998031"></script>
-<script src="/static/js/main.js?v=1780998031"></script>
+<script src="/static/js/svgLoader.js?v=2026111901"></script>
+<script src="/static/js/theaterLoader.js?v=2026111901"></script>
+<script src="/static/js/chartRenderer.js?v=2026111901"></script>
+<script src="/static/js/mapRenderer.js?v=2026111901"></script>
+<script src="/static/js/s4Adapter.js?v=2026111901"></script>
+<script src="/static/js/notificationCenter.js?v=2026111901"></script>
+<script src="/static/js/commandDesk.js?v=2026111901"></script>
+<script src="/static/js/commsDesk.js?v=2026111901"></script>
+<script src="/static/js/staffDesk.js?v=2026111901"></script>
+<script src="/static/js/logDesk.js?v=2026111901"></script>
+<script src="/static/js/ordersDesk.js?v=2026111901"></script>
+<script src="/static/js/uiController.js?v=2026111901"></script>
+<script src="/static/js/intelBoard.js?v=2026111901"></script>
+<script src="/static/js/main.js?v=2026111901"></script>
 </body>
 </html>
