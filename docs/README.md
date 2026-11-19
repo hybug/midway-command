@@ -1,6 +1,6 @@
 # 中途岛指挥官 · 文档索引
 
-> 最后更新：2026-09-19
+> 最后更新：2026-11-19
 
 ---
 
@@ -19,6 +19,7 @@
 | `GAME_DESIGN_V2.md` | 游戏设计总体方案（NPC、信息不对称、核心体验） |
 | `COMMAND_TEMPLATE_DESIGN.md` | 作战命令模板格式设计 |
 | `ART_DIRECTION.md` | 美术方向、AI图像生成提示词 |
+| `COMMAND_ROOM_UI_PLAN.md` | **作战室 UI 重制提案** — 全流程构图、物件交互、代码/切图/AI 分工、素材规格与实施验收 |
 
 ## 📁 reference/ — 历史与调研参考
 
@@ -35,6 +36,8 @@
 
 | 文档 | 用途 |
 |------|------|
+| `coral-sea-mvp-plan.md` | **MVP 收口工作稿** — 珊瑚海单场景从开局到复盘；首批为时间、结束和信息边界 |
+| [coral-sea-visual-implementation.md](plans/coral-sea-visual-implementation.md) | **指挥室与海图双母版实施规格** — 保留原图、切图、局部生图、实机合成与对照验收 |
 | `gameplay-system-roadmap.md` | **现行长期计划** — 一级系统、二级模块与玩法攻坚顺序（当前：S3 已完成，下一步 S4） |
 | `s2-intelligence-system-plan.md` | S2 感知与情报系统（Phase S2.0–S2.8 已执行） |
 | `s3-staff-cognition-system-plan.md` | S3 参谋认知与判断系统（Phase S3.0–S3.7 已执行，规格 `design/S3_COGNITION_SYSTEM.md`） |
